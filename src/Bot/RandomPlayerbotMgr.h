@@ -155,6 +155,11 @@ public:
     void CheckBgQueue();
     void CheckLfgQueue();
     void CheckPlayers();
+
+    // Populate a capital on demand when a real player enters it.
+    // Only progression-safe autonomous random bots are borrowed.
+    void PopulateCityForPlayer(Player* player, uint32 cityZoneId);
+
     void LogBattlegroundInfo();
 
     std::map<TeamId, std::map<BattlegroundTypeId, std::vector<uint32>>> getBattleMastersCache()

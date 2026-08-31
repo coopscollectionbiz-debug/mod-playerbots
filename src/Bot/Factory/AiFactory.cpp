@@ -287,6 +287,13 @@ void AiFactory::AddDefaultCombatStrategies(Player* player, PlayerbotAI* const fa
     if (!player->InBattleground())
         engine->addStrategiesNoInit("racials", "chat", "default", "cast time", "potions", "duel", "boost", nullptr);
 
+    if (sRandomPlayerbotMgr.IsRandomBot(player) &&
+        !player->InBattleground() &&
+        sPlayerbotAIConfig.randomBotJoinLfg)
+    {
+        engine->addStrategy("lfg teleport retry", false);
+    }
+
     if (sPlayerbotAIConfig.autoAvoidAoe && facade->HasGameClientMaster())
         engine->addStrategy("avoid aoe", false);
 
@@ -597,7 +604,10 @@ void AiFactory::AddDefaultNonCombatStrategies(Player* player, PlayerbotAI* const
             nonCombatEngine->addStrategy("start duel", false);
 
         if (sPlayerbotAIConfig.randomBotJoinLfg)
+        {
             nonCombatEngine->addStrategy("lfg", false);
+            nonCombatEngine->addStrategy("lfg teleport retry", false);
+        }
 
         if (!player->GetGroup() || player->GetGroup()->GetLeaderGUID() == player->GetGUID())
         {

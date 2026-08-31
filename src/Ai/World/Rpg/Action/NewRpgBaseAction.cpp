@@ -1190,12 +1190,33 @@ bool NewRpgBaseAction::RandomChangeStatus(std::vector<NewRpgStatus> candidateSta
             bot->SetStandState(UNIT_STAND_STATE_SIT);
             return true;
         }
-        case RPG_OUTDOOR_PVP:
-        {
-            botAI->rpgInfo.ChangeToOutdoorPvp();
-            return true;
-        }
-        default:
+       case RPG_OUTDOOR_PVP:
+{
+    botAI->rpgInfo.ChangeToOutdoorPvp();
+    return true;
+}
+
+case RPG_CITY_LIFE:
+{
+    WorldLocation cityLocation;
+    uint32 cityZoneId = 0;
+
+    if (!sTravelMgr.GetCityLifeLocation(bot, cityLocation, cityZoneId))
+        return false;
+
+    WorldPosition cityPos(
+        cityLocation.GetMapId(),
+        cityLocation.GetPositionX(),
+        cityLocation.GetPositionY(),
+        cityLocation.GetPositionZ(),
+        cityLocation.GetOrientation()
+    );
+
+    botAI->rpgInfo.ChangeToCityLife(cityPos, cityZoneId);
+    return true;
+}
+
+default:
         {
             botAI->rpgInfo.ChangeToRest();
             bot->SetStandState(UNIT_STAND_STATE_SIT);
@@ -1257,17 +1278,27 @@ bool NewRpgBaseAction::CheckRpgStatusAvailable(NewRpgStatus status)
             return SelectRandomFlightTaxiNode(flightMasterEntry, flightMasterPos, path);
         }
         case RPG_OUTDOOR_PVP:
-        {
-            if (!bot->IsPvP())
-                return false;
-            uint32 zoneId = bot->GetZoneId();
-            if (zoneId == AREA_NAGRAND)
-                return false;
+{
+    if (!bot->IsPvP())
+        return false;
 
-            OutdoorPvP* outdoorPvP = sOutdoorPvPMgr->GetOutdoorPvPToZoneId(zoneId);
-            return outdoorPvP != nullptr;
-        }
-        default:
+    uint32 zoneId = bot->GetZoneId();
+    if (zoneId == AREA_NAGRAND)
+        return false;
+
+    OutdoorPvP* outdoorPvP = sOutdoorPvPMgr->GetOutdoorPvPToZoneId(zoneId);
+    return outdoorPvP != nullptr;
+}
+
+case RPG_CITY_LIFE:
+{
+    // CityLife is populated on demand when a real player enters
+    // a capital. Do not let normal RPG selection consume large
+    // portions of the bot population in empty cities.
+    return false;
+}
+
+default:
             return false;
     }
     return false;

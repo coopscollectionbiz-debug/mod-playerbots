@@ -9,6 +9,7 @@
 #include "Chat.h"
 #include "ChatHelper.h"
 #include "Event.h"
+#include "Group.h"
 #include "ItemTemplate.h"
 #include "ObjectGuid.h"
 #include "ObjectMgr.h"
@@ -17,6 +18,7 @@
 #include "ServerFacade.h"
 #include <algorithm>
 #include <sstream>
+#include "WorldPacket.h"
 
 bool QuestAction::Execute(Event event)
 {
@@ -415,14 +417,48 @@ bool QuestItemPushResultAction::Execute(Event event)
             int32 previousCount = itemCount - count;
             if (itemId == itemEntry && uint32(previousCount) < quest->RequiredItemCount[i])
             {
-                if (botAI->GetMaster())
+                // Questie-style notification: stay silent for
+                // intermediate item progress and announce only
+                // when this pickup has completed the quest.
+                if (bot->GetQuestStatus(questId)
+                    == QUEST_STATUS_COMPLETE)
                 {
-                    std::string itemLink = ChatHelper::FormatItem(proto);
-                    std::ostringstream out;
-                    int32 required = quest->RequiredItemCount[i];
-                    int32 available = std::min((int32)itemCount, required);
-                    out << itemLink << " " << available << "/" << required << " " << ChatHelper::FormatQuest(quest);
-                    botAI->TellMasterNoFacing(out.str());
+                    Group* group = bot->GetGroup();
+                    if (group)
+                    {
+                        std::ostringstream out;
+                        out << ChatHelper::FormatQuest(quest)
+                            << " complete!";
+
+                        WorldPacket data;
+                        ChatHandler::BuildChatPacket(
+                            data,
+                            CHAT_MSG_PARTY,
+                            LANG_UNIVERSAL,
+                            bot,
+                            nullptr,
+                            out.str());
+
+                        for (GroupReference* itr =
+                                 group->GetFirstMember();
+                             itr != nullptr;
+                             itr = itr->next())
+                        {
+                            Player* member =
+                                itr->GetSource();
+
+                            if (member
+                                && member->GetSession())
+                            {
+                                member->GetSession()
+                                    ->SendPacket(&data);
+                            }
+                        }
+                    }
+
+                    // This item has already produced the only
+                    // completion notification needed for this quest.
+                    break;
                 }
             }
         }

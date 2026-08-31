@@ -209,6 +209,10 @@ bool LfgAcceptAction::Execute(Event event)
         }
 
         botAI->GetAiObjectContext()->GetValue<uint32>("lfg proposal")->Set(0);
+
+        // Stabilize movement before accepting the LFG proposal.
+        // AzerothCore rejects the initial dungeon teleport while falling.
+        bot->StopMoving();
         bot->ClearUnitState(UNIT_STATE_ALL_STATE);
 
         WorldPacket* packet = new WorldPacket(CMSG_LFG_PROPOSAL_RESULT);
@@ -244,6 +248,10 @@ bool LfgAcceptAction::Execute(Event event)
             }
 
             botAI->GetAiObjectContext()->GetValue<uint32>("lfg proposal")->Set(0);
+
+            // Stabilize movement before accepting the LFG proposal.
+            // AzerothCore rejects the initial dungeon teleport while falling.
+            bot->StopMoving();
             bot->ClearUnitState(UNIT_STATE_ALL_STATE);
 
             WorldPacket* packet = new WorldPacket(CMSG_LFG_PROPOSAL_RESULT);
@@ -290,6 +298,73 @@ bool LfgLeaveAction::Execute(Event /*event*/)
 }
 
 bool LfgLeaveAction::isUseful() { return true; }
+
+bool LfgTeleportRetryAction::isUseful()
+{
+    // Forced recovery is exclusively for autonomous random bots.
+    if (!sRandomPlayerbotMgr.IsRandomBot(bot))
+        return false;
+
+    if (sLFGMgr->GetState(bot->GetGUID()) != LFG_STATE_DUNGEON)
+        return false;
+
+    Group* group = bot->GetGroup();
+    if (!group || !group->isLFGGroup())
+        return false;
+
+    Map* map = bot->GetMap();
+    if (map && map->Instanceable())
+        return false;
+
+    if (bot->IsBeingTeleported() ||
+        bot->isDead() ||
+        bot->GetVehicle())
+    {
+        return false;
+    }
+
+    return true;
+}
+
+bool LfgTeleportRetryAction::Execute(Event /*event*/)
+{
+    if (!isUseful())
+        return false;
+
+    Group* group = bot->GetGroup();
+    if (!group || !group->isLFGGroup())
+        return false;
+
+    LFGDungeonData const* dungeon =
+        sLFGMgr->GetLFGDungeon(
+            sLFGMgr->GetDungeon(group->GetGUID()));
+
+    if (!dungeon)
+        return false;
+
+    bot->StopMoving();
+    bot->ClearUnitState(UNIT_STATE_ALL_STATE);
+
+    // The normal LFG teleport has already had its opportunity.
+    // If an autonomous bot is still outside at this point, bypass
+    // transient falling/combat restrictions and place it at the
+    // authoritative entrance for the group's assigned dungeon.
+    if (!bot->GetMap()->IsDungeon() ||
+        bot->GetEntryPoint().GetMapId() == MAPID_INVALID)
+    {
+        bot->SetEntryPoint();
+    }
+
+    return bot->TeleportTo(
+        dungeon->map,
+        dungeon->x,
+        dungeon->y,
+        dungeon->z,
+        dungeon->o,
+        0,
+        nullptr,
+        dungeon->map == bot->GetMapId());
+}
 
 bool LfgTeleportAction::Execute(Event event)
 {

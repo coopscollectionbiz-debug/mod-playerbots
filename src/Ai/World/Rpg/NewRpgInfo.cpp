@@ -60,6 +60,21 @@ void NewRpgInfo::ChangeToOutdoorPvp(ObjectGuid::LowType capturePointSpawnId)
     data = pvp;
 }
 
+void NewRpgInfo::ChangeToCityLife(WorldPosition cityPos, uint32 cityZoneId)
+{
+    startT = getMSTime();
+
+    CityLife cityLife;
+    cityLife.cityPos = cityPos;
+    cityLife.cityZoneId = cityZoneId;
+    cityLife.npcOrGo = ObjectGuid();
+    cityLife.lastReach = 0;
+    cityLife.idleStart = 0;
+    cityLife.idleDuration = 0;
+
+    data = cityLife;
+}
+
 void NewRpgInfo::ChangeToRest()
 {
     startT = getMSTime();
@@ -102,6 +117,7 @@ NewRpgStatus NewRpgInfo::StatusFromString(std::string const& name)
     if (name == "do quest")       return RPG_DO_QUEST;
     if (name == "travel flight")  return RPG_TRAVEL_FLIGHT;
     if (name == "outdoor pvp")    return RPG_OUTDOOR_PVP;
+    if (name == "city life")      return RPG_CITY_LIFE;
     return RPG_STATUS_END;
 }
 
@@ -118,6 +134,7 @@ NewRpgStatus NewRpgInfo::GetStatus()
         if constexpr (std::is_same_v<T, DoQuest>) return RPG_DO_QUEST;
         if constexpr (std::is_same_v<T, TravelFlight>) return RPG_TRAVEL_FLIGHT;
         if constexpr (std::is_same_v<T, OutdoorPvP>) return RPG_OUTDOOR_PVP;
+        if constexpr (std::is_same_v<T, CityLife>) return RPG_CITY_LIFE;
         return RPG_IDLE;
     }, data);
 }
@@ -182,15 +199,26 @@ std::string NewRpgInfo::ToString()
             out << "\ninFlight: " << arg.inFlight;
         }
         else if constexpr (std::is_same_v<T, OutdoorPvP>)
-        {
-            out << "OUTDOOR_PVP";
-            if (!arg.capturePointSpawnId)
-                out << "\nNo capture point assigned.";
-            else
-                out << "\ncapturePointSpawnId: " << arg.capturePointSpawnId;
-        }
-        else
-            out << "UNKNOWN";
+{
+    out << "OUTDOOR_PVP";
+    if (!arg.capturePointSpawnId)
+        out << "\nNo capture point assigned.";
+    else
+        out << "\ncapturePointSpawnId: " << arg.capturePointSpawnId;
+}
+else if constexpr (std::is_same_v<T, CityLife>)
+{
+    out << "CITY_LIFE";
+    out << "\ncityZoneId: " << arg.cityZoneId;
+    out << "\ncityPos: " << arg.cityPos.GetMapId() << " "
+        << arg.cityPos.GetPositionX() << " "
+        << arg.cityPos.GetPositionY() << " "
+        << arg.cityPos.GetPositionZ();
+    out << "\nnpcOrGoEntry: " << arg.npcOrGo.GetCounter();
+    out << "\nlastReach: " << arg.lastReach;
+}
+else
+    out << "UNKNOWN";
     }, data);
     return out.str();
 }

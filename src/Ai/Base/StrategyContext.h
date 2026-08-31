@@ -87,6 +87,7 @@ public:
         creators["pvp"] = &StrategyContext::pvp;
         creators["return"] = &StrategyContext::_return;
         creators["lfg"] = &StrategyContext::lfg;
+        creators["lfg teleport retry"] = &StrategyContext::lfg_teleport_retry;
         creators["custom"] = &StrategyContext::custom;
         creators["reveal"] = &StrategyContext::reveal;
         creators["collision"] = &StrategyContext::collision;
@@ -166,6 +167,7 @@ private:
     static Strategy* pvp(PlayerbotAI* botAI) { return new AttackEnemyPlayersStrategy(botAI); }
     static Strategy* _return(PlayerbotAI* botAI) { return new ReturnStrategy(botAI); }
     static Strategy* lfg(PlayerbotAI* botAI) { return new LfgStrategy(botAI); }
+    static Strategy* lfg_teleport_retry(PlayerbotAI* botAI) { return new LfgTeleportRetryStrategy(botAI); }
     static Strategy* custom(PlayerbotAI* botAI) { return new CustomStrategy(botAI); }
     static Strategy* reveal(PlayerbotAI* botAI) { return new RevealStrategy(botAI); }
     static Strategy* collision(PlayerbotAI* botAI) { return new CollisionStrategy(botAI); }

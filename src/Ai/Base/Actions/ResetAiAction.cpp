@@ -14,11 +14,18 @@
 
 bool ResetAiAction::Execute(Event event)
 {
+    // Group-list packet resets are internal/automatic state
+    // maintenance. Keep reset behavior, but do not whisper the
+    // player about those mechanical resets.
+    bool automaticReset = false;
+
     if (!event.getPacket().empty())
     {
         WorldPacket packet = event.getPacket();
         if (packet.GetOpcode() == SMSG_GROUP_LIST)
         {
+            automaticReset = true;
+
             uint8 groupType;
             Group::MemberSlot slot;
             packet >> groupType;
@@ -61,6 +68,9 @@ bool ResetAiAction::Execute(Event event)
     }
     PlayerbotRepository::instance().Reset(botAI);
     botAI->ResetStrategies(false);
-    botAI->TellMaster("AI was reset to defaults");
+
+    if (!automaticReset)
+        botAI->TellMaster("AI was reset to defaults");
+
     return true;
 }

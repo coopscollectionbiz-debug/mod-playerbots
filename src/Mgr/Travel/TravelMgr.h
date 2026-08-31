@@ -879,6 +879,8 @@ public:
     const std::vector<WorldLocation> GetTeleportLocations(Player* bot);
     const std::vector<WorldLocation> GetTravelHubs(Player* bot);
     std::vector<WorldLocation> GetCityLocations(Player* bot);
+    bool GetCityLifeLocation(Player* bot, WorldLocation& outLocation, uint32& outZoneId);
+    bool GetCityLifeLocationForZone(Player* bot, uint32 cityZoneId, WorldLocation& outLocation);
     std::vector<uint32> GetFlightNodesInZone(uint32 zoneId, TeamId team, uint32 excludeNode = 0) const;
     bool SelectAuctioneerByMap(Player* bot, NpcLocation& outAuctioneer);
     const std::vector<WorldLocation>& GetLocsPerLevelCache(uint8 level) { return locsPerLevelCache[level]; }
@@ -998,6 +1000,12 @@ private:
     std::map<uint8, std::vector<WorldLocation>> hordeHubsPerLevelCache;
     std::map<uint8, std::vector<BankerLocation>> bankerLocsPerLevelCache;
     std::unordered_map<uint32, WorldLocation> bankerEntryToLocation;
+
+    // Weighted, known-safe NPC-adjacent congregation points for
+    // on-demand CityLife. Keyed by capital zone ID.
+    std::unordered_map<uint32, std::vector<WorldLocation>>
+        cityLifeHubLocationsByZone;
+
     std::map<uint8, std::vector<WorldLocation>> locsPerLevelCache;
     std::unordered_map<uint32, std::vector<WorldLocation>> creatureSpawnsByTemplate;
     std::map<uint32, LevelBracket> zone2LevelBracket;

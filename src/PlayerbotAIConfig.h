@@ -56,22 +56,30 @@ enum class AutoPartyBuffMode : uint8
 
 enum NewRpgStatus : int
 {
-    //Initial Status
+    // Initial Status
     RPG_IDLE = 0,
     RPG_GO_GRIND = 1,
     RPG_GO_CAMP = 2,
+
     // Exploring nearby
     RPG_WANDER_RANDOM = 3,
     RPG_WANDER_NPC = 4,
+
     // Do Quest (based on quest status)
     RPG_DO_QUEST = 5,
-    // Travel
 
+    // Travel
     RPG_TRAVEL_FLIGHT = 6,
+
     // Taking a break
     RPG_REST = 7,
+
     RPG_OUTDOOR_PVP = 8,
-    RPG_STATUS_END = 9
+
+    // Spend time behaving like a player in a capital city
+    RPG_CITY_LIFE = 9,
+
+    RPG_STATUS_END = 10
 };
 
 #define MAX_SPECNO 20

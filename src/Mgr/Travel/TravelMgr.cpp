@@ -4554,6 +4554,203 @@ std::vector<WorldLocation> TravelMgr::GetCityLocations(Player* bot)
     return fallbackLocations;
 }
 
+bool TravelMgr::GetCityLifeLocation(Player* bot, WorldLocation& outLocation, uint32& outZoneId)
+{
+    if (!bot)
+        return false;
+
+    TeamId botTeam = bot->GetTeamId();
+    uint32 botLevel = bot->GetLevel();
+
+    std::vector<Capital const*> weightedCapitals;
+
+    for (Capital const& capital : capitals)
+    {
+        // Only use faction-appropriate cities.
+        if (capital.team != TEAM_NEUTRAL && capital.team != botTeam)
+            continue;
+
+        // Neutral expansion cities should still make sense for the bot's level.
+        if (capital.zoneId == AREA_SHATTRATH_CITY && botLevel < 58)
+            continue;
+
+        if (capital.zoneId == AREA_DALARAN && botLevel < 68)
+            continue;
+
+        int weight = GetCityWeight(capital.zoneId);
+        if (weight <= 0)
+            continue;
+
+        // Make sure this capital has at least one banker location available.
+        bool hasLocation = false;
+        for (uint16 bankerEntry : capital.bankers)
+        {
+            if (bankerEntryToLocation.find(bankerEntry) != bankerEntryToLocation.end())
+            {
+                hasLocation = true;
+                break;
+            }
+        }
+
+        if (!hasLocation)
+            continue;
+
+        for (int i = 0; i < weight; ++i)
+            weightedCapitals.push_back(&capital);
+    }
+
+    if (weightedCapitals.empty())
+        return false;
+
+    Capital const* selectedCapital =
+        weightedCapitals[urand(0, weightedCapitals.size() - 1)];
+
+    auto cityHubItr =
+        cityLifeHubLocationsByZone.find(
+            selectedCapital->zoneId);
+
+    if (cityHubItr !=
+            cityLifeHubLocationsByZone.end() &&
+        !cityHubItr->second.empty())
+    {
+        auto const& cityLocations =
+            cityHubItr->second;
+
+        outLocation =
+            cityLocations[
+                urand(
+                    0,
+                    static_cast<uint32>(
+                        cityLocations.size() - 1))];
+    }
+    else
+    {
+        // Preserve the original banker-only behavior as a
+        // fallback if a capital has no congregation cache.
+        std::vector<WorldLocation> availableLocations;
+
+        for (uint16 bankerEntry :
+             selectedCapital->bankers)
+        {
+            auto itr =
+                bankerEntryToLocation.find(
+                    bankerEntry);
+
+            if (itr !=
+                bankerEntryToLocation.end())
+            {
+                availableLocations.push_back(
+                    itr->second);
+            }
+        }
+
+        if (availableLocations.empty())
+            return false;
+
+        outLocation =
+            availableLocations[
+                urand(
+                    0,
+                    static_cast<uint32>(
+                        availableLocations.size() - 1))];
+    }
+
+    outZoneId = selectedCapital->zoneId;
+
+    return true;
+}
+
+
+bool TravelMgr::GetCityLifeLocationForZone(
+    Player* bot,
+    uint32 cityZoneId,
+    WorldLocation& outLocation)
+{
+    if (!bot)
+        return false;
+
+    TeamId botTeam = bot->GetTeamId();
+    uint32 botLevel = bot->GetLevel();
+
+    for (Capital const& capital : capitals)
+    {
+        if (capital.zoneId != cityZoneId)
+            continue;
+
+        // Respect faction ownership.
+        if (capital.team != TEAM_NEUTRAL &&
+            capital.team != botTeam)
+        {
+            return false;
+        }
+
+        // Expansion capitals remain level appropriate.
+        if (capital.zoneId == AREA_SHATTRATH_CITY &&
+            botLevel < 58)
+        {
+            return false;
+        }
+
+        if (capital.zoneId == AREA_DALARAN &&
+            botLevel < 68)
+        {
+            return false;
+        }
+
+        auto cityHubItr =
+            cityLifeHubLocationsByZone.find(
+                cityZoneId);
+
+        if (cityHubItr !=
+                cityLifeHubLocationsByZone.end() &&
+            !cityHubItr->second.empty())
+        {
+            auto const& cityLocations =
+                cityHubItr->second;
+
+            outLocation =
+                cityLocations[
+                    urand(
+                        0,
+                        static_cast<uint32>(
+                            cityLocations.size() - 1))];
+
+            return true;
+        }
+
+        // Preserve banker-only fallback if the congregation
+        // cache has no usable entries for this city.
+        std::vector<WorldLocation> availableLocations;
+
+        for (uint16 bankerEntry : capital.bankers)
+        {
+            auto itr =
+                bankerEntryToLocation.find(
+                    bankerEntry);
+
+            if (itr != bankerEntryToLocation.end())
+            {
+                availableLocations.push_back(
+                    itr->second);
+            }
+        }
+
+        if (availableLocations.empty())
+            return false;
+
+        outLocation =
+            availableLocations[
+                urand(
+                    0,
+                    static_cast<uint32>(
+                        availableLocations.size() - 1))];
+
+        return true;
+    }
+
+    return false;
+}
+
 void TravelMgr::PrepareZone2LevelBracket()
 {
     // Classic WoW - starter zones
@@ -4641,6 +4838,8 @@ void TravelMgr::PrepareDestinationCache()
     uint32 innkeepersCount = 0;
     uint32 bankerCount = 0;
 
+    cityLifeHubLocationsByZone.clear();
+
     LOG_INFO("playerbots", "Preparing destination caches for {} levels...", maxLevel);
     // Temporary map to group creatures by entry and area
     std::map<std::tuple<uint16, int32, int32, int32>, std::vector<CreatureData>> tempLocsCache;
@@ -4671,6 +4870,71 @@ void TravelMgr::PrepareDestinationCache()
             continue;
 
         uint32 areaId = area->zone ? area->zone : area->ID;
+
+        // ----------------------------------------------------
+        // CITYLIFE CONGREGATION HUBS
+        //
+        // Build a capital-specific weighted pool from real,
+        // known-safe NPC positions. This gives CityLife bodies
+        // several natural congregation anchors instead of
+        // placing virtually everyone in front of a banker.
+        //
+        // Weights:
+        //   banker       5
+        //   auctioneer   5
+        //   innkeeper    2
+        //   flightmaster 1
+        // ----------------------------------------------------
+        if (FindCapitalByZone(areaId))
+        {
+            uint32 cityLifeWeight = 0;
+
+            if (creatureTemplate->npcflag &
+                UNIT_NPC_FLAG_BANKER)
+            {
+                cityLifeWeight += 5;
+            }
+
+            if (creatureTemplate->npcflag &
+                UNIT_NPC_FLAG_AUCTIONEER)
+            {
+                cityLifeWeight += 5;
+            }
+
+            if (creatureTemplate->npcflag &
+                UNIT_NPC_FLAG_INNKEEPER)
+            {
+                cityLifeWeight += 2;
+            }
+
+            if (creatureTemplate->npcflag &
+                UNIT_NPC_FLAG_FLIGHTMASTER)
+            {
+                cityLifeWeight += 1;
+            }
+
+            if (cityLifeWeight)
+            {
+                WorldLocation cityLifeLoc(
+                    mapId,
+                    x + cos(orient) * 5.0f,
+                    y + sin(orient) * 5.0f,
+                    z + 0.5f,
+                    orient + M_PI);
+
+                auto& cityLocations =
+                    cityLifeHubLocationsByZone[
+                        areaId];
+
+                for (uint32 i = 0;
+                     i < cityLifeWeight;
+                     ++i)
+                {
+                    cityLocations.push_back(
+                        cityLifeLoc);
+                }
+            }
+        }
 
         // CREATURES
         if (creatureTemplate->npcflag == 0 &&

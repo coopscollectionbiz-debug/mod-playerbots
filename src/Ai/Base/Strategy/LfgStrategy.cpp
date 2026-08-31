@@ -12,8 +12,19 @@ void LfgStrategy::InitTriggers(std::vector<TriggerNode*>& triggers)
     triggers.push_back(new TriggerNode("random", { NextAction("lfg join", relevance) }));
     triggers.push_back(
         new TriggerNode("seldom", { NextAction("lfg leave", relevance) }));
+
     triggers.push_back(new TriggerNode(
         "unknown dungeon", { NextAction("give leader in dungeon", relevance) }));
+}
+
+LfgTeleportRetryStrategy::LfgTeleportRetryStrategy(PlayerbotAI* botAI) : PassThroughStrategy(botAI) {}
+
+void LfgTeleportRetryStrategy::InitTriggers(std::vector<TriggerNode*>& triggers)
+{
+    // Self-heal a failed initial Dungeon Finder teleport in both combat
+    // and non-combat AI engines.
+    triggers.push_back(
+        new TriggerNode("often", { NextAction("lfg teleport retry", ACTION_EMERGENCY + 10) }));
 }
 
 LfgStrategy::LfgStrategy(PlayerbotAI* botAI) : PassThroughStrategy(botAI) {}

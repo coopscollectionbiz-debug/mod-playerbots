@@ -19,4 +19,14 @@ public:
     std::string const getName() override { return "lfg"; }
 };
 
+class LfgTeleportRetryStrategy : public PassThroughStrategy
+{
+public:
+    LfgTeleportRetryStrategy(PlayerbotAI* botAI);
+
+    uint32 GetType() const override { return STRATEGY_TYPE_COMBAT | STRATEGY_TYPE_NONCOMBAT; }
+    void InitTriggers(std::vector<TriggerNode*>& triggers) override;
+    std::string const getName() override { return "lfg teleport retry"; }
+};
+
 #endif

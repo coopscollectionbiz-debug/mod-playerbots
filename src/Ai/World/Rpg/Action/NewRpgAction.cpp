@@ -5,6 +5,7 @@
  */
 
 #include "NewRpgAction.h"
+#include "LFGMgr.h"
 #include "AreaDefines.h"
 #include "BroadcastHelper.h"
 #include "ChatHelper.h"
@@ -235,7 +236,7 @@ bool NewRpgStatusUpdateAction::Execute(Event /*event*/)
     {
         case RPG_IDLE:
             return RandomChangeStatus({RPG_GO_CAMP, RPG_GO_GRIND, RPG_WANDER_RANDOM, RPG_WANDER_NPC, RPG_DO_QUEST,
-                                       RPG_TRAVEL_FLIGHT, RPG_REST, RPG_OUTDOOR_PVP});
+                               RPG_TRAVEL_FLIGHT, RPG_REST, RPG_OUTDOOR_PVP, RPG_CITY_LIFE});
 
         case RPG_GO_GRIND:
         {
@@ -274,15 +275,26 @@ bool NewRpgStatusUpdateAction::Execute(Event /*event*/)
             break;
         }
         case RPG_WANDER_NPC:
-        {
-            if (info.HasStatusPersisted(statusWanderNpcDuration))
-            {
-                info.ChangeToIdle();
-                return true;
-            }
-            break;
-        }
-        case RPG_DO_QUEST:
+{
+    if (info.HasStatusPersisted(statusWanderNpcDuration))
+    {
+        info.ChangeToIdle();
+        return true;
+    }
+    break;
+}
+
+case RPG_CITY_LIFE:
+{
+    if (info.HasStatusPersisted(statusCityLifeDuration))
+    {
+        info.ChangeToIdle();
+        return true;
+    }
+    break;
+}
+
+case RPG_DO_QUEST:
         {
             // DO_QUEST -> IDLE
             if (info.HasStatusPersisted(statusDoQuestDuration))
@@ -418,6 +430,156 @@ bool NewRpgWanderNpcAction::Execute(Event /*event*/)
     }
 
     return true;
+}
+
+bool NewRpgCityLifeAction::Execute(Event /*event*/)
+{
+    // Dungeon Finder owns the bot once it queues or joins a group.
+    // Stop City Life before it can move or teleport the bot elsewhere.
+    if (bot->GetGroup() ||
+        sLFGMgr->GetState(bot->GetGUID()) != lfg::LFG_STATE_NONE ||
+        bot->IsBeingTeleported())
+    {
+        botAI->rpgInfo.ChangeToIdle();
+        return true;
+    }
+
+    NewRpgInfo& info = botAI->rpgInfo;
+
+    auto* dataPtr = std::get_if<NewRpgInfo::CityLife>(&info.data);
+    if (!dataPtr)
+        return false;
+
+    auto& data = *dataPtr;
+
+    // If the bot has not yet reached its chosen capital, place it near
+    // the capital banker selected by TravelMgr.
+    if (bot->GetMapId() != data.cityPos.GetMapId() ||
+        bot->GetZoneId() != data.cityZoneId)
+    {
+        bot->TeleportTo(
+            data.cityPos.GetMapId(),
+            data.cityPos.GetPositionX(),
+            data.cityPos.GetPositionY(),
+            data.cityPos.GetPositionZ(),
+            data.cityPos.GetOrientation()
+        );
+
+        data.npcOrGo = ObjectGuid();
+        data.lastReach = 0;
+        data.idleStart = 0;
+        data.idleDuration = 0;
+
+        return true;
+    }
+
+    // A large share of real players in capitals simply stand around.
+    // Keep roughly 60% of CityLife cycles stationary for 20-75 seconds.
+    if (data.idleStart)
+    {
+        if (GetMSTimeDiffToNow(data.idleStart) <
+            data.idleDuration)
+        {
+            return false;
+        }
+
+        data.idleStart = 0;
+        data.idleDuration = 0;
+    }
+
+    // Keep CityLife centered on its assigned congregation hub.
+    // Without this leash, repeatedly selecting NPCs from the bot's
+    // current position creates a random walk that eventually spreads
+    // the population across the entire capital.
+    constexpr float cityLifeHomeRadius = 60.0f;
+    constexpr float cityLifeLeashRadius = 75.0f;
+
+    if (bot->GetExactDist(data.cityPos) > cityLifeLeashRadius)
+    {
+        data.npcOrGo = ObjectGuid();
+        data.lastReach = 0;
+
+        if (MoveFarTo(data.cityPos))
+            return true;
+
+        return MoveRandomNear(10.0f);
+    }
+
+    // No current city destination: choose an NPC or game object close
+    // to this bot's assigned congregation hub. Because the bot itself
+    // is kept within the leash above, the distance limit prevents the
+    // interaction loop from progressively walking across the city.
+    if (!data.npcOrGo)
+    {
+        // Most city players spend noticeable stretches simply
+        // standing around rather than constantly walking.
+        if (urand(1, 100) <= 60)
+        {
+            data.idleStart = getMSTime();
+            data.idleDuration =
+                urand(20000, 75000);
+
+            return false;
+        }
+
+        ObjectGuid npcOrGo =
+            ChooseNpcOrGameObjectToInteract(
+                false,
+                cityLifeHomeRadius);
+
+        // A city should normally have many targets. If none are available,
+        // move locally around the hub instead of abandoning City Life.
+        if (npcOrGo.IsEmpty())
+            return MoveRandomNear(10.0f);
+
+        data.npcOrGo = npcOrGo;
+        data.lastReach = 0;
+        data.idleStart = 0;
+        data.idleDuration = 0;
+
+        return true;
+    }
+
+    WorldObject* object =
+        ObjectAccessor::GetWorldObject(*bot, data.npcOrGo);
+
+    if (object && IsWithinInteractionDist(object))
+    {
+        if (!data.lastReach)
+        {
+            data.lastReach = getMSTime();
+
+            if (bot->CanInteractWithQuestGiver(object))
+                InteractWithNpcOrGameObjectForQuest(data.npcOrGo);
+
+            return true;
+        }
+
+        // Look like a player actually stopping at the NPC rather than
+        // instantly bouncing between destinations.
+        if (GetMSTimeDiffToNow(data.lastReach) < npcStayTime)
+            return false;
+
+        // Pick another city destination on the next tick.
+        data.npcOrGo = ObjectGuid();
+        data.lastReach = 0;
+
+        return true;
+    }
+
+    // Target disappeared or unloaded: pick another.
+    if (!object)
+    {
+        data.npcOrGo = ObjectGuid();
+        data.lastReach = 0;
+        return true;
+    }
+
+    if (MoveWorldObjectTo(data.npcOrGo))
+        return true;
+
+    // Pathing hiccup. Move slightly and retry rather than leaving the city.
+    return MoveRandomNear(15.0f);
 }
 
 bool NewRpgDoQuestAction::Execute(Event /*event*/)

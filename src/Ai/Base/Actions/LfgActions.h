@@ -59,4 +59,13 @@ public:
     bool Execute(Event event) override;
 };
 
+class LfgTeleportRetryAction : public Action
+{
+public:
+    LfgTeleportRetryAction(PlayerbotAI* botAI) : Action(botAI, "lfg teleport retry") {}
+
+    bool Execute(Event event) override;
+    bool isUseful() override;
+};
+
 #endif

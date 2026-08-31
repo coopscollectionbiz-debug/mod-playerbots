@@ -70,11 +70,23 @@ struct NewRpgInfo
     {
         ObjectGuid::LowType capturePointSpawnId{0};
     };
-    struct Idle
-    {
-    };
 
-    uint32 startT{0};  // start timestamp of the current status
+// RPG_CITY_LIFE
+struct CityLife
+{
+    WorldPosition cityPos{};
+    uint32 cityZoneId{0};
+    ObjectGuid npcOrGo{};
+    uint32 lastReach{0};
+    uint32 idleStart{0};
+    uint32 idleDuration{0};
+};
+
+struct Idle
+{
+};
+
+uint32 startT{0};  // start timestamp of the current status
 
     // MOVE_FAR
     float nearestMoveFarDis{FLT_MAX};
@@ -84,16 +96,17 @@ struct NewRpgInfo
     // END MOVE_FAR
 
     using RpgData = std::variant<
-        Idle,
-        GoGrind,
-        GoCamp,
-        WanderNpc,
-        WanderRandom,
-        DoQuest,
-        Rest,
-        TravelFlight,
-        OutdoorPvP
-    >;
+    Idle,
+    GoGrind,
+    GoCamp,
+    WanderNpc,
+    WanderRandom,
+    DoQuest,
+    Rest,
+    TravelFlight,
+    OutdoorPvP,
+    CityLife
+>;
     RpgData data;
 
     NewRpgStatus GetStatus();
@@ -106,6 +119,7 @@ struct NewRpgInfo
     void ChangeToDoQuest(uint32 questId, const Quest* quest);
     void ChangeToTravelFlight(uint32 flightMasterEntry, WorldPosition flightMasterPos, std::vector<uint32> path);
     void ChangeToOutdoorPvp(ObjectGuid::LowType capturePointSpawnId = 0);
+    void ChangeToCityLife(WorldPosition cityPos, uint32 cityZoneId);
     void ChangeToRest();
     void ChangeToIdle();
     bool CanChangeTo(NewRpgStatus status);

@@ -113,6 +113,7 @@ public:
         creators["lfg role check"] = &WorldPacketActionContext::lfg_role_check;
         creators["lfg leave"] = &WorldPacketActionContext::lfg_leave;
         creators["lfg teleport"] = &WorldPacketActionContext::lfg_teleport;
+        creators["lfg teleport retry"] = &WorldPacketActionContext::lfg_teleport_retry;
         creators["see spell"] = &WorldPacketActionContext::see_spell;
         creators["arena team accept"] = &WorldPacketActionContext::arena_team_accept;
     }
@@ -177,6 +178,7 @@ private:
     static Action* arena_tactics(PlayerbotAI* botAI) { return new ArenaTactics(botAI); }
     static Action* petition_sign(PlayerbotAI* botAI) { return new PetitionSignAction(botAI); }
     static Action* lfg_teleport(PlayerbotAI* botAI) { return new LfgTeleportAction(botAI); }
+    static Action* lfg_teleport_retry(PlayerbotAI* botAI) { return new LfgTeleportRetryAction(botAI); }
     static Action* lfg_leave(PlayerbotAI* botAI) { return new LfgLeaveAction(botAI); }
     static Action* lfg_accept(PlayerbotAI* botAI) { return new LfgAcceptAction(botAI); }
     static Action* lfg_role_check(PlayerbotAI* botAI) { return new LfgRoleCheckAction(botAI); }

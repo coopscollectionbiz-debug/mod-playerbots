@@ -238,12 +238,13 @@ public:
         creators["rpg trade useful"] = &TriggerContext::rpg_trade_useful;
         creators["rpg duel"] = &TriggerContext::rpg_duel;
         creators["go grind status"] = &TriggerContext::go_grind_status;
-        creators["go camp status"] = &TriggerContext::go_camp_status;
-        creators["wander random status"] = &TriggerContext::wander_random_status;
-        creators["wander npc status"] = &TriggerContext::wander_npc_status;
-        creators["do quest status"] = &TriggerContext::do_quest_status;
-        creators["travel flight status"] = &TriggerContext::travel_flight_status;
-        creators["outdoor pvp status"] = &TriggerContext::outdoor_pvp_status;
+creators["go camp status"] = &TriggerContext::go_camp_status;
+creators["wander random status"] = &TriggerContext::wander_random_status;
+creators["wander npc status"] = &TriggerContext::wander_npc_status;
+creators["city life status"] = &TriggerContext::city_life_status;
+creators["do quest status"] = &TriggerContext::do_quest_status;
+creators["travel flight status"] = &TriggerContext::travel_flight_status;
+creators["outdoor pvp status"] = &TriggerContext::outdoor_pvp_status;
         creators["can self resurrect"] = &TriggerContext::can_self_resurrect;
         creators["can fish"] = &TriggerContext::can_fish;
         creators["can use fishing bobber"] = &TriggerContext::can_use_fishing_bobber;
@@ -455,8 +456,9 @@ private:
     static Trigger* go_grind_status(PlayerbotAI* botAI) { return new NewRpgStatusTrigger(botAI, RPG_GO_GRIND); }
     static Trigger* go_camp_status(PlayerbotAI* botAI) { return new NewRpgStatusTrigger(botAI, RPG_GO_CAMP); }
     static Trigger* wander_random_status(PlayerbotAI* botAI) { return new NewRpgStatusTrigger(botAI, RPG_WANDER_RANDOM); }
-    static Trigger* wander_npc_status(PlayerbotAI* botAI) { return new NewRpgStatusTrigger(botAI, RPG_WANDER_NPC); }
-    static Trigger* do_quest_status(PlayerbotAI* botAI) { return new NewRpgStatusTrigger(botAI, RPG_DO_QUEST); }
+static Trigger* wander_npc_status(PlayerbotAI* botAI) { return new NewRpgStatusTrigger(botAI, RPG_WANDER_NPC); }
+static Trigger* city_life_status(PlayerbotAI* botAI) { return new NewRpgStatusTrigger(botAI, RPG_CITY_LIFE); }
+static Trigger* do_quest_status(PlayerbotAI* botAI) { return new NewRpgStatusTrigger(botAI, RPG_DO_QUEST); }
     static Trigger* travel_flight_status(PlayerbotAI* botAI) { return new NewRpgStatusTrigger(botAI, RPG_TRAVEL_FLIGHT); }
     static Trigger* outdoor_pvp_status(PlayerbotAI* botAI) { return new NewRpgStatusTrigger(botAI, RPG_OUTDOOR_PVP); }
     static Trigger* can_self_resurrect(PlayerbotAI* ai) { return new SelfResurrectTrigger(ai); }

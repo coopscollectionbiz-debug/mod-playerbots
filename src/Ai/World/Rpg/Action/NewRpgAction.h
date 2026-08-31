@@ -62,11 +62,15 @@ public:
 
 protected:
     // static NewRpgStatusTransitionProb transitionMat;
-    const int32 statusWanderNpcDuration = 5 * MINUTE  * IN_MILLISECONDS ;
-    const int32 statusWanderRandomDuration = 5 * MINUTE  * IN_MILLISECONDS ;
-    const int32 statusRestDuration = 30 * IN_MILLISECONDS ;
-    const int32 statusDoQuestDuration = 30 * MINUTE  * IN_MILLISECONDS ;
-    const int32 statusOutDoorPvPDuration = HOUR * IN_MILLISECONDS ;
+    const int32 statusWanderNpcDuration = 5 * MINUTE * IN_MILLISECONDS;
+    const int32 statusWanderRandomDuration = 5 * MINUTE * IN_MILLISECONDS;
+    const int32 statusRestDuration = 30 * IN_MILLISECONDS;
+    const int32 statusDoQuestDuration = 30 * MINUTE * IN_MILLISECONDS;
+    const int32 statusOutDoorPvPDuration = HOUR * IN_MILLISECONDS;
+
+// Initial City Life session length.
+// We will make this configurable after the first working test.
+const int32 statusCityLifeDuration = 30 * MINUTE * IN_MILLISECONDS;
 };
 
 class NewRpgGoGrindAction : public NewRpgBaseAction
@@ -96,6 +100,16 @@ public:
     NewRpgWanderNpcAction(PlayerbotAI* botAI) : NewRpgBaseAction(botAI, "new rpg move npcs") {}
     bool Execute(Event event) override;
 
+    const uint32 npcStayTime = 8 * 1000;
+};
+
+class NewRpgCityLifeAction : public NewRpgBaseAction
+{
+public:
+    NewRpgCityLifeAction(PlayerbotAI* botAI) : NewRpgBaseAction(botAI, "new rpg city life") {}
+    bool Execute(Event event) override;
+
+    // How long the bot stands near each city NPC before choosing another.
     const uint32 npcStayTime = 8 * 1000;
 };
 

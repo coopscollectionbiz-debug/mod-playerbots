@@ -1478,13 +1478,9 @@ bool RandomPlayerbotMgr::ProcessBot(Player* bot)
         return false;
     }
 
-    // leave group if leader is rndbot
     Group* group = bot->GetGroup();
     if (group && !group->isLFGGroup() && IsRandomBot(group->GetLeader()))
-    {
         botAI->LeaveOrDisbandGroup();
-        LOG_INFO("playerbots", "Bot {} remove from group since leader is random bot.", bot->GetName().c_str());
-    }
 
     // only randomize and teleport idle bots
     bool idleBot = false;
@@ -2496,6 +2492,360 @@ bool RandomPlayerbotMgr::HandlePlayerbotConsoleCommand(ChatHandler* /*handler*/,
     return true;
 }
 
+void RandomPlayerbotMgr::PopulateCityForPlayer(
+    Player* player,
+    uint32 cityZoneId)
+{
+    if (!player ||
+        !player->IsInWorld() ||
+        !player->GetSession() ||
+        player->GetSession()->IsBot())
+    {
+        return;
+    }
+
+    // --------------------------------------------------------
+    // On-demand capital population targets.
+    //
+    // These are TOTAL same-faction random bots desired in the
+    // city, not the number added per player.
+    // --------------------------------------------------------
+    uint32 cityTarget = 0;
+
+    switch (cityZoneId)
+    {
+        case 1519: // Stormwind City
+        case 1637: // Orgrimmar
+            cityTarget = 150;
+            break;
+
+        case 4395: // Dalaran
+            if (player->GetLevel() < 68)
+                return;
+
+            cityTarget = 150;
+            break;
+
+        case 1537: // Ironforge
+        case 1497: // Undercity
+            cityTarget = 150;
+            break;
+
+        case 3703: // Shattrath City
+            if (player->GetLevel() < 58)
+                return;
+
+            cityTarget = 150;
+            break;
+
+        case 1657: // Darnassus
+        case 1638: // Thunder Bluff
+            cityTarget = 150;
+            break;
+
+        case 3557: // The Exodar
+        case 3487: // Silvermoon City
+            cityTarget = 150;
+            break;
+
+        default:
+            return;
+    }
+
+    uint32 totalRandomBots = 0;
+    uint32 totalCityLife = 0;
+    uint32 currentCityLifePopulation = 0;
+    uint32 currentNaturalCityPopulation = 0;
+
+    // First pass: establish the global population and current
+    // city occupancy.
+    for (PlayerBotMap::const_iterator it =
+             GetPlayerBotsBegin();
+         it != GetPlayerBotsEnd();
+         ++it)
+    {
+        Player* bot = it->second;
+
+        if (!bot ||
+            !bot->IsInWorld() ||
+            !IsRandomBot(bot))
+        {
+            continue;
+        }
+
+        ++totalRandomBots;
+
+        PlayerbotAI* botAI =
+            GET_PLAYERBOT_AI(bot);
+
+        if (!botAI)
+            continue;
+
+        bool isCityLife =
+            botAI->rpgInfo.GetStatus() ==
+                RPG_CITY_LIFE;
+
+        if (isCityLife)
+        {
+            ++totalCityLife;
+        }
+
+        // Track actual CityLife residents separately from
+        // ordinary random bots merely passing through the city.
+        //
+        // CityLife residents count fully toward visible-density
+        // targets because they are deliberately placed at city
+        // congregation hubs. Natural visitors are spread across
+        // the entire capital and therefore receive only partial
+        // credit below.
+        if (bot->GetTeamId() ==
+                player->GetTeamId() &&
+            bot->GetZoneId() ==
+                cityZoneId)
+        {
+            if (isCityLife)
+                ++currentCityLifePopulation;
+            else
+                ++currentNaturalCityPopulation;
+        }
+    }
+
+    // Natural visitors count for only 25% of a CityLife
+    // resident when determining whether the capital feels full.
+    // This prevents scattered bots elsewhere in the city zone
+    // from suppressing congregation around banks/AH/service hubs.
+    uint32 effectiveCityPopulation =
+        currentCityLifePopulation +
+        (currentNaturalCityPopulation / 4);
+
+    if (!totalRandomBots ||
+        effectiveCityPopulation >= cityTarget)
+    {
+        return;
+    }
+
+    // Never allow CityLife to consume more than 20% of the
+    // currently-online autonomous random-bot population.
+    uint32 globalCityLifeCap =
+        totalRandomBots / 5;
+
+    if (!globalCityLifeCap)
+        globalCityLifeCap = 1;
+
+    if (totalCityLife >= globalCityLifeCap)
+        return;
+
+    uint32 needed =
+        cityTarget - effectiveCityPopulation;
+
+    uint32 globallyAvailable =
+        globalCityLifeCap - totalCityLife;
+
+    if (needed > globallyAvailable)
+        needed = globallyAvailable;
+
+    std::vector<Player*> candidates;
+
+    // Second pass: gather only bots that are safe to borrow.
+    for (PlayerBotMap::const_iterator it =
+             GetPlayerBotsBegin();
+         it != GetPlayerBotsEnd();
+         ++it)
+    {
+        Player* bot = it->second;
+
+        if (!bot ||
+            !bot->IsInWorld() ||
+            !IsRandomBot(bot))
+        {
+            continue;
+        }
+
+        if (bot->GetTeamId() !=
+            player->GetTeamId())
+        {
+            continue;
+        }
+
+        // Already physically in the requested city.
+        if (bot->GetZoneId() == cityZoneId)
+            continue;
+
+        PlayerbotAI* botAI =
+            GET_PLAYERBOT_AI(bot);
+
+        if (!botAI)
+            continue;
+
+        // Never borrow any bot currently associated with a
+        // real game client, including selfbot-style masters.
+        if (botAI->HasGameClientMaster())
+            continue;
+
+        // Do not interrupt any party activity. This is
+        // deliberately conservative to protect dungeon,
+        // quest-group and social-group behavior.
+        if (bot->GetGroup())
+            continue;
+
+        // Never borrow bots participating in Dungeon Finder.
+        // They may still be ungrouped while queued or in a proposal.
+        if (sLFGMgr->GetState(bot->GetGUID()) != lfg::LFG_STATE_NONE)
+            continue;
+
+        if (bot->IsInCombat() ||
+            bot->isDead())
+        {
+            continue;
+        }
+
+        if (bot->InBattleground() ||
+            bot->InBattlegroundQueue())
+        {
+            continue;
+        }
+
+        // Never pull a bot off an active taxi/flight spline.
+        if (bot->HasUnitState(UNIT_STATE_IN_FLIGHT))
+            continue;
+
+        if (bot->IsBeingTeleported())
+            continue;
+
+        // Also protect an ungrouped bot that happens to be
+        // inside an instance.
+        if (bot->GetMap() &&
+            bot->GetMap()->IsDungeon())
+        {
+            continue;
+        }
+
+        NewRpgStatus status =
+            botAI->rpgInfo.GetStatus();
+
+        // Progression protection:
+        //
+        // Allowed:
+        //   Idle
+        //   Rest
+        //   WanderRandom
+        //   WanderNpc
+        //
+        // Explicitly NOT borrowed:
+        //   DoQuest
+        //   GoGrind
+        //   GoCamp
+        //   TravelFlight
+        //   OutdoorPvP
+        //   existing CityLife
+        bool safeState =
+            status == RPG_IDLE ||
+            status == RPG_REST ||
+            status == RPG_WANDER_RANDOM ||
+            status == RPG_WANDER_NPC;
+
+        if (!safeState)
+            continue;
+
+        // Don't waste candidate slots on bots that cannot
+        // legitimately use the requested capital.
+        if (cityZoneId == 3703 &&
+            bot->GetLevel() < 58)
+        {
+            continue;
+        }
+
+        if (cityZoneId == 4395 &&
+            bot->GetLevel() < 68)
+        {
+            continue;
+        }
+
+        WorldLocation testLocation;
+
+        if (!sTravelMgr.GetCityLifeLocationForZone(
+                bot,
+                cityZoneId,
+                testLocation))
+        {
+            continue;
+        }
+
+        candidates.push_back(bot);
+    }
+
+    uint32 assigned = 0;
+
+    // Randomly draw from the safe candidate pool so repeated
+    // city visits do not always consume the same characters.
+    while (assigned < needed &&
+           !candidates.empty())
+    {
+        uint32 index =
+            urand(
+                0,
+                static_cast<uint32>(
+                    candidates.size() - 1));
+
+        Player* bot =
+            candidates[index];
+
+        candidates[index] =
+            candidates.back();
+
+        candidates.pop_back();
+
+        PlayerbotAI* botAI =
+            GET_PLAYERBOT_AI(bot);
+
+        if (!botAI)
+            continue;
+
+        WorldLocation cityLocation;
+
+        if (!sTravelMgr.GetCityLifeLocationForZone(
+                bot,
+                cityZoneId,
+                cityLocation))
+        {
+            continue;
+        }
+
+        // Revalidate immediately before assignment in case LFG state changed
+        // after this bot was added to the candidate list.
+        if (bot->GetGroup() ||
+            sLFGMgr->GetState(bot->GetGUID()) != lfg::LFG_STATE_NONE ||
+            bot->IsBeingTeleported())
+        {
+            continue;
+        }
+
+        botAI->rpgInfo.ChangeToCityLife(
+            cityLocation,
+            cityZoneId);
+
+        ++assigned;
+    }
+
+    if (assigned)
+    {
+        LOG_INFO(
+            "playerbots",
+            "CityLife population: player {} entered zone {}; "
+            "CityLife {}, natural {}, effective {}, "
+            "target {}, assigned {}, global CityLife {}/{}",
+            player->GetName(),
+            cityZoneId,
+            currentCityLifePopulation,
+            currentNaturalCityPopulation,
+            effectiveCityPopulation,
+            cityTarget,
+            assigned,
+            totalCityLife + assigned,
+            globalCityLifeCap);
+    }
+}
+
 void RandomPlayerbotMgr::HandleCommand(uint32 type, std::string const text, Player* fromPlayer, std::string channelName)
 {
     for (PlayerBotMap::const_iterator it = GetPlayerBotsBegin(); it != GetPlayerBotsEnd(); ++it)
@@ -2892,12 +3242,13 @@ void RandomPlayerbotMgr::PrintStats()
     if (sPlayerbotAIConfig.enableNewRpgStrategy)
     {
         LOG_INFO("playerbots", "Bots rpg status:");
-        LOG_INFO("playerbots",
-                 "    Idle: {}, Rest: {}, GoGrind: {}, GoCamp: {}, MoveRandom: {}, MoveNpc: {}, DoQuest: {}, "
-                 "TravelFlight: {}, OutdoorPvP: {}",
-                 rpgStatusCount[RPG_IDLE], rpgStatusCount[RPG_REST], rpgStatusCount[RPG_GO_GRIND],
-                 rpgStatusCount[RPG_GO_CAMP], rpgStatusCount[RPG_WANDER_RANDOM], rpgStatusCount[RPG_WANDER_NPC],
-                 rpgStatusCount[RPG_DO_QUEST], rpgStatusCount[RPG_TRAVEL_FLIGHT], rpgStatusCount[RPG_OUTDOOR_PVP]);
+LOG_INFO("playerbots",
+         "    Idle: {}, Rest: {}, GoGrind: {}, GoCamp: {}, MoveRandom: {}, MoveNpc: {}, DoQuest: {}, "
+         "TravelFlight: {}, OutdoorPvP: {}, CityLife: {}",
+         rpgStatusCount[RPG_IDLE], rpgStatusCount[RPG_REST], rpgStatusCount[RPG_GO_GRIND],
+         rpgStatusCount[RPG_GO_CAMP], rpgStatusCount[RPG_WANDER_RANDOM], rpgStatusCount[RPG_WANDER_NPC],
+         rpgStatusCount[RPG_DO_QUEST], rpgStatusCount[RPG_TRAVEL_FLIGHT], rpgStatusCount[RPG_OUTDOOR_PVP],
+         rpgStatusCount[RPG_CITY_LIFE]);
 
         LOG_INFO("playerbots", "Bots total quests:");
         LOG_INFO("playerbots", "    Accepted: {}, Rewarded: {}, Dropped: {}", rpgStasticTotal.questAccepted,

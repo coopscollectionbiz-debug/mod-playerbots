@@ -4,6 +4,13 @@
  */
 
 #include "Playerbots.h"
+#include <algorithm>
+#include <cctype>
+#include <unordered_set>
+#include "Guild.h"
+#include "GuildMgr.h"
+#include "GuildPackets.h"
+#include "World.h"
 #include "BattleGroundTactics.h"
 #include "BattlefieldScript.h"
 #include "Channel.h"
@@ -63,6 +70,120 @@ public:
     }
 };
 
+
+// -------------------------------------------------
+// PlayerBot whisper command classifier.
+//
+// Copied from mod-llm-chatter's authoritative
+// IsLikelyPlayerbotControlCommand implementation so
+// conversational whispers are not mistaken for bot
+// control commands.
+// -------------------------------------------------
+bool IsLikelyPlayerbotWhisperControlCommand(
+    std::string const& message)
+{
+    auto trim = [](std::string const& input)
+    {
+        size_t start =
+            input.find_first_not_of(" \t\n\r");
+        if (start == std::string::npos)
+            return std::string();
+
+        size_t end =
+            input.find_last_not_of(" \t\n\r");
+        return input.substr(start, end - start + 1);
+    };
+
+    auto toLowerAscii = [](std::string value)
+    {
+        std::transform(value.begin(), value.end(),
+            value.begin(),
+            [](unsigned char c)
+            {
+                return static_cast<char>(
+                    std::tolower(c));
+            });
+        return value;
+    };
+
+    std::string msg = toLowerAscii(trim(message));
+    if (msg.empty())
+        return false;
+
+    static std::unordered_set<std::string>
+        exactCommands = {
+            "u", "c", "e", "s", "b", "r", "t",
+            "q", "ll", "ss", "co", "nc", "de",
+            "ra", "gb", "nt", "qi",
+            "follow", "stay", "flee",
+            "runaway", "warning", "grind",
+            "go", "home", "disperse",
+            "move from group", "attack",
+            "max dps", "tank attack",
+            "pet attack", "do attack my target",
+            "use", "items", "inventory", "inv",
+            "equip", "unequip", "sell", "buy",
+            "open items", "unlock items",
+            "unlock traded item", "loot all",
+            "add all loot", "destroy", "quests",
+            "accept", "drop", "reward", "share",
+            "rpg status", "rpg do quest",
+            "query item usage", "cast",
+            "castnc", "spell", "buff", "glyphs",
+            "glyph equip", "remove glyph", "pet",
+            "tame", "trainer", "talent",
+            "talents", "spells", "trade",
+            "nontrade", "craft", "flag", "mail",
+            "sendmail", "bank", "gbank", "talk",
+            "emote", "enter vehicle",
+            "leave vehicle", "stats",
+            "reputation", "rep", "pvp stats",
+            "dps", "who", "position", "aura",
+            "attackers", "target", "help", "log",
+            "los", "ready", "ready check",
+            "leave", "invite", "summon",
+            "formation", "stance",
+            "give leader", "wipe", "roll",
+            "repair", "maintenance", "release",
+            "revive", "autogear",
+            "equip upgrade", "save mana",
+            "reset botai", "teleport", "taxi",
+            "outline", "rti", "range", "wts",
+            "cs", "cdebug", "debug", "cheat",
+            "calc", "drink", "honor",
+            "outdoors", "ginvite",
+            "guild promote", "guild demote",
+            "guild remove", "guild leave", "lfg",
+            "chat", "loot"
+        };
+
+    if (exactCommands.find(msg)
+        != exactCommands.end())
+        return true;
+
+    size_t firstSpace = msg.find(' ');
+    if (firstSpace != std::string::npos)
+    {
+        std::string firstWord =
+            msg.substr(0, firstSpace);
+        if (exactCommands.find(firstWord)
+            != exactCommands.end())
+            return true;
+    }
+
+    for (std::string const& command
+         : exactCommands)
+    {
+        if (command.find(' ') == std::string::npos)
+            continue;
+
+        if (msg.rfind(command, 0) == 0)
+            return true;
+    }
+
+    return false;
+}
+
 class PlayerbotsPlayerScript : public PlayerScript
 {
 public:
@@ -76,6 +197,7 @@ public:
         PLAYERHOOK_CAN_PLAYER_USE_GUILD_CHAT,
         PLAYERHOOK_CAN_PLAYER_USE_CHANNEL_CHAT,
         PLAYERHOOK_ON_GIVE_EXP,
+        PLAYERHOOK_ON_UPDATE_ZONE,
         PLAYERHOOK_ON_BEFORE_TELEPORT
     }) {}
 
@@ -105,6 +227,23 @@ public:
                     "|cff00ff00Playerbots:|r The server is configured with " + maxAllowedBotCount + " bots.");
             }
         }
+    }
+
+    void OnPlayerUpdateZone(
+        Player* player,
+        uint32 newZone,
+        uint32 /*newArea*/) override
+    {
+        if (!player ||
+            !player->GetSession() ||
+            player->GetSession()->IsBot())
+        {
+            return;
+        }
+
+        sRandomPlayerbotMgr.PopulateCityForPlayer(
+            player,
+            newZone);
     }
 
     bool OnPlayerBeforeTeleport(Player* /*player*/, uint32 /*mapid*/, float /*x*/, float /*y*/, float /*z*/,
@@ -182,7 +321,198 @@ public:
             return true;
         }
 
-        botAI->HandleCommand(type, msg, player);
+        // -------------------------------------------------
+        // Natural guild-invite whispers for random/player bots.
+        //
+        // If a real player whispers a guilded bot with one of
+        // these phrases, send a genuine WoW guild invitation.
+        //
+        // This intentionally does not require the bot's guild
+        // rank to have GR_RIGHT_INVITE. The bot itself acts as
+        // the recruiter.
+        // -------------------------------------------------
+        std::string guildInviteMsg = msg;
+
+        std::transform(
+            guildInviteMsg.begin(),
+            guildInviteMsg.end(),
+            guildInviteMsg.begin(),
+            [](unsigned char c)
+            {
+                return static_cast<char>(std::tolower(c));
+            });
+
+        // Trim surrounding whitespace.
+        while (!guildInviteMsg.empty() &&
+               std::isspace(
+                   static_cast<unsigned char>(
+                       guildInviteMsg.front())))
+        {
+            guildInviteMsg.erase(
+                guildInviteMsg.begin());
+        }
+
+        while (!guildInviteMsg.empty() &&
+               std::isspace(
+                   static_cast<unsigned char>(
+                       guildInviteMsg.back())))
+        {
+            guildInviteMsg.pop_back();
+        }
+
+        // Strip simple trailing punctuation so natural
+        // phrases such as "can i join?" or "i'll join!"
+        // match the same way as their unpunctuated forms.
+        while (!guildInviteMsg.empty() &&
+               (
+                   guildInviteMsg.back() == '?'
+                   || guildInviteMsg.back() == '!'
+                   || guildInviteMsg.back() == '.'
+                   || guildInviteMsg.back() == ','
+               ))
+        {
+            guildInviteMsg.pop_back();
+        }
+
+        // Guild intent must be explicit enough that normal
+        // PlayerBots party commands such as "invite" and
+        // "invite me" are left alone.
+        bool wantsGuildInvite =
+            guildInviteMsg == "guild invite"
+            || guildInviteMsg == "invite guild"
+            || guildInviteMsg == "invite to guild"
+            || guildInviteMsg == "invite me to guild"
+            || guildInviteMsg == "guild invite me"
+            || guildInviteMsg == "ginvite"
+            || guildInviteMsg == "guild me"
+            || guildInviteMsg == "send guild invite"
+            || guildInviteMsg == "send me a guild invite"
+            || guildInviteMsg == "can i join the guild"
+            || guildInviteMsg == "can i join your guild"
+            || guildInviteMsg == "i want to join the guild"
+            || guildInviteMsg == "i want to join your guild"
+            || guildInviteMsg == "i wanna join the guild"
+            || guildInviteMsg == "i wanna join your guild"
+            || guildInviteMsg == "i'll join"
+            || guildInviteMsg == "ill join"
+            || guildInviteMsg == "i will join"
+            || guildInviteMsg == "i wanna join"
+            || guildInviteMsg == "i want to join"
+            || guildInviteMsg == "can i join"
+            || guildInviteMsg == "let me join"
+            || guildInviteMsg == "sign me up"
+            || guildInviteMsg == "i'm in"
+            || guildInviteMsg == "im in"
+            || guildInviteMsg == "count me in";
+
+        uint32 recruiterGuildId =
+            receiver->GetGuildId();
+
+        if (wantsGuildInvite)
+        {
+            Guild* guild =
+                recruiterGuildId
+                    ? sGuildMgr->GetGuildById(
+                        recruiterGuildId)
+                    : nullptr;
+
+            if (!guild)
+            {
+                receiver->Whisper(
+                    "I'm not in a guild.",
+                    LANG_UNIVERSAL,
+                    player);
+
+                return true;
+            }
+
+            if (player->GetGuildId())
+            {
+                receiver->Whisper(
+                    "You're already in a guild.",
+                    LANG_UNIVERSAL,
+                    player);
+
+                return true;
+            }
+
+            if (player->GetGuildIdInvited())
+            {
+                receiver->Whisper(
+                    "You already have a pending guild invite.",
+                    LANG_UNIVERSAL,
+                    player);
+
+                return true;
+            }
+
+            uint32 memberLimit =
+                sWorld->getIntConfig(
+                    CONFIG_GUILD_MEMBER_LIMIT);
+
+            if (
+                memberLimit > 0
+                && guild->GetMemberCount() >= memberLimit
+            )
+            {
+                receiver->Whisper(
+                    "Sorry, the guild is full right now.",
+                    LANG_UNIVERSAL,
+                    player);
+
+                return true;
+            }
+
+            if (
+                !sWorld->getBoolConfig(
+                    CONFIG_ALLOW_TWO_SIDE_INTERACTION_GUILD)
+                && player->GetTeamId(true)
+                    != receiver->GetTeamId(true)
+            )
+            {
+                receiver->Whisper(
+                    "I can't invite you to this guild.",
+                    LANG_UNIVERSAL,
+                    player);
+
+                return true;
+            }
+
+            // Record the pending invitation exactly as the
+            // core guild system does.
+            player->SetGuildIdInvited(
+                recruiterGuildId);
+
+            // Send the genuine guild-invite packet, so the
+            // normal WoW Accept / Decline popup appears.
+            WorldPackets::Guild::GuildInvite invite;
+
+            invite.InviterName =
+                receiver->GetName();
+
+            invite.GuildName =
+                guild->GetName();
+
+            player->SendDirectMessage(
+                invite.Write());
+
+            LOG_INFO(
+                "playerbots",
+                "PlayerBot {} sent guild '{}' invite to {}",
+                receiver->GetName(),
+                guild->GetName(),
+                player->GetName());
+
+            return true;
+        }
+
+        // Ordinary speech is handled by mod-llm-chatter's
+        // private whisper conversation system. Only genuine
+        // PlayerBots control commands should reach HandleCommand.
+        if (IsLikelyPlayerbotWhisperControlCommand(msg))
+        {
+            botAI->HandleCommand(type, msg, player);
+        }
 
         // hotfix; otherwise the server will crash when whispering logout
         // https://github.com/mod-playerbots/mod-playerbots/pull/1838

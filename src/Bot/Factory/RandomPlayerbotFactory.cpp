@@ -60,7 +60,175 @@ bool RandomPlayerbotFactory::IsValidRaceClassCombination(uint8 race, uint8 cls, 
     return info != nullptr;
 }
 
-Player* RandomPlayerbotFactory::CreateRandomBot(WorldSession* session, uint8 cls, std::unordered_map<NameRaceAndGender, std::vector<std::string>>& nameCache)
+
+// ---------------------------------------------------------------------------
+// Human-style class-flavored random bot names.
+//
+// Most bots still use the normal race/gender name database.
+// A small percentage receive a WoW-player-style name tied
+// specifically to their actual class.
+//
+// Keep these:
+//   - letters only
+//   - 12 characters or fewer
+//   - class appropriate
+// ---------------------------------------------------------------------------
+static std::string CreateClassFlavorBotName(uint8 cls)
+{
+    // Roughly 12% of newly-created random bots.
+    if (urand(1, 100) > 12)
+        return "";
+
+    static std::vector<std::string> warriorNames = {
+        "Ragequit", "Tankyou", "Chargeit",
+        "Slamwich", "Critrage", "Ragebar",
+        "Blockhead", "Tankmode", "Bigcrit",
+        "Smashface", "Shieldbro", "Axedyou"
+    };
+
+    static std::vector<std::string> paladinNames = {
+        "Bubbleboy", "Holymoly", "Bopit",
+        "Judgement", "Layhands", "Holycow",
+        "Divineshld", "Bubblepls", "Retlol",
+        "Hammerdin", "Holycrit", "Pallytime"
+    };
+
+    static std::vector<std::string> hunterNames = {
+        "Feignlife", "Trapstar", "Petattack",
+        "Autoshot", "Kitesalot", "Aimedshot",
+        "Multishot", "Petpls", "Deadzone",
+        "Trapper", "Arrowed", "Feigndeath"
+    };
+
+    static std::vector<std::string> rogueNames = {
+        "Sneakish", "Backstabby", "Vanishpls",
+        "Cheapshot", "Stunlock", "Sapfirst",
+        "Evasion", "Shadowstep", "Pickpocket",
+        "Ambushed", "Kidneyshot", "Stealthy"
+    };
+
+    static std::vector<std::string> priestNames = {
+        "Healpls", "Renewyou", "Mindflay",
+        "Bubblewrap", "Penance", "Holyspam",
+        "Flashheal", "Smiteyou", "Manafiend",
+        "Healbot", "Prayerpls", "Dispeller"
+    };
+
+    static std::vector<std::string> deathKnightNames = {
+        "Deathgrip", "Icytouch", "Runetap",
+        "Ghoulfriend", "Deathcoil", "Runeblade",
+        "Plagues", "Grippls", "Frostfever",
+        "Bloodtap", "Bonearmor", "Scourged"
+    };
+
+    static std::vector<std::string> shamanNames = {
+        "Totemly", "Chainheal", "Windfury",
+        "Shocked", "Totemtoss", "Lavaburst",
+        "Earthshock", "Bloodlust", "Wolfform",
+        "Reincarnate", "Purged", "Totemic"
+    };
+
+    static std::vector<std::string> mageNames = {
+        "Frostbyte", "Sheepish", "Blinked",
+        "Pyroblast", "Frostbolt", "Managem",
+        "Portalmage", "Iceblocked", "Fireballer",
+        "Spellsteal", "Polymorph", "Arcaniem"
+    };
+
+    static std::vector<std::string> warlockNames = {
+        "Dotdotgoose", "Fearme", "Soulstoned",
+        "Felgood", "Dotmachine", "Fearspam",
+        "Lifetap", "Shadowbolt", "Drainyou",
+        "Impish", "Curseyou", "Healthston"
+    };
+
+    static std::vector<std::string> druidNames = {
+        "Bearform", "Treehugger", "Moonkin",
+        "Shiftface", "Catform", "Innervate",
+        "Battlerez", "Hotstack", "Starfaller",
+        "Prowling", "Lifebloom", "Feralicious"
+    };
+
+    std::vector<std::string>* names = nullptr;
+
+    switch (cls)
+    {
+        case CLASS_WARRIOR:
+            names = &warriorNames;
+            break;
+        case CLASS_PALADIN:
+            names = &paladinNames;
+            break;
+        case CLASS_HUNTER:
+            names = &hunterNames;
+            break;
+        case CLASS_ROGUE:
+            names = &rogueNames;
+            break;
+        case CLASS_PRIEST:
+            names = &priestNames;
+            break;
+        case CLASS_DEATH_KNIGHT:
+            names = &deathKnightNames;
+            break;
+        case CLASS_SHAMAN:
+            names = &shamanNames;
+            break;
+        case CLASS_MAGE:
+            names = &mageNames;
+            break;
+        case CLASS_WARLOCK:
+            names = &warlockNames;
+            break;
+        case CLASS_DRUID:
+            names = &druidNames;
+            break;
+        default:
+            return "";
+    }
+
+    if (!names || names->empty())
+        return "";
+
+    for (uint8 attempt = 0; attempt < 6; ++attempt)
+    {
+        if (names->empty())
+            return "";
+
+        uint32 i = urand(0, names->size() - 1);
+        std::string candidate = (*names)[i];
+
+        // Consume the candidate immediately so another bot created in this
+        // process cannot select it while SaveToDB is still queued.
+        swap((*names)[i], names->back());
+        names->pop_back();
+
+        if (ObjectMgr::CheckPlayerName(candidate)
+            != CHAR_NAME_SUCCESS)
+        {
+            continue;
+        }
+
+        CharacterDatabasePreparedStatement* stmt =
+            CharacterDatabase.GetPreparedStatement(
+                CHAR_SEL_CHECK_NAME);
+
+        stmt->SetData(0, candidate);
+
+        if (PreparedQueryResult existing =
+                CharacterDatabase.Query(stmt))
+        {
+            continue;
+        }
+
+        return candidate;
+    }
+
+    return "";
+}
+
+Player* RandomPlayerbotFactory::CreateRandomBot(WorldSession* session, uint8 cls,
+    std::unordered_map<NameRaceAndGender, std::vector<std::string>>& nameCache)
 {
     LOG_DEBUG("playerbots", "Creating a new random bot for class: {}", cls);
 
@@ -92,24 +260,34 @@ Player* RandomPlayerbotFactory::CreateRandomBot(WorldSession* session, uint8 cls
     const uint8 gender = urand(0, 1) ? GENDER_MALE : GENDER_FEMALE;
     const auto raceAndGender = CombineRaceAndGender(race, gender);
 
-    std::string name;
-    if (!nameCache.empty())
+    // Occasionally use a class-specific player-style
+    // name. If none is selected/available, use the normal
+    // race + gender name pool exactly as before.
+    std::string name =
+        CreateClassFlavorBotName(cls);
+
+    if (name.empty())
     {
-        if (nameCache[raceAndGender].empty())
+        auto& namesForCharacter = nameCache[raceAndGender];
+
+        if (namesForCharacter.empty())
         {
-            LOG_ERROR("playerbots", "No names found for the specified race: {} and gender: {}",
-                    race, gender);
+            LOG_ERROR(
+                "playerbots",
+                "No names found for race {} and gender {}",
+                race,
+                gender);
             return nullptr;
         }
 
-        uint32 i = urand(0, nameCache[raceAndGender].size() - 1);
-        name = nameCache[raceAndGender][i];
-        swap(nameCache[raceAndGender][i], nameCache[raceAndGender].back());
-        nameCache[raceAndGender].pop_back();
-    }
-    else
-    {
-        name = CreateRandomBotName(raceAndGender);
+        uint32 i = urand(0, namesForCharacter.size() - 1);
+        name = namesForCharacter[i];
+
+        swap(
+            namesForCharacter[i],
+            namesForCharacter.back());
+
+        namesForCharacter.pop_back();
     }
 
     if (name.empty())
@@ -676,7 +854,8 @@ void RandomPlayerbotFactory::CreateRandomBots()
         {
             nameCached = true;
             LOG_INFO("playerbots", "Creating cache for names per gender and race...");
-            QueryResult result = CharacterDatabase.Query("SELECT name, gender FROM playerbots_names");
+            QueryResult result =
+                CharacterDatabase.Query("SELECT name, gender FROM playerbots_names");
             if (!result)
             {
                 LOG_ERROR("playerbots", "No more unused names left");
@@ -685,15 +864,27 @@ void RandomPlayerbotFactory::CreateRandomBots()
             do
             {
                 Field* fields = result->Fetch();
-                std::string name = fields[0].Get<std::string>();
-                NameRaceAndGender raceAndGender = static_cast<NameRaceAndGender>(fields[1].Get<uint8>());
-                if (sObjectMgr->CheckPlayerName(name) == CHAR_NAME_SUCCESS)
+                std::string name =
+                    fields[0].Get<std::string>();
+
+                NameRaceAndGender raceAndGender =
+                    static_cast<NameRaceAndGender>(
+                        fields[1].Get<uint8>());
+
+                if (sObjectMgr->CheckPlayerName(name)
+                    == CHAR_NAME_SUCCESS)
                 {
-                    CharacterDatabasePreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_SEL_CHECK_NAME);
+                    CharacterDatabasePreparedStatement* stmt =
+                        CharacterDatabase.GetPreparedStatement(
+                            CHAR_SEL_CHECK_NAME);
+
                     stmt->SetData(0, name);
 
-                    if (PreparedQueryResult result = CharacterDatabase.Query(stmt))
+                    if (PreparedQueryResult result =
+                            CharacterDatabase.Query(stmt))
+                    {
                         continue;
+                    }
 
                     nameCache[raceAndGender].push_back(name);
                 }
