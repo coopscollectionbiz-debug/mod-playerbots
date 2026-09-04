@@ -59,6 +59,7 @@ struct NewRpgInfo
         WorldPosition flightMasterPos{};
         std::vector<uint32> path;
         bool inFlight{false};
+        uint32 taxiStartTime{0};
     };
     // RPG_REST
     struct Rest

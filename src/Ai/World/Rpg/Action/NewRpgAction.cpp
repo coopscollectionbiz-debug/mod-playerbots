@@ -812,7 +812,32 @@ bool NewRpgTravelFlightAction::Execute(Event /*event*/)
     if (bot->IsInFlight())
     {
         data.inFlight = true;
+        data.taxiStartTime = 0;
         return false;
+    }
+
+    // ActivateTaxiPathTo can report success before actual flight movement begins.
+    // Do not repeatedly activate the same taxi while waiting for IsInFlight().
+    // Recover if the transition never completes.
+    if (data.taxiStartTime)
+    {
+        if (getMSTimeDiff(data.taxiStartTime, getMSTime()) < 8000)
+            return false;
+
+        LOG_WARN("playerbots",
+                 "[New RPG] {} taxi start timed out at flight master {} (from {} to {}), recovering",
+                 bot->GetName(), data.flightMasterEntry,
+                 data.path.empty() ? 0 : data.path.front(),
+                 data.path.empty() ? 0 : data.path.back());
+
+        bot->GetMotionMaster()->Clear();
+        bot->CleanupAfterTaxiFlight();
+
+        if (bot->IsMounted())
+            bot->Dismount();
+
+        info.ChangeToIdle();
+        return true;
     }
 
     if (bot->GetDistance(data.flightMasterPos) > INTERACTION_DISTANCE)
@@ -842,5 +867,7 @@ bool NewRpgTravelFlightAction::Execute(Event /*event*/)
         info.ChangeToIdle();
         return true;
     }
+
+    data.taxiStartTime = getMSTime();
     return true;
 }
