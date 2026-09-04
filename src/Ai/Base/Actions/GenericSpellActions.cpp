@@ -11,6 +11,7 @@
 #include "Group.h"
 #include "ItemTemplate.h"
 #include "ObjectDefines.h"
+#include "ObjectAccessor.h"
 #include "Opcodes.h"
 #include "Player.h"
 #include "PlayerbotAI.h"
@@ -387,6 +388,252 @@ CastCureSpellAction::CastCureSpellAction(
 Value<Unit*>* CurePartyMemberAction::GetTargetValue()
 {
     return context->GetValue<Unit*>("party member to dispel", dispelType);
+}
+
+namespace
+{
+    constexpr float DRIVE_BY_BUFF_RADIUS = 15.0f;
+    constexpr time_t DRIVE_BY_BUFF_COOLDOWN = 45;
+    constexpr time_t DRIVE_BY_BUFF_SCAN_THROTTLE = 3;
+
+    bool IsDriveByBuffCasterOperationallyEligible(PlayerbotAI* ai)
+    {
+        if (!ai)
+            return false;
+
+        Player* caster = ai->GetBot();
+        if (!caster || !caster->IsInWorld() || !caster->IsAlive())
+            return false;
+
+        if (caster->IsInCombat()
+            || caster->IsMounted()
+            || caster->IsFlying()
+            || caster->IsInFlight()
+            || caster->GetTransport()
+            || caster->IsBeingTeleported()
+            || caster->IsDuringRemoveFromWorld())
+        {
+            return false;
+        }
+
+        AreaTableEntry const* zone = ai->GetCurrentZone();
+        if (zone && (zone->flags & AREA_FLAG_CAPITAL))
+            return false;
+
+        return true;
+    }
+
+    bool IsDriveByBuffCooldownReady(PlayerbotAI* ai)
+    {
+        if (!ai || !ai->GetBot())
+            return false;
+
+        time_t cooldownUntil =
+            ai->GetAiObjectContext()
+                ->GetValue<time_t>(
+                    "drive by buff cooldown until")
+                ->Get();
+
+        return !cooldownUntil
+            || time(nullptr) >= cooldownUntil;
+    }
+
+    bool CanDriveByBuffNow(PlayerbotAI* ai)
+    {
+        return IsDriveByBuffCasterOperationallyEligible(ai)
+            && IsDriveByBuffCooldownReady(ai);
+    }
+
+    bool IsDriveByBuffScanReady(PlayerbotAI* ai)
+    {
+        if (!ai || !ai->GetBot())
+            return false;
+
+        time_t nextScanAt =
+            ai->GetAiObjectContext()
+                ->GetValue<time_t>(
+                    "drive by buff next scan at")
+                ->Get();
+
+        return !nextScanAt
+            || time(nullptr) >= nextScanAt;
+    }
+
+    void ThrottleDriveByBuffScan(PlayerbotAI* ai)
+    {
+        if (!ai || !ai->GetBot())
+            return;
+
+        ai->GetAiObjectContext()
+            ->GetValue<time_t>(
+                "drive by buff next scan at")
+            ->Set(
+                time(nullptr)
+                + DRIVE_BY_BUFF_SCAN_THROTTLE);
+    }
+
+    bool IsDriveByBuffHumanTarget(Player* caster, Player* target)
+    {
+        if (!caster || !target || caster == target)
+            return false;
+
+        if (!target->IsInWorld() || !target->IsAlive())
+            return false;
+
+        if (target->IsGameMaster())
+            return false;
+
+        if (GET_PLAYERBOT_AI(target))
+            return false;
+
+        if (!target->IsFriendlyTo(caster))
+            return false;
+
+        if (!caster->IsWithinDistInMap(target, DRIVE_BY_BUFF_RADIUS))
+            return false;
+
+        if (!caster->IsWithinLOSInMap(target))
+            return false;
+
+        return true;
+    }
+}
+
+namespace
+{
+    Player* FindDriveByTemporaryPartyTarget(
+        PlayerbotAI* ai)
+    {
+        if (!CanDriveByBuffNow(ai))
+            return nullptr;
+
+        Player* caster = ai->GetBot();
+        if (!caster)
+            return nullptr;
+
+        GuidVector nearbyPlayers =
+            ai->GetAiObjectContext()
+                ->GetValue<GuidVector>(
+                    "nearest friendly players")
+                ->Get();
+
+        Player* bestTarget = nullptr;
+        float bestDistance =
+            DRIVE_BY_BUFF_RADIUS + 1.0f;
+
+        for (ObjectGuid const& guid : nearbyPlayers)
+        {
+            Player* target =
+                ObjectAccessor::FindPlayer(guid);
+
+            if (!IsDriveByBuffHumanTarget(
+                    caster,
+                    target))
+            {
+                continue;
+            }
+
+            float distance =
+                caster->GetDistance(target);
+
+            if (!bestTarget ||
+                distance < bestDistance)
+            {
+                bestTarget = target;
+                bestDistance = distance;
+            }
+        }
+
+        return bestTarget;
+    }
+}
+
+bool DriveByBuffAction::isUseful()
+{
+    if (!IsDriveByBuffScanReady(botAI))
+        return false;
+
+    Player* target =
+        FindDriveByTemporaryPartyTarget(botAI);
+
+    if (target)
+        return true;
+
+    // No nearby eligible human was found.
+    //
+    // Avoid repeatedly walking the nearby-player list
+    // on every eligible AI evaluation.
+    ThrottleDriveByBuffScan(botAI);
+    return false;
+}
+
+bool DriveByBuffAction::isPossible()
+{
+    return CanDriveByBuffNow(botAI);
+}
+
+bool DriveByBuffAction::Execute(Event /*event*/)
+{
+    Player* target =
+        FindDriveByTemporaryPartyTarget(botAI);
+
+    if (!target)
+    {
+        ThrottleDriveByBuffScan(botAI);
+        return false;
+    }
+
+    // A real drive-by encounter is beginning.
+    //
+    // Start the lightweight scan throttle here rather
+    // than in FindDriveByTemporaryPartyTarget(), because
+    // isUseful() and Execute() both call that helper.
+    ThrottleDriveByBuffScan(botAI);
+
+    // The drive-by action does not cast a spell.
+    //
+    // For a short window, normal Playerbots party-buff
+    // triggers/actions resolve this nearby human through
+    // "party member without aura".
+    constexpr time_t encounterSeconds = 5;
+
+    time_t encounterUntil =
+        time(nullptr) + encounterSeconds;
+
+    context
+        ->GetValue<ObjectGuid>(
+            "drive by party target")
+        ->Set(target->GetGUID());
+
+    context
+        ->GetValue<time_t>(
+            "drive by party target until")
+        ->Set(encounterUntil);
+
+    // This is an encounter cooldown, not a spell cooldown.
+    //
+    // The normal buff system gets the full encounter window,
+    // then another drive-by encounter cannot begin for 45 sec.
+    time_t cooldownUntil =
+        encounterUntil
+        + DRIVE_BY_BUFF_COOLDOWN;
+
+    context
+        ->GetValue<time_t>(
+            "drive by buff cooldown until")
+        ->Set(cooldownUntil);
+
+    LOG_DEBUG(
+        "playerbots",
+        "[DRIVEBY-BUFF] encounter-open "
+        "bot={} target={} "
+        "encounter_until={} cooldown_until={}",
+        bot->GetName(),
+        target->GetName(),
+        static_cast<uint64>(encounterUntil),
+        static_cast<uint64>(cooldownUntil));
+
+    return true;
 }
 
 Value<Unit*>* BuffOnPartyAction::GetTargetValue()

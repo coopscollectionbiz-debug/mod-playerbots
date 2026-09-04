@@ -4554,6 +4554,58 @@ std::vector<WorldLocation> TravelMgr::GetCityLocations(Player* bot)
     return fallbackLocations;
 }
 
+static bool PickReachableCityLifeLocation(
+    Player* bot,
+    std::vector<WorldLocation> const& cityLocations,
+    WorldLocation& outLocation)
+{
+    if (!bot || cityLocations.empty())
+        return false;
+
+    uint32 locationCount =
+        static_cast<uint32>(cityLocations.size());
+
+    uint32 startIndex =
+        urand(0, locationCount - 1);
+
+    uint32 attempts =
+        locationCount < 8
+            ? locationCount
+            : 8;
+
+    for (uint32 attempt = 0;
+         attempt < attempts;
+         ++attempt)
+    {
+        uint32 index =
+            (startIndex + attempt)
+            % locationCount;
+
+        WorldPosition candidate(
+            cityLocations[index]);
+
+        // Give the final cached point a small amount of natural
+        // variation while asking the map to resolve it to reachable
+        // ground for this actual bot.
+        if (!candidate.GetReachableRandomPointOnGround(
+                bot, 1.5f, true))
+        {
+            continue;
+        }
+
+        outLocation = WorldLocation(
+            candidate.GetMapId(),
+            candidate.GetPositionX(),
+            candidate.GetPositionY(),
+            candidate.GetPositionZ(),
+            candidate.GetOrientation());
+
+        return true;
+    }
+
+    return false;
+}
+
 bool TravelMgr::GetCityLifeLocation(Player* bot, WorldLocation& outLocation, uint32& outZoneId)
 {
     if (!bot)
@@ -4609,24 +4661,24 @@ bool TravelMgr::GetCityLifeLocation(Player* bot, WorldLocation& outLocation, uin
         cityLifeHubLocationsByZone.find(
             selectedCapital->zoneId);
 
+    bool foundCityLifeLocation = false;
+
     if (cityHubItr !=
             cityLifeHubLocationsByZone.end() &&
         !cityHubItr->second.empty())
     {
-        auto const& cityLocations =
-            cityHubItr->second;
-
-        outLocation =
-            cityLocations[
-                urand(
-                    0,
-                    static_cast<uint32>(
-                        cityLocations.size() - 1))];
+        foundCityLifeLocation =
+            PickReachableCityLifeLocation(
+                bot,
+                cityHubItr->second,
+                outLocation);
     }
-    else
+
+    if (!foundCityLifeLocation)
     {
-        // Preserve the original banker-only behavior as a
-        // fallback if a capital has no congregation cache.
+        // Preserve the original banker-only behavior as a safe
+        // fallback if the congregation cache has no reachable
+        // location for this bot.
         std::vector<WorldLocation> availableLocations;
 
         for (uint16 bankerEntry :
@@ -4705,21 +4757,17 @@ bool TravelMgr::GetCityLifeLocationForZone(
                 cityLifeHubLocationsByZone.end() &&
             !cityHubItr->second.empty())
         {
-            auto const& cityLocations =
-                cityHubItr->second;
-
-            outLocation =
-                cityLocations[
-                    urand(
-                        0,
-                        static_cast<uint32>(
-                            cityLocations.size() - 1))];
-
-            return true;
+            if (PickReachableCityLifeLocation(
+                    bot,
+                    cityHubItr->second,
+                    outLocation))
+            {
+                return true;
+            }
         }
 
         // Preserve banker-only fallback if the congregation
-        // cache has no usable entries for this city.
+        // cache has no reachable entries for this bot.
         std::vector<WorldLocation> availableLocations;
 
         for (uint16 bankerEntry : capital.bankers)
@@ -4915,21 +4963,67 @@ void TravelMgr::PrepareDestinationCache()
 
             if (cityLifeWeight)
             {
-                WorldLocation cityLifeLoc(
-                    mapId,
-                    x + cos(orient) * 5.0f,
-                    y + sin(orient) * 5.0f,
-                    z + 0.5f,
-                    orient + M_PI);
-
                 auto& cityLocations =
                     cityLifeHubLocationsByZone[
                         areaId];
+
+                // Preserve the service-NPC weighting, but spread
+                // weighted CityLife positions through a loose congregation
+                // footprint rather than a rigid 1.5-yard line.
+                //
+                // Most points remain generally in front of the NPC, but
+                // angle/radius variation makes bankers and auctioneers look
+                // like player gathering areas rather than formations.
+                //
+                // Final bot-specific reachability validation occurs when a
+                // CityLife location is actually assigned.
+                constexpr float cityLifeMinRadius = 3.5f;
+                constexpr float cityLifeMaxRadius = 8.0f;
+                constexpr float cityLifeHalfArc = 1.15f;
+                constexpr float cityLifeAngleJitter = 0.30f;
 
                 for (uint32 i = 0;
                      i < cityLifeWeight;
                      ++i)
                 {
+                    float normalizedSlot =
+                        cityLifeWeight > 1
+                            ? static_cast<float>(i)
+                                / static_cast<float>(
+                                    cityLifeWeight - 1)
+                            : 0.5f;
+
+                    float angleOffset =
+                        (normalizedSlot - 0.5f)
+                        * 2.0f
+                        * cityLifeHalfArc;
+
+                    float jitter =
+                        (rand_norm() - 0.5f)
+                        * cityLifeAngleJitter;
+
+                    float slotAngle =
+                        orient + angleOffset + jitter;
+
+                    float slotRadius =
+                        cityLifeMinRadius
+                        + rand_norm()
+                            * (cityLifeMaxRadius
+                               - cityLifeMinRadius);
+
+                    float slotX =
+                        x + cos(slotAngle) * slotRadius;
+
+                    float slotY =
+                        y + sin(slotAngle) * slotRadius;
+
+                    WorldLocation cityLifeLoc(
+                        mapId,
+                        slotX,
+                        slotY,
+                        z + 0.5f,
+                        orient + M_PI);
+
                     cityLocations.push_back(
                         cityLifeLoc);
                 }

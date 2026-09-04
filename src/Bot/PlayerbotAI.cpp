@@ -2970,6 +2970,9 @@ bool PlayerbotAI::Say(const std::string& msg)
 
 bool PlayerbotAI::Whisper(const std::string& msg, const std::string& receiverName)
 {
+    if (sPlayerbotAIConfig.silentMechanicalWhispers)
+        return true;
+
     const auto receiver = ObjectAccessor::FindPlayerByName(receiverName);
     if (!receiver)
     {
@@ -2995,6 +2998,9 @@ bool PlayerbotAI::TellMasterNoFacing(std::ostringstream& stream, PlayerbotSecuri
 
 bool PlayerbotAI::TellMasterNoFacing(std::string const text, PlayerbotSecurityLevel securityLevel)
 {
+    if (sPlayerbotAIConfig.silentMechanicalWhispers)
+        return true;
+
     Player* master = GetMaster();
     PlayerbotAI* masterBotAI = nullptr;
     if (master)
@@ -3066,6 +3072,9 @@ bool PlayerbotAI::TellMaster(std::ostringstream& stream, PlayerbotSecurityLevel 
 
 bool PlayerbotAI::TellMaster(std::string const text, PlayerbotSecurityLevel securityLevel)
 {
+    if (sPlayerbotAIConfig.silentMechanicalWhispers)
+        return true;
+
     if (!master)
     {
         if (sPlayerbotAIConfig.randomBotSayWithoutMaster)
@@ -3560,6 +3569,10 @@ bool PlayerbotAI::CastSpell(std::string const name, Unit* target, Item* itemTarg
 
 bool PlayerbotAI::CastSpell(uint32 spellId, Unit* target, Item* itemTarget)
 {
+    // A caller may inspect this after a failed synchronous cast.
+    // Keep -1 when execution exits before Spell::prepare().
+    lastSpellCastResult = -1;
+
     if (!spellId)
         return false;
 
@@ -3737,6 +3750,7 @@ bool PlayerbotAI::CastSpell(uint32 spellId, Unit* target, Item* itemTarget)
     //     return false;
 
     SpellCastResult result = spell->prepare(&targets);
+    lastSpellCastResult = static_cast<int32>(result);
 
     if (result != SPELL_CAST_OK)
     {
@@ -6657,9 +6671,11 @@ uint32 PlayerbotAI::GetReactDelay()
     if (bot->IsInCombat() || currentState == BOT_STATE_COMBAT)
         return base * 5;
 
-    // When not resting, return 10-30 times the base
+    // Keep ordinary outdoor random bots responsive between autonomous
+    // actions without making them mechanically instant. At the default
+    // 100 ms base this yields a 500-1000 ms non-combat reaction window.
     if (!bot->HasFlag(PLAYER_FLAGS, PLAYER_FLAGS_RESTING))
-        return base * urand(10, 30);
+        return base * urand(5, 10);
 
     // In other cases, return 20-200 times the base
     return base * urand(20, 200);

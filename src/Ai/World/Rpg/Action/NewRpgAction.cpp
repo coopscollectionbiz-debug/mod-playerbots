@@ -444,6 +444,17 @@ bool NewRpgCityLifeAction::Execute(Event /*event*/)
         return true;
     }
 
+    // Nearby player conversation temporarily owns autonomous
+    // CityLife movement. Chatter has already paused any current
+    // point generator; while that social hold remains active,
+    // do not create or replace CityLife movement underneath it.
+    //
+    // This is intentionally scoped to CityLife rather than the
+    // generic movement layer so explicit movement, recovery,
+    // combat, grouping, and other RPG states remain unaffected.
+    if (botAI->GetSocialPauseUntil() > time(nullptr))
+        return false;
+
     NewRpgInfo& info = botAI->rpgInfo;
 
     auto* dataPtr = std::get_if<NewRpgInfo::CityLife>(&info.data);

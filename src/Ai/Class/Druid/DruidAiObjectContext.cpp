@@ -253,6 +253,7 @@ public:
         creators["tiger's fury"] = &DruidAiObjectContextInternal::tigers_fury;
         creators["savage roar"] = &DruidAiObjectContextInternal::savage_roar;
         creators["mark of the wild"] = &DruidAiObjectContextInternal::mark_of_the_wild;
+        creators["drive by buff"] = &DruidAiObjectContextInternal::drive_by_buff;
         creators["mark of the wild on party"] = &DruidAiObjectContextInternal::mark_of_the_wild_on_party;
         creators["regrowth"] = &DruidAiObjectContextInternal::regrowth;
         creators["rejuvenation"] = &DruidAiObjectContextInternal::rejuvenation;
@@ -351,6 +352,7 @@ private:
     static Action* tigers_fury(PlayerbotAI* botAI) { return new CastTigersFuryAction(botAI); }
     static Action* savage_roar(PlayerbotAI* botAI) { return new CastSavageRoarAction(botAI); }
     static Action* mark_of_the_wild(PlayerbotAI* botAI) { return new CastMarkOfTheWildAction(botAI); }
+    static Action* drive_by_buff(PlayerbotAI* botAI) { return new DriveByBuffAction(botAI); }
     static Action* mark_of_the_wild_on_party(PlayerbotAI* botAI) { return new CastMarkOfTheWildOnPartyAction(botAI); }
     static Action* regrowth(PlayerbotAI* botAI) { return new CastRegrowthAction(botAI); }
     static Action* rejuvenation(PlayerbotAI* botAI) { return new CastRejuvenationAction(botAI); }

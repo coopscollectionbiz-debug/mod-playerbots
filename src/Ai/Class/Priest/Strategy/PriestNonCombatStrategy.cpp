@@ -55,6 +55,9 @@ void PriestNonCombatStrategy::InitTriggers(std::vector<TriggerNode*>& triggers)
 void PriestBuffStrategy::InitTriggers(std::vector<TriggerNode*>& triggers)
 {
     NonCombatStrategy::InitTriggers(triggers);
+    triggers.push_back(new TriggerNode("very often", {
+        NextAction("drive by buff", 4.05f)
+    }));
 
     triggers.push_back(
         new TriggerNode("power word: fortitude on party",

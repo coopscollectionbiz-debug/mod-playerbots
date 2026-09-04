@@ -115,6 +115,12 @@ bool AttackAnythingAction::isUseful()
     if (bot->IsInCombat())
         return false;
 
+    // A nearby player's active social interaction may temporarily
+    // own the bot after combat. Only this autonomous grind-pull
+    // action honors the pause; defensive/existing combat is untouched.
+    if (botAI->GetSocialPauseUntil() > time(nullptr))
+        return false;
+
     Unit* target = GetTarget();
     if (!target || !target->IsInWorld())  // Checks if the target is valid and in the world
         return false;

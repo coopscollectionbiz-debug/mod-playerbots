@@ -244,6 +244,7 @@ public:
         creators["seal of vengeance"] = &PaladinAiObjectContextInternal::seal_of_vengeance;
         creators["seal of corruption"] = &PaladinAiObjectContextInternal::seal_of_corruption;
         creators["blessing of might"] = &PaladinAiObjectContextInternal::blessing_of_might;
+        creators["drive by buff"] = &PaladinAiObjectContextInternal::drive_by_buff;
         creators["blessing of wisdom"] = &PaladinAiObjectContextInternal::blessing_of_wisdom;
         creators["blessing of kings"] = &PaladinAiObjectContextInternal::blessing_of_kings;
         creators["blessing of sanctuary"] = &PaladinAiObjectContextInternal::blessing_of_sanctuary;
@@ -340,6 +341,7 @@ private:
     static Action* seal_of_corruption(PlayerbotAI* botAI) { return new CastSealOfCorruptionAction(botAI); }
     static Action* blessing_of_sanctuary(PlayerbotAI* botAI) { return new CastBlessingOfSanctuaryAction(botAI); }
     static Action* blessing_of_might(PlayerbotAI* botAI) { return new CastBlessingOfMightAction(botAI); }
+    static Action* drive_by_buff(PlayerbotAI* botAI) { return new DriveByBuffAction(botAI); }
     static Action* blessing_of_wisdom(PlayerbotAI* botAI) { return new CastBlessingOfWisdomAction(botAI); }
     static Action* blessing_of_kings(PlayerbotAI* botAI) { return new CastBlessingOfKingsAction(botAI); }
     static Action* divine_storm(PlayerbotAI* botAI) { return new CastDivineStormAction(botAI); }

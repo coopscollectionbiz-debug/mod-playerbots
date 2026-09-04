@@ -193,6 +193,7 @@ public:
         creators["cone of cold"] = &MageAiObjectContextInternal::cone_of_cold;
         creators["frost nova"] = &MageAiObjectContextInternal::frost_nova;
         creators["arcane intellect"] = &MageAiObjectContextInternal::arcane_intellect;
+        creators["drive by buff"] = &MageAiObjectContextInternal::drive_by_buff;
         creators["arcane intellect on party"] = &MageAiObjectContextInternal::arcane_intellect_on_party;
         creators["conjure water"] = &MageAiObjectContextInternal::conjure_water;
         creators["conjure food"] = &MageAiObjectContextInternal::conjure_food;
@@ -259,6 +260,7 @@ private:
     static Action* cone_of_cold(PlayerbotAI* botAI) { return new CastConeOfColdAction(botAI); }
     static Action* frost_nova(PlayerbotAI* botAI) { return new CastFrostNovaAction(botAI); }
     static Action* arcane_intellect(PlayerbotAI* botAI) { return new CastArcaneIntellectAction(botAI); }
+    static Action* drive_by_buff(PlayerbotAI* botAI) { return new DriveByBuffAction(botAI); }
     static Action* arcane_intellect_on_party(PlayerbotAI* botAI) { return new CastArcaneIntellectOnPartyAction(botAI); }
     static Action* conjure_water(PlayerbotAI* botAI) { return new CastConjureWaterAction(botAI); }
     static Action* conjure_food(PlayerbotAI* botAI) { return new CastConjureFoodAction(botAI); }

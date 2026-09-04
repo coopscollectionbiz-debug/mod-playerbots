@@ -40,5 +40,94 @@ private:
 Unit* PartyMemberWithoutAuraValue::Calculate()
 {
     PlayerWithoutAuraPredicate predicate(botAI, qualifier);
+
+    ObjectGuid driveByGuid =
+        context
+            ->GetValue<ObjectGuid>(
+                "drive by party target")
+            ->Get();
+
+    time_t driveByUntil =
+        context
+            ->GetValue<time_t>(
+                "drive by party target until")
+            ->Get();
+
+    if (driveByGuid)
+    {
+        time_t now = time(nullptr);
+
+        if (!driveByUntil || now >= driveByUntil)
+        {
+            context
+                ->GetValue<ObjectGuid>(
+                    "drive by party target")
+                ->Set(ObjectGuid::Empty);
+
+            context
+                ->GetValue<time_t>(
+                    "drive by party target until")
+                ->Set(0);
+        }
+        else
+        {
+            Player* player =
+                botAI->GetPlayer(driveByGuid);
+
+            bool valid =
+                player &&
+                player != bot &&
+                player->IsInWorld() &&
+                player->IsAlive() &&
+                !player->IsGameMaster() &&
+                !GET_PLAYERBOT_AI(player) &&
+                player->IsFriendlyTo(bot) &&
+                bot->GetDistance(player) <= 15.0f &&
+                bot->IsWithinLOS(
+                    player->GetPositionX(),
+                    player->GetPositionY(),
+                    player->GetPositionZ());
+
+            if (!valid)
+            {
+                context
+                    ->GetValue<ObjectGuid>(
+                        "drive by party target")
+                    ->Set(ObjectGuid::Empty);
+
+                context
+                    ->GetValue<time_t>(
+                        "drive by party target until")
+                    ->Set(0);
+            }
+            else if (predicate.Check(player))
+            {
+                LOG_DEBUG(
+                    "playerbots",
+                    "[DRIVEBY-BUFF] override-hit "
+                    "bot={} target={} qualifier={}",
+                    bot->GetName(),
+                    player->GetName(),
+                    qualifier);
+
+                // For buff targeting only, this player now behaves
+                // like the party member selected by the normal
+                // Playerbots buff system.
+                return player;
+            }
+            else
+            {
+                LOG_DEBUG(
+                    "playerbots",
+                    "[DRIVEBY-BUFF] override-reject "
+                    "bot={} target={} qualifier={}",
+                    bot->GetName(),
+                    player->GetName(),
+                    qualifier);
+            }
+        }
+    }
+
+    // Normal real-party behavior is completely unchanged.
     return FindPartyMember(predicate);
 }

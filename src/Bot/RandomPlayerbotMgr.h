@@ -65,6 +65,12 @@ struct BotEventCache
     std::unordered_map<std::string, CachedEvent> events;
 };
 
+struct LfgHumanDemand
+{
+    uint32 dungeonId = 0;
+    uint8 playerLevel = 0;
+};
+
 // https://gist.github.com/bradley219/5373998
 
 class botPIDImpl;
@@ -151,7 +157,7 @@ public:
     std::map<uint32, std::map<uint32, BattlegroundInfo>> BattlegroundData;
     std::map<uint32, std::map<uint32, std::map<TeamId, uint32>>> VisualBots;
     std::map<uint32, std::map<uint32, std::map<uint32, uint32>>> Supporters;
-    std::map<TeamId, std::vector<uint32>> LfgDungeons;
+    std::map<TeamId, std::vector<LfgHumanDemand>> LfgDungeons;
     void CheckBgQueue();
     void CheckLfgQueue();
     void CheckPlayers();

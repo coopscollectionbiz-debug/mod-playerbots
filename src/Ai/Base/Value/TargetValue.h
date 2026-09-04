@@ -112,6 +112,62 @@ public:
     }
 };
 
+class DriveByPartyTargetValue : public ManualSetValue<ObjectGuid>
+{
+public:
+    DriveByPartyTargetValue(
+        PlayerbotAI* botAI,
+        std::string const name = "drive by party target")
+        : ManualSetValue<ObjectGuid>(
+              botAI,
+              ObjectGuid::Empty,
+              name)
+    {
+    }
+};
+
+class DriveByPartyTargetUntilValue : public ManualSetValue<time_t>
+{
+public:
+    DriveByPartyTargetUntilValue(
+        PlayerbotAI* botAI,
+        std::string const name = "drive by party target until")
+        : ManualSetValue<time_t>(
+              botAI,
+              0,
+              name)
+    {
+    }
+};
+
+class DriveByBuffCooldownUntilValue : public ManualSetValue<time_t>
+{
+public:
+    DriveByBuffCooldownUntilValue(
+        PlayerbotAI* botAI,
+        std::string const name = "drive by buff cooldown until")
+        : ManualSetValue<time_t>(
+              botAI,
+              0,
+              name)
+    {
+    }
+};
+
+class DriveByBuffNextScanAtValue : public ManualSetValue<time_t>
+{
+public:
+    DriveByBuffNextScanAtValue(
+        PlayerbotAI* botAI,
+        std::string const name = "drive by buff next scan at")
+        : ManualSetValue<time_t>(
+              botAI,
+              0,
+              name)
+    {
+    }
+};
+
 class PullTargetValue : public ManualSetValue<ObjectGuid>
 {
 public:

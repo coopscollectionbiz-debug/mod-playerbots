@@ -166,6 +166,7 @@ public:
         creators["remove shadowform"] = &PriestAiObjectContextInternal::remove_shadowform;
         creators["holy nova"] = &PriestAiObjectContextInternal::holy_nova;
         creators["power word: fortitude"] = &PriestAiObjectContextInternal::power_word_fortitude;
+        creators["drive by buff"] = &PriestAiObjectContextInternal::drive_by_buff;
         creators["power word: fortitude on party"] = &PriestAiObjectContextInternal::power_word_fortitude_on_party;
         creators["divine spirit"] = &PriestAiObjectContextInternal::divine_spirit;
         creators["divine spirit on party"] = &PriestAiObjectContextInternal::divine_spirit_on_party;
@@ -269,6 +270,7 @@ private:
     static Action* remove_shadowform(PlayerbotAI* botAI) { return new CastRemoveShadowformAction(botAI); }
     static Action* holy_nova(PlayerbotAI* botAI) { return new CastHolyNovaAction(botAI); }
     static Action* power_word_fortitude(PlayerbotAI* botAI) { return new CastPowerWordFortitudeAction(botAI); }
+    static Action* drive_by_buff(PlayerbotAI* botAI) { return new DriveByBuffAction(botAI); }
     static Action* power_word_fortitude_on_party(PlayerbotAI* botAI)
     {
         return new CastPowerWordFortitudeOnPartyAction(botAI);

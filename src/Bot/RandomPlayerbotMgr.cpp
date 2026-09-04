@@ -1262,7 +1262,7 @@ void RandomPlayerbotMgr::CheckLfgQueue()
     for (std::vector<Player*>::iterator i = players.begin(); i != players.end(); ++i)
     {
         Player* player = *i;
-        if (!player || !player->IsInWorld())
+        if (!player || !player->IsInWorld() || !player->GetSession() || player->GetSession()->IsBot())
             continue;
 
         Group* group = player->GetGroup();
@@ -1271,6 +1271,26 @@ void RandomPlayerbotMgr::CheckLfgQueue()
         lfg::LfgState gState = sLFGMgr->GetState(guid);
         if (gState != lfg::LFG_STATE_NONE && gState < lfg::LFG_STATE_DUNGEON)
         {
+            uint8 anchorLevel = player->GetLevel();
+
+            // For a premade, anchor bot filler level to the lowest
+            // real-human member of the group.
+            if (group)
+            {
+                for (GroupReference* gref = group->GetFirstMember(); gref; gref = gref->next())
+                {
+                    Player* member = gref->GetSource();
+                    if (!member || !member->IsInWorld() || !member->GetSession() ||
+                        member->GetSession()->IsBot())
+                    {
+                        continue;
+                    }
+
+                    if (member->GetLevel() < anchorLevel)
+                        anchorLevel = member->GetLevel();
+                }
+            }
+
             lfg::LfgDungeonSet const& dList = sLFGMgr->GetSelectedDungeons(player->GetGUID());
             for (lfg::LfgDungeonSet::const_iterator itr = dList.begin(); itr != dList.end(); ++itr)
             {
@@ -1278,7 +1298,8 @@ void RandomPlayerbotMgr::CheckLfgQueue()
                 if (!dungeon)
                     continue;
 
-                LfgDungeons[player->GetTeamId()].push_back(dungeon->id);
+                LfgDungeons[player->GetTeamId()].push_back(
+                    LfgHumanDemand{ dungeon->id, anchorLevel });
             }
         }
     }

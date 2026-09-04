@@ -101,13 +101,13 @@ bool LfgJoinAction::JoinLFG()
     LfgDungeonSet list;
     std::vector<uint32> selected;
 
-    std::vector<uint32> dungeons = RandomPlayerbotMgr::instance().LfgDungeons[bot->GetTeamId()];
-    if (!dungeons.size())
+    std::vector<LfgHumanDemand> demands = RandomPlayerbotMgr::instance().LfgDungeons[bot->GetTeamId()];
+    if (!demands.size())
         return false;
 
-    for (std::vector<uint32>::iterator i = dungeons.begin(); i != dungeons.end(); ++i)
+    for (LfgHumanDemand const& demand : demands)
     {
-        LFGDungeonEntry const* dungeon = sLFGDungeonStore.LookupEntry(*i);
+        LFGDungeonEntry const* dungeon = sLFGDungeonStore.LookupEntry(demand.dungeonId);
         if (!dungeon || (dungeon->TypeID != LFG_TYPE_RANDOM && dungeon->TypeID != LFG_TYPE_DUNGEON &&
                          dungeon->TypeID != LFG_TYPE_HEROIC && dungeon->TypeID != LFG_TYPE_RAID))
             continue;
@@ -117,6 +117,12 @@ bool LfgJoinAction::JoinLFG()
         /*LFG_TYPE_RANDOM on classic is 15-58 so bot over level 25 will never queue*/
         if ((dungeon->MinLevel && (botLevel < dungeon->MinLevel || botLevel > dungeon->MaxLevel)) ||
             (botLevel > dungeon->MinLevel + 10 && dungeon->TypeID == LFG_TYPE_DUNGEON))
+            continue;
+
+        int32 levelDelta =
+            static_cast<int32>(botLevel) - static_cast<int32>(demand.playerLevel);
+
+        if (levelDelta < -1 || levelDelta > 1)
             continue;
 
         selected.push_back(dungeon->ID);

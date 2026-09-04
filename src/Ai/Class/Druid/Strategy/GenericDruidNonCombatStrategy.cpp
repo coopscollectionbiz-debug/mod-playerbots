@@ -191,6 +191,9 @@ GenericDruidBuffStrategy::GenericDruidBuffStrategy(PlayerbotAI* botAI) : NonComb
 void GenericDruidBuffStrategy::InitTriggers(std::vector<TriggerNode*>& triggers)
 {
     NonCombatStrategy::InitTriggers(triggers);
+    triggers.push_back(new TriggerNode("very often", {
+        NextAction("drive by buff", 4.05f)
+    }));
 
     triggers.push_back(new TriggerNode("mark of the wild on party", {
                        NextAction("mark of the wild on party", 13.0f),

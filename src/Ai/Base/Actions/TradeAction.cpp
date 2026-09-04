@@ -10,6 +10,8 @@
 #include "ItemCountValue.h"
 #include "ItemVisitors.h"
 #include "PlayerbotAI.h"
+#include "Playerbots.h"
+#include "RandomPlayerbotMgr.h"
 
 bool TradeAction::Execute(Event event)
 {
@@ -51,6 +53,28 @@ bool TradeAction::Execute(Event event)
     uint32 copper = chat->parseMoney(text);
     if (copper > 0)
     {
+        Player* trader = bot->GetTrader();
+
+        bool const protectedRandomBot =
+            (
+                sRandomPlayerbotMgr.IsRandomBot(bot)
+                || sRandomPlayerbotMgr.IsAddclassBot(bot)
+            )
+            && trader
+            && (
+                IsRealPlayer(trader)
+                || IsSelfBot(trader)
+            )
+            && !trader->CanBeGameMaster();
+
+        if (protectedRandomBot)
+        {
+            botAI->TellError(
+                "Random bots cannot give away gold."
+            );
+            return false;
+        }
+
         WorldPacket packet(CMSG_SET_TRADE_GOLD, 4);
         packet << copper;
         bot->GetSession()->HandleSetTradeGoldOpcode(packet);

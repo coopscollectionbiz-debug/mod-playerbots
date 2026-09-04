@@ -245,6 +245,10 @@ public:
         creators["next rpg action"] = &ValueContext::next_rpg_action;
         creators["travel target"] = &ValueContext::travel_target;
         creators["talk target"] = &ValueContext::talk_target;
+        creators["drive by party target"] = &ValueContext::drive_by_party_target;
+        creators["drive by party target until"] = &ValueContext::drive_by_party_target_until;
+        creators["drive by buff cooldown until"] = &ValueContext::drive_by_buff_cooldown_until;
+        creators["drive by buff next scan at"] = &ValueContext::drive_by_buff_next_scan_at;
         creators["pull target"] = &ValueContext::pull_target;
         creators["pull strategy target"] = &ValueContext::pull_strategy_target;
         creators["focus heal targets"] = &ValueContext::focus_heal_targets;
@@ -503,6 +507,22 @@ private:
     static UntypedValue* rpg_target(PlayerbotAI* botAI) { return new RpgTargetValue(botAI); }
     static UntypedValue* ignore_rpg_target(PlayerbotAI* botAI) { return new IgnoreRpgTargetValue(botAI); }
     static UntypedValue* talk_target(PlayerbotAI* botAI) { return new TalkTargetValue(botAI); }
+    static UntypedValue* drive_by_party_target(PlayerbotAI* botAI)
+    {
+        return new DriveByPartyTargetValue(botAI);
+    }
+    static UntypedValue* drive_by_party_target_until(PlayerbotAI* botAI)
+    {
+        return new DriveByPartyTargetUntilValue(botAI);
+    }
+    static UntypedValue* drive_by_buff_cooldown_until(PlayerbotAI* botAI)
+    {
+        return new DriveByBuffCooldownUntilValue(botAI);
+    }
+    static UntypedValue* drive_by_buff_next_scan_at(PlayerbotAI* botAI)
+    {
+        return new DriveByBuffNextScanAtValue(botAI);
+    }
     static UntypedValue* next_rpg_action(PlayerbotAI* botAI) { return new NextRpgActionValue(botAI); }
     static UntypedValue* travel_target(PlayerbotAI* botAI) { return new TravelTargetValue(botAI); }
     static UntypedValue* pull_target(PlayerbotAI* botAI) { return new PullTargetValue(botAI); }

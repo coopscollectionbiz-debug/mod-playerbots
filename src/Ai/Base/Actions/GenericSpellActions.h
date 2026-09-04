@@ -232,6 +232,21 @@ protected:
     uint32 dispelType;
 };
 
+class DriveByBuffAction : public Action
+{
+public:
+    DriveByBuffAction(PlayerbotAI* botAI)
+        : Action(botAI, "drive by buff") {}
+
+    bool Execute(Event event) override;
+    bool isUseful() override;
+    bool isPossible() override;
+
+    ActionThreatType getThreatType() override
+    {
+        return ActionThreatType::None;
+    }
+};
 class BuffOnPartyAction : public CastBuffSpellAction, public PartyMemberActionNameSupport
 {
 public:

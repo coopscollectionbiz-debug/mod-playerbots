@@ -137,7 +137,7 @@ AiPlayerbot.MaxAddedBots = 40
 
 # Enable/Disable creating bots by addclass command (0 = GM only, 1 = enabled)
 # Default: 1 (enabled)
-AiPlayerbot.AddClassCommand = 1
+AiPlayerbot.AddClassCommand = 0
 
 # Bot group invitation permission level (0 = GM only, 1 = accept based on level, 2 = always accept)
 # Default: 1 (accept based on level)
@@ -155,10 +155,10 @@ AiPlayerbot.BotAutologin = 0
 AiPlayerbot.AllowAccountBots = 1
 
 # Allow/deny inviting altbots in the player's guild
-AiPlayerbot.AllowGuildBots = 1
+AiPlayerbot.AllowGuildBots = 0
 
 # Allow linking accounts for shared altbot control
-AiPlayerbot.AllowTrustedAccountBots = 1
+AiPlayerbot.AllowTrustedAccountBots = 0
 
 # Randombots will create guilds with nearby randombots
 # Note: currently, randombots will not invite more bots after a guild is created,
@@ -305,17 +305,17 @@ AiPlayerbot.FreeMethodLoot = 0
 
 # Bots' Roll level bots will use for items they Need (0 = pass, 1 = greed, 2 = need)
 # Default: 1 (greed)
-AiPlayerbot.LootNeedRollLevel = 1
+AiPlayerbot.LootNeedRollLevel = 2
 
 # Enable bots to roll GREED on items (global toggle)
 # If disabled, bots will PASS instead of GREED on all items
 # Default: 0 (disabled - bots only NEED or PASS)
-AiPlayerbot.LootGreedRollLevel = 0
+AiPlayerbot.LootGreedRollLevel = 1
 
 # Enable bots to roll on recipes. Will NEED on learnable profession recipes they don't already know
 # Bots will roll GREED on BoE recipes they can't learn if LootRollGreed is enabled.
 # Default: 0 (disabled)
-AiPlayerbot.LootRollRecipe = 0
+AiPlayerbot.LootRollRecipe = 1
 
 # Bots with enchanting will roll DISENCHANT instead of GREED on disenchantable items
 # If disabled, bots will GREED on disenchantable items instead
@@ -358,7 +358,7 @@ AiPlayerbot.DisableMoveSplinePath = 0
 
 # Max search time for movement (higher for better movement on slopes)
 # Default: 3
-AiPlayerbot.MaxMovementSearchTime = 3
+AiPlayerbot.MaxMovementSearchTime = 5
 
 # Action expiration time
 AiPlayerbot.ExpireActionTime = 5000
@@ -384,7 +384,7 @@ AiPlayerbot.RpgDelay = 10000
 AiPlayerbot.SitDelay = 20000
 # ReturnDelay has a minimum value of 2000 - lower values will cause a crash!
 AiPlayerbot.ReturnDelay = 2000
-AiPlayerbot.LootDelay = 1000
+AiPlayerbot.LootDelay = 300
 
 #
 #
@@ -407,6 +407,15 @@ AiPlayerbot.TooCloseDistance = 5.0
 AiPlayerbot.MeleeDistance = 0.75
 AiPlayerbot.FollowDistance = 1.5
 AiPlayerbot.WhisperDistance = 6000.0
+
+#
+# Suppress native Playerbots mechanical whisper/status output,
+# including inventory dumps, AI reset notices, strategy reports,
+# and native scripted whisper replies. This does not suppress
+# mod-llm-chatter's separately delivered LLM whispers.
+# Default: 1
+#
+AiPlayerbot.SilentMechanicalWhispers = 1
 AiPlayerbot.ContactDistance = 0.45
 AiPlayerbot.AoeRadius = 10
 AiPlayerbot.RpgDistance = 200
@@ -769,7 +778,7 @@ AiPlayerbot.LimitTalentsExpansion = 0
 
 # Configure randombot trading (0: Disabled, 1: Enabled, 2: Only Buy, 3: Only Sell)
 # Default: 1 (enabled)
-AiPlayerbot.EnableRandomBotTrading = 1
+AiPlayerbot.EnableRandomBotTrading = 2
 
 # Configure message prefixes which will be excluded in analysis in trade action to open trade window
 AiPlayerbot.TradeActionExcludedPrefixes = "RPLL_H_,DBMv4,{звезда} Questie,{rt1} Questie"
@@ -777,7 +786,7 @@ AiPlayerbot.TradeActionExcludedPrefixes = "RPLL_H_,DBMv4,{звезда} Questie,
 # Allow bots to send mail. When disabled, bots will not mail items or money in
 # response to chat commands ("send mail").
 # Default: 1 (enabled)
-AiPlayerbot.BotSendMailEnabled = 1
+AiPlayerbot.BotSendMailEnabled = 0
 
 #
 #
@@ -2556,7 +2565,7 @@ AiPlayerbot.CommandSeparator = "\\\\"
 # open a trade window with the bot. Explicit "c" and "t" commands still
 # work regardless of this setting.
 # Default: 1 (enabled)
-AiPlayerbot.EnableAutoTradeOnItemMention = 1
+AiPlayerbot.EnableAutoTradeOnItemMention = 0
 
 # Enable bots talking (say / yell / general chatting / lfg)
 AiPlayerbot.RandomBotTalk = 1

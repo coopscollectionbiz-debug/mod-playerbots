@@ -417,6 +417,13 @@ public:
     bool ContainsStrategy(StrategyType type);
     bool HasStrategy(std::string const name, BotState type);
     BotState GetState() { return currentState; };
+
+    // Temporary external social ownership of autonomous pulling.
+    // This does not alter combat state or combat actions; it only
+    // gives voluntary non-combat pull actions a timestamp to honor.
+    void SetSocialPauseUntil(time_t until) { socialPauseUntil = until; }
+    time_t GetSocialPauseUntil() const { return socialPauseUntil; }
+
     void ResetStrategies(bool load = false);
     void ReInitCurrentEngine();
     void Reset(bool full = false);
@@ -521,6 +528,13 @@ public:
                   int checkStack = -1);
     bool CastSpell(uint32 spellId, Unit* target, Item* itemTarget = nullptr);
     bool CastSpell(uint32 spellId, float x, float y, float z, Item* itemTarget = nullptr);
+
+    // Result from the most recent real unit-target CastSpell()
+    // attempt. -1 means no real Spell::prepare() result has
+    // been produced since the value was cleared.
+    void ClearLastSpellCastResult() { lastSpellCastResult = -1; }
+    int32 GetLastSpellCastResult() const { return lastSpellCastResult; }
+
     bool canDispel(SpellInfo const* spellInfo, uint32 dispelType);
 
     bool CanCastVehicleSpell(uint32 spellid, Unit* target);
@@ -650,9 +664,15 @@ protected:
     bool allowActive[MAX_ACTIVITY_TYPE];
     time_t allowActiveCheckTimer[MAX_ACTIVITY_TYPE];
     bool inCombat = false;
+    time_t socialPauseUntil = 0;
     BotCheatMask cheatMask = BotCheatMask::none;
     Position jumpDestination = Position();
     uint32 nextTransportCheck = 0;
+
+    // Stored as int32 so PlayerbotAI.h does not need to expose
+    // SpellCastResult's defining header to external modules.
+    int32 lastSpellCastResult = -1;
+
     bool spellInterruptRequested = false;
 };
 

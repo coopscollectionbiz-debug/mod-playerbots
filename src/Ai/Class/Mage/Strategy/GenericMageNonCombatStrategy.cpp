@@ -53,5 +53,8 @@ void MageBuffDpsStrategy::InitTriggers(std::vector<TriggerNode*>& triggers)
 
 void MageBuffStrategy::InitTriggers(std::vector<TriggerNode*>& triggers)
 {
+    triggers.push_back(new TriggerNode("very often", {
+        NextAction("drive by buff", 4.05f)
+    }));
     triggers.push_back(new TriggerNode("arcane intellect on party", { NextAction("arcane intellect on party", 20.0f) }));
 }
