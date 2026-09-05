@@ -122,7 +122,7 @@ bool LfgJoinAction::JoinLFG()
         int32 levelDelta =
             static_cast<int32>(botLevel) - static_cast<int32>(demand.playerLevel);
 
-        if (levelDelta < -1 || levelDelta > 1)
+        if (levelDelta < -2 || levelDelta > 0)
             continue;
 
         selected.push_back(dungeon->ID);
