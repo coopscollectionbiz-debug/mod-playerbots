@@ -9,6 +9,7 @@
 #include "AreaDefines.h"
 #include "BroadcastHelper.h"
 #include "ChatHelper.h"
+#include "DBCStores.h"
 #include "GossipDef.h"
 #include "IVMapMgr.h"
 #include "NewRpgInfo.h"
@@ -27,6 +28,7 @@
 #include "SharedDefines.h"
 #include "Timer.h"
 #include "TravelMgr.h"
+#include "WaypointMovementGenerator.h"
 #include "G3D/Vector2.h"
 #include <cmath>
 #include <cstdlib>
@@ -811,8 +813,115 @@ bool NewRpgTravelFlightAction::Execute(Event /*event*/)
     auto& data = *dataPtr;
     if (bot->IsInFlight())
     {
-        data.inFlight = true;
-        data.taxiStartTime = 0;
+        uint32 now = getMSTime();
+
+        // The taxi has successfully transitioned into actual flight.
+        if (!data.inFlight)
+        {
+            data.inFlight = true;
+            data.taxiStartTime = 0;
+            data.lastFlightProgressTime = now;
+            data.lastFlightX = bot->GetPositionX();
+            data.lastFlightY = bot->GetPositionY();
+            data.lastFlightZ = bot->GetPositionZ();
+            return false;
+        }
+
+        // Playerbots do not send the client CMSG_MOVE_SPLINE_DONE packet
+        // that normally advances a multi-map taxi at a map boundary.
+        // Mirror the core handoff only after this map spline has finished.
+        if (bot->movespline->Finalized())
+        {
+            uint32 curDest = bot->m_taxi.GetTaxiDestination();
+            TaxiNodesEntry const* curDestNode =
+                curDest ? sTaxiNodesStore.LookupEntry(curDest) : nullptr;
+
+            if (curDestNode &&
+                curDestNode->map_id != bot->GetMapId() &&
+                bot->GetMotionMaster()->GetCurrentMovementGeneratorType() ==
+                    FLIGHT_MOTION_TYPE)
+            {
+                if (FlightPathMovementGenerator* flight =
+                        dynamic_cast<FlightPathMovementGenerator*>(
+                            bot->GetMotionMaster()->top()))
+                {
+                    flight->SetCurrentNodeAfterTeleport();
+
+                    if (flight->GetCurrentNode() < flight->GetPath().size())
+                    {
+                        TaxiPathNodeEntry const* node =
+                            flight->GetPath()[flight->GetCurrentNode()];
+
+                        LOG_INFO(
+                            "playerbots",
+                            "[New RPG] {} continuing cross-map taxi "
+                            "(map {} -> {}, node {}, from {} to {})",
+                            bot->GetName(),
+                            bot->GetMapId(),
+                            curDestNode->map_id,
+                            flight->GetCurrentNode(),
+                            data.path.empty() ? 0 : data.path.front(),
+                            data.path.empty() ? 0 : data.path.back());
+
+                        flight->SkipCurrentNode();
+
+                        data.lastFlightProgressTime = now;
+                        data.lastFlightX = node->x;
+                        data.lastFlightY = node->y;
+                        data.lastFlightZ = node->z;
+
+                        bot->TeleportTo(
+                            curDestNode->map_id,
+                            node->x,
+                            node->y,
+                            node->z,
+                            bot->GetOrientation(),
+                            TELE_TO_NOT_LEAVE_TAXI);
+
+                        return true;
+                    }
+                }
+            }
+        }
+
+        float dx = bot->GetPositionX() - data.lastFlightX;
+        float dy = bot->GetPositionY() - data.lastFlightY;
+        float dz = bot->GetPositionZ() - data.lastFlightZ;
+        float movedSq = dx * dx + dy * dy + dz * dz;
+
+        // Three yards of movement proves the taxi spline is still advancing.
+        if (movedSq >= 9.0f)
+        {
+            data.lastFlightProgressTime = now;
+            data.lastFlightX = bot->GetPositionX();
+            data.lastFlightY = bot->GetPositionY();
+            data.lastFlightZ = bot->GetPositionZ();
+            return false;
+        }
+
+        // Recover a taxi that remains effectively motionless for 20 seconds
+        // while the core still reports the bot as being in flight.
+        if (data.lastFlightProgressTime &&
+            getMSTimeDiff(data.lastFlightProgressTime, now) >= 20000)
+        {
+            LOG_WARN(
+                "playerbots",
+                "[New RPG] {} taxi flight stalled while in-flight "
+                "(from {} to {}), recovering",
+                bot->GetName(),
+                data.path.empty() ? 0 : data.path.front(),
+                data.path.empty() ? 0 : data.path.back());
+
+            bot->GetMotionMaster()->Clear();
+            bot->CleanupAfterTaxiFlight();
+
+            if (bot->IsMounted())
+                bot->Dismount();
+
+            info.ChangeToIdle();
+            return true;
+        }
+
         return false;
     }
 

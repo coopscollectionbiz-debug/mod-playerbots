@@ -60,6 +60,13 @@ struct NewRpgInfo
         std::vector<uint32> path;
         bool inFlight{false};
         uint32 taxiStartTime{0};
+
+        // Track in-flight progress so a stalled taxi spline cannot leave
+        // the bot permanently stuck on a gryphon.
+        uint32 lastFlightProgressTime{0};
+        float lastFlightX{0.0f};
+        float lastFlightY{0.0f};
+        float lastFlightZ{0.0f};
     };
     // RPG_REST
     struct Rest
