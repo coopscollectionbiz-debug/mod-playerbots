@@ -2899,7 +2899,58 @@ void RandomPlayerbotMgr::OnPlayerLogout(Player* player)
         PlayerbotAI* botAI = GET_PLAYERBOT_AI(bot);
         if (botAI && player == botAI->GetMaster())
         {
+            // A real player logging out can otherwise leave behind a
+            // persistent bot-only party that blocks the player from
+            // recovering/reforming the group on login.
+            //
+            // Preserve the group if another real-player account is still
+            // a member, but dissolve this bot's participation when the
+            // departing player was the last real player in the group.
+            Group* group = bot->GetGroup();
+
+            if (group && IsRandomBot(bot) && !bot->InBattleground())
+            {
+                bool hasOtherRealPlayer = false;
+
+                Group::MemberSlotList const& slots =
+                    group->GetMemberSlots();
+
+                for (Group::MemberSlotList::const_iterator memberIt =
+                         slots.begin();
+                     memberIt != slots.end();
+                     ++memberIt)
+                {
+                    ObjectGuid memberGuid = memberIt->guid;
+
+                    if (memberGuid == player->GetGUID())
+                        continue;
+
+                    uint32 account =
+                        sCharacterCache->GetCharacterAccountIdByGuid(
+                            memberGuid);
+
+                    if (!sPlayerbotAIConfig.IsInRandomAccountList(account))
+                    {
+                        hasOtherRealPlayer = true;
+                        break;
+                    }
+                }
+
+                if (!hasOtherRealPlayer)
+                {
+                    LOG_INFO(
+                        "playerbots",
+                        "Player {} logged out; removing bot {} from "
+                        "bot-only remnant group",
+                        player->GetName(),
+                        bot->GetName());
+
+                    botAI->LeaveOrDisbandGroup();
+                }
+            }
+
             botAI->SetMaster(nullptr);
+
             if (!bot->InBattleground())
             {
                 botAI->ResetStrategies();
