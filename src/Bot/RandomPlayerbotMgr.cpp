@@ -376,6 +376,49 @@ void RandomPlayerbotMgr::UpdateAIInternal(uint32 /*elapsed*/, bool /*minimal*/)
             sRandomPlayerbotMgr.CheckPlayers();
     }
 
+    // Keep active capitals populated while real players remain there.
+    // PopulateCityForPlayer performs its own real-player validation,
+    // population check, global CityLife cap, and progression-safety checks.
+    //
+    // Rechecking periodically allows the city to refill naturally when
+    // CityLife bots leave for groups, LFG, combat, or other gameplay.
+    if (!players.empty() &&
+        (!CityLifeCheckTimer ||
+         time(nullptr) > (CityLifeCheckTimer + 45)))
+    {
+        CityLifeCheckTimer = time(nullptr);
+
+        // Reconcile each city/faction pair only once per pass. This avoids
+        // repeating the full population scan when several real players are
+        // standing in the same capital, while still allowing Alliance and
+        // Horde populations to be maintained independently in neutral cities.
+        std::unordered_set<uint64> checkedCityTeams;
+
+        for (Player* player : players)
+        {
+            if (!player ||
+                !player->IsInWorld() ||
+                !player->GetSession() ||
+                player->GetSession()->IsBot())
+            {
+                continue;
+            }
+
+            uint32 cityZoneId = player->GetZoneId();
+
+            uint64 cityTeamKey =
+                (static_cast<uint64>(cityZoneId) << 32) |
+                static_cast<uint64>(player->GetTeamId());
+
+            if (!checkedCityTeams.insert(cityTeamKey).second)
+                continue;
+
+            PopulateCityForPlayer(
+                player,
+                cityZoneId);
+        }
+    }
+
     if (sPlayerbotAIConfig.randomBotJoinBG /* && !players.empty()*/)
     {
         if (time(nullptr) > (BgCheckTimer + 35))
@@ -2537,36 +2580,36 @@ void RandomPlayerbotMgr::PopulateCityForPlayer(
     {
         case 1519: // Stormwind City
         case 1637: // Orgrimmar
-            cityTarget = 150;
+            cityTarget = 100;
             break;
 
         case 4395: // Dalaran
             if (player->GetLevel() < 68)
                 return;
 
-            cityTarget = 150;
+            cityTarget = 100;
             break;
 
         case 1537: // Ironforge
         case 1497: // Undercity
-            cityTarget = 150;
+            cityTarget = 100;
             break;
 
         case 3703: // Shattrath City
             if (player->GetLevel() < 58)
                 return;
 
-            cityTarget = 150;
+            cityTarget = 100;
             break;
 
         case 1657: // Darnassus
         case 1638: // Thunder Bluff
-            cityTarget = 150;
+            cityTarget = 100;
             break;
 
         case 3557: // The Exodar
         case 3487: // Silvermoon City
-            cityTarget = 150;
+            cityTarget = 100;
             break;
 
         default:

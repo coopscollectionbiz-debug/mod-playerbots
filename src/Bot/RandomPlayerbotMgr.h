@@ -217,6 +217,7 @@ private:
         this->BgCheckTimer = 0;
         this->LfgCheckTimer = 0;
         this->PlayersCheckTimer = 0;
+        this->CityLifeCheckTimer = 0;
     }
 
     ~RandomPlayerbotMgr() = default;
@@ -243,6 +244,7 @@ private:
     time_t BgCheckTimer;
     time_t LfgCheckTimer;
     time_t PlayersCheckTimer;
+    time_t CityLifeCheckTimer;
     time_t RealPlayerLastTimeSeen = 0;
     time_t DelayLoginBotsTimer;
     time_t printStatsTimer;

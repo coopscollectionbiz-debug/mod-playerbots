@@ -13,6 +13,8 @@
 #include "Playerbots.h"
 #include "SharedDefines.h"
 
+#include <ctime>
+
 static bool IsBlessingTargetCandidate(Player* bot, Player* player)
 {
     if (!player || !player->IsAlive() || player->GetMapId() != bot->GetMapId())
@@ -43,10 +45,60 @@ static bool IsGreaterBlessingMode(Player* bot)
     return ai::gbless::IsEligibleGroupForAutoBlessings(bot->GetGroup());
 }
 
+static Player* GetDriveByBlessingTarget(Player* bot, PlayerbotAI* botAI)
+{
+    ObjectGuid guid =
+        botAI->GetAiObjectContext()
+            ->GetValue<ObjectGuid>("drive by party target")
+            ->Get();
+
+    if (!guid)
+        return nullptr;
+
+    time_t until =
+        botAI->GetAiObjectContext()
+            ->GetValue<time_t>("drive by party target until")
+            ->Get();
+
+    if (!until || time(nullptr) >= until)
+        return nullptr;
+
+    Player* player = botAI->GetPlayer(guid);
+    if (!player || player == bot)
+        return nullptr;
+
+    if (!player->IsInWorld() ||
+        player->IsGameMaster() ||
+        GET_PLAYERBOT_AI(player) ||
+        !player->IsFriendlyTo(bot))
+        return nullptr;
+
+    if (!IsBlessingTargetCandidate(bot, player))
+        return nullptr;
+
+    return player;
+}
+
+static bool IsDriveByBlessingTarget(
+    Player* bot, PlayerbotAI* botAI, Player* player)
+{
+    Player* driveBy = GetDriveByBlessingTarget(bot, botAI);
+    return driveBy && player && driveBy->GetGUID() == player->GetGUID();
+}
+
 template <typename Predicate>
 static Unit* FindBlessingTarget(
     Player* bot, PlayerbotAI* botAI, Predicate&& predicate)
 {
+    // A nearby human temporarily injected by the drive-by buff system
+    // should use the exact same Paladin blessing-selection predicate as
+    // a normal party member.
+    if (Player* driveBy = GetDriveByBlessingTarget(bot, botAI))
+    {
+        if (predicate(driveBy))
+            return driveBy;
+    }
+
     std::vector<Player*> masters;
     std::vector<Player*> healers;
     std::vector<Player*> tanks;
@@ -315,7 +367,9 @@ bool CastBlessingOfWisdomOnPartyAction::Execute(Event /*event*/)
     Player* targetPlayer = target->ToPlayer();
 
     if (Group* group = bot->GetGroup())
-        if (targetPlayer && !group->IsMember(targetPlayer->GetGUID()))
+        if (targetPlayer &&
+            !group->IsMember(targetPlayer->GetGUID()) &&
+            !IsDriveByBlessingTarget(bot, botAI, targetPlayer))
             return false;
 
     if (botAI->HasStrategy("bwisdom", BOT_STATE_NON_COMBAT) &&
@@ -358,7 +412,9 @@ bool CastBlessingOfSanctuaryOnPartyAction::Execute(Event /*event*/)
 
     if (Group* group = bot->GetGroup())
     {
-        if (targetPlayer && !group->IsMember(targetPlayer->GetGUID()))
+        if (targetPlayer &&
+            !group->IsMember(targetPlayer->GetGUID()) &&
+            !IsDriveByBlessingTarget(bot, botAI, targetPlayer))
         {
             target = bot;
             targetPlayer = bot->ToPlayer();
@@ -431,12 +487,27 @@ Unit* CastBlessingOfSanctuaryOnPartyAction::GetTarget()
     if (!bot->HasSpell(ai::paladin::SPELL_BLESSING_OF_SANCTUARY))
         return nullptr;
 
-    return FindBlessingTarget(bot, botAI, [&](Player* player)
+    Group* group = bot->GetGroup();
+    if (!group)
+        return nullptr;
+
+    for (GroupReference* ref = group->GetFirstMember(); ref; ref = ref->next())
     {
-        return IsTankRole(player) &&
-               !HasBlessingAura(botAI, player,
-                   { "blessing of sanctuary", "greater blessing of sanctuary" });
-    });
+        Player* player = ref->GetSource();
+        if (!IsBlessingTargetCandidate(bot, player))
+            continue;
+
+        if (!IsTankRole(player))
+            continue;
+
+        if (HasBlessingAura(botAI, player,
+                { "blessing of sanctuary", "greater blessing of sanctuary" }))
+            continue;
+
+        return player;
+    }
+
+    return nullptr;
 }
 
 Value<Unit*>* CastBlessingOfKingsOnPartyAction::GetTargetValue()
@@ -493,7 +564,11 @@ bool CastBlessingOfKingsOnPartyAction::Execute(Event /*event*/)
         return false;
 
     Group* group = bot->GetGroup();
-    if (!group)
+    Player* targetPlayer = target->ToPlayer();
+    bool const isDriveBy =
+        targetPlayer && IsDriveByBlessingTarget(bot, botAI, targetPlayer);
+
+    if (!group && !isDriveBy)
         return false;
 
     if (botAI->HasStrategy("bkings", BOT_STATE_NON_COMBAT) &&
@@ -503,8 +578,10 @@ bool CastBlessingOfKingsOnPartyAction::Execute(Event /*event*/)
             return false;
     }
 
-    Player* targetPlayer = target->ToPlayer();
-    if (targetPlayer && !group->IsMember(targetPlayer->GetGUID()))
+    if (group &&
+        targetPlayer &&
+        !group->IsMember(targetPlayer->GetGUID()) &&
+        !isDriveBy)
         return false;
 
     const bool hasBwisdom = botAI->HasStrategy("bwisdom", BOT_STATE_NON_COMBAT);

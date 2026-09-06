@@ -88,6 +88,13 @@ struct CityLife
     uint32 lastReach{0};
     uint32 idleStart{0};
     uint32 idleDuration{0};
+
+    // Current congregation-hub residency.
+    // CityLife periodically chooses another safe hub in the same capital
+    // so bots circulate through the city instead of staying permanently
+    // anchored to one service-NPC pocket.
+    uint32 hubStart{0};
+    uint32 hubDuration{0};
 };
 
 struct Idle

@@ -26,6 +26,21 @@ bool CrusaderAuraTrigger::IsActive()
     return AI_VALUE2(bool, "mounted", "self target") && !botAI->HasAura("crusader aura", target);
 }
 
+bool BlessingOfKingsOnPartyTrigger::IsActive()
+{
+    CastBlessingOfKingsOnPartyAction action(botAI);
+    Unit* target = action.GetTarget();
+
+    if (!target)
+        return false;
+
+    if (ai::buff::ShouldDeferPartyBuffEvaluationForRecentLogin(
+            bot, target, "blessing of kings"))
+        return false;
+
+    return true;
+}
+
 bool BlessingTrigger::IsActive()
 {
     Unit* target = GetTarget();

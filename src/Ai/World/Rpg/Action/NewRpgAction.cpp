@@ -9,6 +9,7 @@
 #include "AreaDefines.h"
 #include "BroadcastHelper.h"
 #include "ChatHelper.h"
+#include "Creature.h"
 #include "DBCStores.h"
 #include "GossipDef.h"
 #include "IVMapMgr.h"
@@ -504,6 +505,71 @@ bool NewRpgCityLifeAction::Execute(Event /*event*/)
     // Without this leash, repeatedly selecting NPCs from the bot's
     // current position creates a random walk that eventually spreads
     // the population across the entire capital.
+    // Periodically rotate to another congregation hub in the same capital.
+    // cityZoneId remains the permanent city assignment; cityPos is the
+    // bot's current neighborhood/hangout inside that city.
+    if (!data.hubStart)
+    {
+        data.hubStart = getMSTime();
+        data.hubDuration = urand(120000, 360000);
+    }
+    else if (GetMSTimeDiffToNow(data.hubStart) >= data.hubDuration)
+    {
+        data.hubStart = getMSTime();
+        data.hubDuration = urand(120000, 360000);
+
+        // Some players remain in the same neighborhood for another cycle.
+        // Others pick a new service hub elsewhere in the capital.
+        if (urand(1, 100) > 40)
+        {
+            constexpr float cityLifeHubMoveMinDistance = 50.0f;
+            constexpr float cityLifeHubMoveMinDistanceSq =
+                cityLifeHubMoveMinDistance * cityLifeHubMoveMinDistance;
+
+            bool foundDifferentHub = false;
+            WorldLocation newHub;
+
+            // The hub pool is weighted, so repeated selections may land near
+            // the current service area. Try several times to get a visibly
+            // different neighborhood before deciding to remain here.
+            for (uint8 attempt = 0; attempt < 6; ++attempt)
+            {
+                WorldLocation candidateLocation;
+
+                if (!sTravelMgr.GetCityLifeLocationForZone(
+                        bot,
+                        data.cityZoneId,
+                        candidateLocation))
+                {
+                    break;
+                }
+
+                WorldPosition candidate(candidateLocation);
+
+                if (candidate.GetMapId() != data.cityPos.GetMapId())
+                    continue;
+
+                if (candidate.sqDistance2d(data.cityPos) <
+                    cityLifeHubMoveMinDistanceSq)
+                {
+                    continue;
+                }
+
+                newHub = candidateLocation;
+                foundDifferentHub = true;
+                break;
+            }
+
+            if (foundDifferentHub)
+            {
+                data.cityPos = WorldPosition(newHub);
+                data.npcOrGo = ObjectGuid();
+                data.lastReach = 0;
+                data.idleStart = 0;
+                data.idleDuration = 0;
+            }
+        }
+    }
     constexpr float cityLifeHomeRadius = 60.0f;
     constexpr float cityLifeLeashRadius = 75.0f;
 
@@ -545,6 +611,21 @@ bool NewRpgCityLifeAction::Execute(Event /*event*/)
         if (npcOrGo.IsEmpty())
             return MoveRandomNear(10.0f);
 
+        // Do not turn roaming/waypoint NPCs into CityLife destinations.
+        // Otherwise many bots can latch onto the same live patrol GUID and
+        // form a procession behind NPCs such as city heralds.
+        if (WorldObject* selectedObject =
+                ObjectAccessor::GetWorldObject(*bot, npcOrGo))
+        {
+            if (Creature* creature = selectedObject->ToCreature())
+            {
+                if (creature->GetDefaultMovementType() !=
+                    IDLE_MOTION_TYPE)
+                {
+                    return MoveRandomNear(10.0f);
+                }
+            }
+        }
         data.npcOrGo = npcOrGo;
         data.lastReach = 0;
         data.idleStart = 0;
@@ -588,6 +669,17 @@ bool NewRpgCityLifeAction::Execute(Event /*event*/)
         return true;
     }
 
+    // Also protect against an already-selected creature being a patrol.
+    if (Creature* creature = object->ToCreature())
+    {
+        if (creature->GetDefaultMovementType() !=
+            IDLE_MOTION_TYPE)
+        {
+            data.npcOrGo = ObjectGuid();
+            data.lastReach = 0;
+            return MoveRandomNear(10.0f);
+        }
+    }
     if (MoveWorldObjectTo(data.npcOrGo))
         return true;
 

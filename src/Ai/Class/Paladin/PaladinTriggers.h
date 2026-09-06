@@ -206,6 +206,8 @@ public:
     {
         spell = "blessing of kings";
     }
+
+    bool IsActive() override;
 };
 
 class BlessingOfWisdomOnPartyTrigger : public BlessingOnPartyTrigger

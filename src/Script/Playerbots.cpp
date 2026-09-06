@@ -110,6 +110,21 @@ bool IsLikelyPlayerbotWhisperControlCommand(
     if (msg.empty())
         return false;
 
+
+    if (!sPlayerbotAIConfig.commandPrefix.empty())
+    {
+        std::string prefix =
+            toLowerAscii(sPlayerbotAIConfig.commandPrefix);
+
+        if (msg.rfind(prefix, 0) != 0)
+            return false;
+
+        msg = trim(msg.substr(prefix.size()));
+
+        if (msg.empty())
+            return false;
+    }
+
     static std::unordered_set<std::string>
         exactCommands = {
             "u", "c", "e", "s", "b", "r", "t",
@@ -512,6 +527,11 @@ public:
         if (IsLikelyPlayerbotWhisperControlCommand(msg))
         {
             botAI->HandleCommand(type, msg, player);
+
+            // Mechanical PlayerBots whispers have already been handled.
+            // Consume them here so mod-llm-chatter does not also treat
+            // commands such as @formation, @ll, or @co +resto as conversation.
+            return false;
         }
 
         // hotfix; otherwise the server will crash when whispering logout
@@ -667,16 +687,16 @@ public:
         // especially if you are distributing a repack or hosting a public server
         // e.g. you can replace the URL with your own repository,
         // but it should be publicly accessible and include all modifications you've made
-        LOG_INFO("server.loading", "╔══════════════════════════════════════════════════════════╗");
-        LOG_INFO("server.loading", "║                                                          ║");
-        LOG_INFO("server.loading", "║              AzerothCore Playerbots Module               ║");
-        LOG_INFO("server.loading", "║                                                          ║");
-        LOG_INFO("server.loading", "╟──────────────────────────────────────────────────────────╢");
-        LOG_INFO("server.loading", "║     mod-playerbots is a community-driven open-source     ║");
-        LOG_INFO("server.loading", "║  project based on AzerothCore, licensed under AGPLv3.0   ║");
-        LOG_INFO("server.loading", "╟──────────────────────────────────────────────────────────╢");
-        LOG_INFO("server.loading", "║      https://github.com/mod-playerbots/mod-playerbots    ║");
-        LOG_INFO("server.loading", "╚══════════════════════════════════════════════════════════╝");
+        LOG_INFO("server.loading", "â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—");
+        LOG_INFO("server.loading", "â•‘                                                          â•‘");
+        LOG_INFO("server.loading", "â•‘              AzerothCore Playerbots Module               â•‘");
+        LOG_INFO("server.loading", "â•‘                                                          â•‘");
+        LOG_INFO("server.loading", "â•Ÿâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â•¢");
+        LOG_INFO("server.loading", "â•‘     mod-playerbots is a community-driven open-source     â•‘");
+        LOG_INFO("server.loading", "â•‘  project based on AzerothCore, licensed under AGPLv3.0   â•‘");
+        LOG_INFO("server.loading", "â•Ÿâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â•¢");
+        LOG_INFO("server.loading", "â•‘      https://github.com/mod-playerbots/mod-playerbots    â•‘");
+        LOG_INFO("server.loading", "â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•");
 
         uint32 oldMSTime = getMSTime();
 
