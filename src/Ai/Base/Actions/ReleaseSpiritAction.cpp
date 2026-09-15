@@ -167,23 +167,100 @@ bool AutoReleaseSpiritAction::HandleBattlegroundSpiritHealer()
 
 bool AutoReleaseSpiritAction::ShouldAutoRelease() const
 {
-    if (!bot->GetGroup())
+    Group* group = bot->GetGroup();
+    if (!group)
+    {
+        m_dungeonRezWaitStart = 0;
         return true;
+    }
 
     Player* groupLeader = botAI->GetGroupLeader();
     if (!groupLeader || groupLeader == bot)
+    {
+        m_dungeonRezWaitStart = 0;
         return true;
+    }
 
     if (!IsRealPlayer(botAI->GetMaster()))
-        return true;
-
-    if (IsRealPlayer(botAI->GetMaster()) &&
-        groupLeader->GetMapId() == bot->GetMapId() &&
-        bot->GetMap() &&
-        (bot->GetMap()->IsRaid() || bot->GetMap()->IsDungeon()))
     {
-        return false;
+        m_dungeonRezWaitStart = 0;
+        return true;
     }
+
+    // Coop customization: in dungeons and raids, give any living group
+    // member who actually knows a resurrection spell a short opportunity
+    // to resurrect this bot. If no such member remains alive, release
+    // immediately so mod-easy-respawn can resurrect the bot at the
+    // instance entrance. Do not count self-resurrection spells here.
+    if (bot->GetMap() && (bot->GetMap()->IsDungeon() || bot->GetMap()->IsRaid()))
+    {
+        // Preserve Soulstone/Reincarnation handling by the existing
+        // self-resurrect action rather than racing it with auto release.
+        if (bot->GetUInt32Value(PLAYER_SELF_RES_SPELL))
+        {
+            m_dungeonRezWaitStart = 0;
+            return false;
+        }
+
+        bool livingResurrector = false;
+
+        for (GroupReference* ref = group->GetFirstMember(); ref; ref = ref->next())
+        {
+            Player* member = ref->GetSource();
+            if (!member || member == bot || !member->IsAlive() || member->IsGameMaster())
+                continue;
+
+            if (member->GetMapId() != bot->GetMapId())
+                continue;
+
+            for (PlayerSpellMap::const_iterator itr = member->GetSpellMap().begin();
+                 itr != member->GetSpellMap().end(); ++itr)
+            {
+                if (!itr->second || itr->second->State == PLAYERSPELL_REMOVED || !itr->second->Active)
+                    continue;
+
+                SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(itr->first);
+                if (!spellInfo || spellInfo->IsPassive())
+                    continue;
+
+                for (uint8 effect = 0; effect < MAX_SPELL_EFFECTS; ++effect)
+                {
+                    if (spellInfo->Effects[effect].Effect == SPELL_EFFECT_RESURRECT ||
+                        spellInfo->Effects[effect].Effect == SPELL_EFFECT_RESURRECT_NEW)
+                    {
+                        livingResurrector = true;
+                        break;
+                    }
+                }
+
+                if (livingResurrector)
+                    break;
+            }
+
+            if (livingResurrector)
+                break;
+        }
+
+        if (!livingResurrector)
+        {
+            m_dungeonRezWaitStart = 0;
+            return true;
+        }
+
+        constexpr time_t RESURRECTION_WAIT = 90;
+        const time_t now = time(nullptr);
+
+        if (!m_dungeonRezWaitStart)
+            m_dungeonRezWaitStart = now;
+
+        if (now - m_dungeonRezWaitStart < RESURRECTION_WAIT)
+            return false;
+
+        m_dungeonRezWaitStart = 0;
+        return true;
+    }
+
+    m_dungeonRezWaitStart = 0;
 
     return ServerFacade::instance().IsDistanceGreaterThan(
         AI_VALUE2(float, "distance", "group leader"),

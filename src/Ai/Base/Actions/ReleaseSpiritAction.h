@@ -40,6 +40,11 @@ private:
     bool ShouldDelayBattlegroundRelease() const;
 
     time_t m_bgGossipTime = 0;
+
+    // Coop customization: while dead in a dungeon/raid, give a living
+    // group member with a resurrection spell a short chance to resurrect
+    // the bot before Easy Respawn is allowed to handle the release.
+    mutable time_t m_dungeonRezWaitStart = 0;
 };
 
 class RepopAction : public SpiritHealerAction
