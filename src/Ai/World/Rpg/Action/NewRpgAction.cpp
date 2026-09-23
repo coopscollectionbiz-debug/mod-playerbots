@@ -5,14 +5,14 @@
  */
 
 #include "NewRpgAction.h"
-#include "LFGMgr.h"
 #include "AreaDefines.h"
 #include "BroadcastHelper.h"
 #include "ChatHelper.h"
-#include "Creature.h"
 #include "DBCStores.h"
 #include "GossipDef.h"
 #include "IVMapMgr.h"
+#include "MotionMaster.h"
+#include "MoveSpline.h"
 #include "NewRpgInfo.h"
 #include "NewRpgStrategy.h"
 #include "Object.h"
@@ -220,7 +220,7 @@ bool StartRpgDoQuestAction::Execute(Event event)
     std::string const text = event.getParam();
     PlayerbotChatHandler ch(owner);
     uint32 questId = ch.extractQuestId(text);
-    const Quest* quest = sObjectMgr->GetQuestTemplate(questId);
+    Quest const* quest = sObjectMgr->GetQuestTemplate(questId);
     if (quest)
     {
         botAI->rpgInfo.ChangeToDoQuest(questId, quest);
@@ -239,7 +239,7 @@ bool NewRpgStatusUpdateAction::Execute(Event /*event*/)
     {
         case RPG_IDLE:
             return RandomChangeStatus({RPG_GO_CAMP, RPG_GO_GRIND, RPG_WANDER_RANDOM, RPG_WANDER_NPC, RPG_DO_QUEST,
-                               RPG_TRAVEL_FLIGHT, RPG_REST, RPG_OUTDOOR_PVP, RPG_CITY_LIFE});
+                                       RPG_TRAVEL_FLIGHT, RPG_REST, RPG_OUTDOOR_PVP});
 
         case RPG_GO_GRIND:
         {
@@ -278,26 +278,15 @@ bool NewRpgStatusUpdateAction::Execute(Event /*event*/)
             break;
         }
         case RPG_WANDER_NPC:
-{
-    if (info.HasStatusPersisted(statusWanderNpcDuration))
-    {
-        info.ChangeToIdle();
-        return true;
-    }
-    break;
-}
-
-case RPG_CITY_LIFE:
-{
-    if (info.HasStatusPersisted(statusCityLifeDuration))
-    {
-        info.ChangeToIdle();
-        return true;
-    }
-    break;
-}
-
-case RPG_DO_QUEST:
+        {
+            if (info.HasStatusPersisted(statusWanderNpcDuration))
+            {
+                info.ChangeToIdle();
+                return true;
+            }
+            break;
+        }
+        case RPG_DO_QUEST:
         {
             // DO_QUEST -> IDLE
             if (info.HasStatusPersisted(statusDoQuestDuration))
@@ -385,6 +374,9 @@ bool NewRpgWanderRandomAction::Execute(Event /*event*/)
 
 bool NewRpgWanderNpcAction::Execute(Event /*event*/)
 {
+    if (SearchQuestGiverAndAcceptOrReward())
+        return true;
+
     NewRpgInfo& info = botAI->rpgInfo;
     auto* dataPtr = std::get_if<NewRpgInfo::WanderNpc>(&info.data);
     if (!dataPtr)
@@ -435,258 +427,6 @@ bool NewRpgWanderNpcAction::Execute(Event /*event*/)
     return true;
 }
 
-bool NewRpgCityLifeAction::Execute(Event /*event*/)
-{
-    // Dungeon Finder owns the bot once it queues or joins a group.
-    // Stop City Life before it can move or teleport the bot elsewhere.
-    if (bot->GetGroup() ||
-        sLFGMgr->GetState(bot->GetGUID()) != lfg::LFG_STATE_NONE ||
-        bot->IsBeingTeleported())
-    {
-        botAI->rpgInfo.ChangeToIdle();
-        return true;
-    }
-
-    // Nearby player conversation temporarily owns autonomous
-    // CityLife movement. Chatter has already paused any current
-    // point generator; while that social hold remains active,
-    // do not create or replace CityLife movement underneath it.
-    //
-    // This is intentionally scoped to CityLife rather than the
-    // generic movement layer so explicit movement, recovery,
-    // combat, grouping, and other RPG states remain unaffected.
-    if (botAI->GetSocialPauseUntil() > time(nullptr))
-        return false;
-
-    NewRpgInfo& info = botAI->rpgInfo;
-
-    auto* dataPtr = std::get_if<NewRpgInfo::CityLife>(&info.data);
-    if (!dataPtr)
-        return false;
-
-    auto& data = *dataPtr;
-
-    // If the bot has not yet reached its chosen capital, place it near
-    // the capital banker selected by TravelMgr.
-    if (bot->GetMapId() != data.cityPos.GetMapId() ||
-        bot->GetZoneId() != data.cityZoneId)
-    {
-        bot->TeleportTo(
-            data.cityPos.GetMapId(),
-            data.cityPos.GetPositionX(),
-            data.cityPos.GetPositionY(),
-            data.cityPos.GetPositionZ(),
-            data.cityPos.GetOrientation()
-        );
-
-        data.npcOrGo = ObjectGuid();
-        data.lastReach = 0;
-        data.idleStart = 0;
-        data.idleDuration = 0;
-
-        return true;
-    }
-
-    // A large share of real players in capitals simply stand around.
-    // Keep roughly 60% of CityLife cycles stationary for 20-75 seconds.
-    if (data.idleStart)
-    {
-        if (GetMSTimeDiffToNow(data.idleStart) <
-            data.idleDuration)
-        {
-            return false;
-        }
-
-        data.idleStart = 0;
-        data.idleDuration = 0;
-    }
-
-    // Keep CityLife centered on its assigned congregation hub.
-    // Without this leash, repeatedly selecting NPCs from the bot's
-    // current position creates a random walk that eventually spreads
-    // the population across the entire capital.
-    // Periodically rotate to another congregation hub in the same capital.
-    // cityZoneId remains the permanent city assignment; cityPos is the
-    // bot's current neighborhood/hangout inside that city.
-    if (!data.hubStart)
-    {
-        data.hubStart = getMSTime();
-        data.hubDuration = urand(120000, 360000);
-    }
-    else if (GetMSTimeDiffToNow(data.hubStart) >= data.hubDuration)
-    {
-        data.hubStart = getMSTime();
-        data.hubDuration = urand(120000, 360000);
-
-        // Some players remain in the same neighborhood for another cycle.
-        // Others pick a new service hub elsewhere in the capital.
-        if (urand(1, 100) > 40)
-        {
-            constexpr float cityLifeHubMoveMinDistance = 50.0f;
-            constexpr float cityLifeHubMoveMinDistanceSq =
-                cityLifeHubMoveMinDistance * cityLifeHubMoveMinDistance;
-
-            bool foundDifferentHub = false;
-            WorldLocation newHub;
-
-            // The hub pool is weighted, so repeated selections may land near
-            // the current service area. Try several times to get a visibly
-            // different neighborhood before deciding to remain here.
-            for (uint8 attempt = 0; attempt < 6; ++attempt)
-            {
-                WorldLocation candidateLocation;
-
-                if (!sTravelMgr.GetCityLifeLocationForZone(
-                        bot,
-                        data.cityZoneId,
-                        candidateLocation))
-                {
-                    break;
-                }
-
-                WorldPosition candidate(candidateLocation);
-
-                if (candidate.GetMapId() != data.cityPos.GetMapId())
-                    continue;
-
-                if (candidate.sqDistance2d(data.cityPos) <
-                    cityLifeHubMoveMinDistanceSq)
-                {
-                    continue;
-                }
-
-                newHub = candidateLocation;
-                foundDifferentHub = true;
-                break;
-            }
-
-            if (foundDifferentHub)
-            {
-                data.cityPos = WorldPosition(newHub);
-                data.npcOrGo = ObjectGuid();
-                data.lastReach = 0;
-                data.idleStart = 0;
-                data.idleDuration = 0;
-            }
-        }
-    }
-    constexpr float cityLifeHomeRadius = 60.0f;
-    constexpr float cityLifeLeashRadius = 75.0f;
-
-    if (bot->GetExactDist(data.cityPos) > cityLifeLeashRadius)
-    {
-        data.npcOrGo = ObjectGuid();
-        data.lastReach = 0;
-
-        if (MoveFarTo(data.cityPos))
-            return true;
-
-        return MoveRandomNear(10.0f);
-    }
-
-    // No current city destination: choose an NPC or game object close
-    // to this bot's assigned congregation hub. Because the bot itself
-    // is kept within the leash above, the distance limit prevents the
-    // interaction loop from progressively walking across the city.
-    if (!data.npcOrGo)
-    {
-        // Most city players spend noticeable stretches simply
-        // standing around rather than constantly walking.
-        if (urand(1, 100) <= 60)
-        {
-            data.idleStart = getMSTime();
-            data.idleDuration =
-                urand(20000, 75000);
-
-            return false;
-        }
-
-        ObjectGuid npcOrGo =
-            ChooseNpcOrGameObjectToInteract(
-                false,
-                cityLifeHomeRadius);
-
-        // A city should normally have many targets. If none are available,
-        // move locally around the hub instead of abandoning City Life.
-        if (npcOrGo.IsEmpty())
-            return MoveRandomNear(10.0f);
-
-        // Do not turn roaming/waypoint NPCs into CityLife destinations.
-        // Otherwise many bots can latch onto the same live patrol GUID and
-        // form a procession behind NPCs such as city heralds.
-        if (WorldObject* selectedObject =
-                ObjectAccessor::GetWorldObject(*bot, npcOrGo))
-        {
-            if (Creature* creature = selectedObject->ToCreature())
-            {
-                if (creature->GetDefaultMovementType() !=
-                    IDLE_MOTION_TYPE)
-                {
-                    return MoveRandomNear(10.0f);
-                }
-            }
-        }
-        data.npcOrGo = npcOrGo;
-        data.lastReach = 0;
-        data.idleStart = 0;
-        data.idleDuration = 0;
-
-        return true;
-    }
-
-    WorldObject* object =
-        ObjectAccessor::GetWorldObject(*bot, data.npcOrGo);
-
-    if (object && IsWithinInteractionDist(object))
-    {
-        if (!data.lastReach)
-        {
-            data.lastReach = getMSTime();
-
-            if (bot->CanInteractWithQuestGiver(object))
-                InteractWithNpcOrGameObjectForQuest(data.npcOrGo);
-
-            return true;
-        }
-
-        // Look like a player actually stopping at the NPC rather than
-        // instantly bouncing between destinations.
-        if (GetMSTimeDiffToNow(data.lastReach) < npcStayTime)
-            return false;
-
-        // Pick another city destination on the next tick.
-        data.npcOrGo = ObjectGuid();
-        data.lastReach = 0;
-
-        return true;
-    }
-
-    // Target disappeared or unloaded: pick another.
-    if (!object)
-    {
-        data.npcOrGo = ObjectGuid();
-        data.lastReach = 0;
-        return true;
-    }
-
-    // Also protect against an already-selected creature being a patrol.
-    if (Creature* creature = object->ToCreature())
-    {
-        if (creature->GetDefaultMovementType() !=
-            IDLE_MOTION_TYPE)
-        {
-            data.npcOrGo = ObjectGuid();
-            data.lastReach = 0;
-            return MoveRandomNear(10.0f);
-        }
-    }
-    if (MoveWorldObjectTo(data.npcOrGo))
-        return true;
-
-    // Pathing hiccup. Move slightly and retry rather than leaving the city.
-    return MoveRandomNear(15.0f);
-}
-
 bool NewRpgDoQuestAction::Execute(Event /*event*/)
 {
     if (SearchQuestGiverAndAcceptOrReward())
@@ -721,7 +461,7 @@ bool NewRpgDoQuestAction::DoIncompleteQuest(NewRpgInfo::DoQuest& data)
         int32 currentObjective = data.objectiveIdx;
         // check if the objective has completed
         Quest const* quest = sObjectMgr->GetQuestTemplate(questId);
-        const QuestStatusData& q_status = bot->getQuestStatusMap().at(questId);
+        QuestStatusData const& q_status = bot->getQuestStatusMap().at(questId);
         bool completed = true;
         if (currentObjective < QUEST_OBJECTIVES_COUNT)
         {
@@ -794,7 +534,7 @@ bool NewRpgDoQuestAction::DoIncompleteQuest(NewRpgInfo::DoQuest& data)
         int32 currentObjective = data.objectiveIdx;
         // check if the objective has progression
         Quest const* quest = sObjectMgr->GetQuestTemplate(questId);
-        const QuestStatusData& q_status = bot->getQuestStatusMap().at(questId);
+        QuestStatusData const& q_status = bot->getQuestStatusMap().at(questId);
         if (currentObjective < QUEST_OBJECTIVES_COUNT)
         {
             if (q_status.CreatureOrGOCount[currentObjective] != 0 && quest->RequiredNpcOrGoCount[currentObjective])
@@ -834,7 +574,7 @@ bool NewRpgDoQuestAction::DoIncompleteQuest(NewRpgInfo::DoQuest& data)
 bool NewRpgDoQuestAction::DoCompletedQuest(NewRpgInfo::DoQuest& data)
 {
     uint32 questId = data.questId;
-    const Quest* quest = data.quest;
+    Quest const* quest = data.quest;
 
     if (data.objectiveIdx != -1)
     {
@@ -905,140 +645,9 @@ bool NewRpgTravelFlightAction::Execute(Event /*event*/)
     auto& data = *dataPtr;
     if (bot->IsInFlight())
     {
-        uint32 now = getMSTime();
-
-        // The taxi has successfully transitioned into actual flight.
-        if (!data.inFlight)
-        {
-            data.inFlight = true;
-            data.taxiStartTime = 0;
-            data.lastFlightProgressTime = now;
-            data.lastFlightX = bot->GetPositionX();
-            data.lastFlightY = bot->GetPositionY();
-            data.lastFlightZ = bot->GetPositionZ();
-            return false;
-        }
-
-        // Playerbots do not send the client CMSG_MOVE_SPLINE_DONE packet
-        // that normally advances a multi-map taxi at a map boundary.
-        // Mirror the core handoff only after this map spline has finished.
-        if (bot->movespline->Finalized())
-        {
-            uint32 curDest = bot->m_taxi.GetTaxiDestination();
-            TaxiNodesEntry const* curDestNode =
-                curDest ? sTaxiNodesStore.LookupEntry(curDest) : nullptr;
-
-            if (curDestNode &&
-                curDestNode->map_id != bot->GetMapId() &&
-                bot->GetMotionMaster()->GetCurrentMovementGeneratorType() ==
-                    FLIGHT_MOTION_TYPE)
-            {
-                if (FlightPathMovementGenerator* flight =
-                        dynamic_cast<FlightPathMovementGenerator*>(
-                            bot->GetMotionMaster()->top()))
-                {
-                    flight->SetCurrentNodeAfterTeleport();
-
-                    if (flight->GetCurrentNode() < flight->GetPath().size())
-                    {
-                        TaxiPathNodeEntry const* node =
-                            flight->GetPath()[flight->GetCurrentNode()];
-
-                        LOG_INFO(
-                            "playerbots",
-                            "[New RPG] {} continuing cross-map taxi "
-                            "(map {} -> {}, node {}, from {} to {})",
-                            bot->GetName(),
-                            bot->GetMapId(),
-                            curDestNode->map_id,
-                            flight->GetCurrentNode(),
-                            data.path.empty() ? 0 : data.path.front(),
-                            data.path.empty() ? 0 : data.path.back());
-
-                        flight->SkipCurrentNode();
-
-                        data.lastFlightProgressTime = now;
-                        data.lastFlightX = node->x;
-                        data.lastFlightY = node->y;
-                        data.lastFlightZ = node->z;
-
-                        bot->TeleportTo(
-                            curDestNode->map_id,
-                            node->x,
-                            node->y,
-                            node->z,
-                            bot->GetOrientation(),
-                            TELE_TO_NOT_LEAVE_TAXI);
-
-                        return true;
-                    }
-                }
-            }
-        }
-
-        float dx = bot->GetPositionX() - data.lastFlightX;
-        float dy = bot->GetPositionY() - data.lastFlightY;
-        float dz = bot->GetPositionZ() - data.lastFlightZ;
-        float movedSq = dx * dx + dy * dy + dz * dz;
-
-        // Three yards of movement proves the taxi spline is still advancing.
-        if (movedSq >= 9.0f)
-        {
-            data.lastFlightProgressTime = now;
-            data.lastFlightX = bot->GetPositionX();
-            data.lastFlightY = bot->GetPositionY();
-            data.lastFlightZ = bot->GetPositionZ();
-            return false;
-        }
-
-        // Recover a taxi that remains effectively motionless for 20 seconds
-        // while the core still reports the bot as being in flight.
-        if (data.lastFlightProgressTime &&
-            getMSTimeDiff(data.lastFlightProgressTime, now) >= 20000)
-        {
-            LOG_WARN(
-                "playerbots",
-                "[New RPG] {} taxi flight stalled while in-flight "
-                "(from {} to {}), recovering",
-                bot->GetName(),
-                data.path.empty() ? 0 : data.path.front(),
-                data.path.empty() ? 0 : data.path.back());
-
-            bot->GetMotionMaster()->Clear();
-            bot->CleanupAfterTaxiFlight();
-
-            if (bot->IsMounted())
-                bot->Dismount();
-
-            info.ChangeToIdle();
-            return true;
-        }
-
+        data.inFlight = true;
+        ContinueCrossMapTaxi();
         return false;
-    }
-
-    // ActivateTaxiPathTo can report success before actual flight movement begins.
-    // Do not repeatedly activate the same taxi while waiting for IsInFlight().
-    // Recover if the transition never completes.
-    if (data.taxiStartTime)
-    {
-        if (getMSTimeDiff(data.taxiStartTime, getMSTime()) < 8000)
-            return false;
-
-        LOG_WARN("playerbots",
-                 "[New RPG] {} taxi start timed out at flight master {} (from {} to {}), recovering",
-                 bot->GetName(), data.flightMasterEntry,
-                 data.path.empty() ? 0 : data.path.front(),
-                 data.path.empty() ? 0 : data.path.back());
-
-        bot->GetMotionMaster()->Clear();
-        bot->CleanupAfterTaxiFlight();
-
-        if (bot->IsMounted())
-            bot->Dismount();
-
-        info.ChangeToIdle();
-        return true;
     }
 
     if (bot->GetDistance(data.flightMasterPos) > INTERACTION_DISTANCE)
@@ -1064,11 +673,49 @@ bool NewRpgTravelFlightAction::Execute(Event /*event*/)
     if (!bot->ActivateTaxiPathTo(nodes, flightMaster, 0))
     {
         LOG_DEBUG("playerbots", "[New RPG] {} active taxi path {} (from {} to {}) failed", bot->GetName(),
-                  flightMaster->GetEntry(), nodes[0], nodes[nodes.size() - 1]);
+                  flightMaster->GetEntry(), nodes.empty() ? 0 : nodes.front(), nodes.empty() ? 0 : nodes.back());
         info.ChangeToIdle();
         return true;
     }
-
-    data.taxiStartTime = getMSTime();
     return true;
+}
+
+void NewRpgTravelFlightAction::ContinueCrossMapTaxi()
+{
+    if (bot->IsBeingTeleported())
+        return;
+
+    if (!bot->movespline->Finalized())
+        return;
+
+    MotionMaster* mm = bot->GetMotionMaster();
+    if (!mm || mm->GetCurrentMovementGeneratorType() != FLIGHT_MOTION_TYPE)
+        return;
+
+    // Check if we are at our destination.
+    uint32 nextDest = bot->m_taxi.GetTaxiDestination();
+    if (!nextDest)
+        return;
+
+    // Confirm next node needs different map.
+    TaxiNodesEntry const* nextNode = sTaxiNodesStore.LookupEntry(nextDest);
+    if (!nextNode || nextNode->map_id == bot->GetMapId())
+        return;
+
+    FlightPathMovementGenerator* flight = dynamic_cast<FlightPathMovementGenerator*>(mm->top());
+    if (!flight)
+        return;
+
+    LOG_DEBUG("playerbots", "[New RPG] {} continuing taxi across map boundary (next node {} on map {})",
+              bot->GetName(), nextDest, nextNode->map_id);
+
+    flight->SetCurrentNodeAfterTeleport();
+
+    if (flight->HasArrived())
+        return;
+
+    TaxiPathNodeEntry const* node = flight->GetPath()[flight->GetCurrentNode()];
+    flight->SkipCurrentNode();
+
+    bot->TeleportTo(nextNode->map_id, node->x, node->y, node->z, bot->GetOrientation(), TELE_TO_NOT_LEAVE_TAXI);
 }

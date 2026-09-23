@@ -221,8 +221,8 @@ private:
 
     ~RandomPlayerbotMgr() = default;
 
-    RandomPlayerbotMgr(const RandomPlayerbotMgr&) = delete;
-    RandomPlayerbotMgr& operator=(const RandomPlayerbotMgr&) = delete;
+    RandomPlayerbotMgr(RandomPlayerbotMgr const&) = delete;
+    RandomPlayerbotMgr& operator=(RandomPlayerbotMgr const&) = delete;
 
     RandomPlayerbotMgr(RandomPlayerbotMgr&&) = delete;
     RandomPlayerbotMgr& operator=(RandomPlayerbotMgr&&) = delete;
@@ -252,6 +252,7 @@ private:
     void RandomTeleport(Player* bot);
     void RandomTeleport(Player* bot, std::vector<WorldLocation>& locs, bool hearth = false);
     uint32 GetZoneLevel(uint16 mapId, float teleX, float teleY, float teleZ);
+    std::vector<WorldLocation> GetPlayerZoneTeleportLocations(std::vector<WorldLocation> const& locs, Player* bot);
     typedef void (RandomPlayerbotMgr::*ConsoleCommandHandler)(Player*);
     std::vector<Player*> players;
 
