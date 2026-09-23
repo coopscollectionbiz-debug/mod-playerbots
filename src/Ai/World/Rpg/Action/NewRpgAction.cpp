@@ -5,9 +5,11 @@
  */
 
 #include "NewRpgAction.h"
+#include "LFGMgr.h"
 #include "AreaDefines.h"
 #include "BroadcastHelper.h"
 #include "ChatHelper.h"
+#include "Creature.h"
 #include "DBCStores.h"
 #include "GossipDef.h"
 #include "IVMapMgr.h"
