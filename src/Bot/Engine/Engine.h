@@ -105,6 +105,17 @@ private:
     void LogAction(char const* format, ...);
     void LogValues();
 
+    // Defer Init() while this engine is executing actions or triggers.
+    int tickDepth = 0;
+    bool initPending = false;
+
+    struct TickScope
+    {
+        explicit TickScope(Engine* engine);
+        ~TickScope();
+        Engine* engine;
+    };
+
     ActionExecutionListeners actionExecutionListeners;
 
 protected:

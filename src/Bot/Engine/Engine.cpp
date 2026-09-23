@@ -114,8 +114,28 @@ void Engine::Reset()
     actionNodeFactories.creators.clear();
 }
 
+Engine::TickScope::TickScope(Engine* engine) : engine(engine)
+{
+    ++engine->tickDepth;
+}
+
+Engine::TickScope::~TickScope()
+{
+    if (--engine->tickDepth == 0 && engine->initPending)
+    {
+        engine->initPending = false;
+        engine->Init();
+    }
+}
+
 void Engine::Init()
 {
+    if (tickDepth > 0)
+    {
+        initPending = true;
+        return;
+    }
+
     Reset();
 
     hasTargetExclusions = false;
@@ -142,6 +162,8 @@ void Engine::Init()
 
 bool Engine::DoNextAction(Unit* /*unit*/, uint32 /*depth*/, bool minimal)
 {
+    TickScope tickScope(this);
+
     LogAction("--- AI Tick ---");
 
     if (sPlayerbotAIConfig.logValuesPerTick)
@@ -309,6 +331,8 @@ bool Engine::MultiplyAndPush(
 
 ActionResult Engine::ExecuteAction(std::string const name, Event event, std::string const qualifier)
 {
+    TickScope tickScope(this);
+
     bool result = false;
 
     ActionNode* actionNode = CreateActionNode(name);
