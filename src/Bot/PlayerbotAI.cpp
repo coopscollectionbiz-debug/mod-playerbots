@@ -6662,9 +6662,11 @@ uint32 PlayerbotAI::GetReactDelay()
         }
     }
 
-    // When in combat, return 5 times the base
+    // When in combat, use a slower reaction window so autonomous
+    // bots are less mechanically perfect during dungeon encounters.
+    // At the default 100 ms base this yields a 1 second combat delay.
     if (bot->IsInCombat() || currentState == BOT_STATE_COMBAT)
-        return base * 5;
+        return base * 10;
 
     // Keep ordinary outdoor random bots responsive between autonomous
     // actions without making them mechanically instant. At the default
