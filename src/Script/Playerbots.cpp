@@ -130,6 +130,7 @@ public:
         PLAYERHOOK_CAN_PLAYER_USE_GUILD_CHAT,
         PLAYERHOOK_CAN_PLAYER_USE_CHANNEL_CHAT,
         PLAYERHOOK_ON_GIVE_EXP,
+        PLAYERHOOK_ON_UPDATE_ZONE,
         PLAYERHOOK_ON_BEFORE_TELEPORT
     }) {}
 
@@ -159,6 +160,18 @@ public:
                     "|cff00ff00Playerbots:|r The server is configured with " + maxAllowedBotCount + " bots.");
             }
         }
+    }
+
+    void OnPlayerUpdateZone(Player* player, uint32 newZone, uint32 /*newArea*/) override
+    {
+        if (!player ||
+            !player->GetSession() ||
+            player->GetSession()->IsBot())
+        {
+            return;
+        }
+
+        sRandomPlayerbotMgr.PopulateCityForPlayer(player, newZone);
     }
 
     bool OnPlayerBeforeTeleport(Player* /*player*/, uint32 /*mapid*/, float /*x*/, float /*y*/, float /*z*/,
