@@ -205,6 +205,7 @@ public:
     bool enableBroadcasts;
     bool enableGreet;
     bool randomBotSayWithoutMaster;
+    bool AnnounceConsumableUse;
 
     uint32 broadcastChanceMaxValue;
 
