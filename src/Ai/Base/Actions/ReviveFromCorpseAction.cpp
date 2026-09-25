@@ -312,6 +312,10 @@ GraveyardStruct const* SpiritHealerAction::GetGrave(bool startZone)
 
 bool SpiritHealerAction::Execute(Event /*event*/)
 {
+    // GetGrave() picks world graveyards; teleporting there from a BG removes the bot from it.
+    if (bot->InBattleground())
+        return false;
+
     Corpse* corpse = bot->GetCorpse();
     if (!corpse)
     {
