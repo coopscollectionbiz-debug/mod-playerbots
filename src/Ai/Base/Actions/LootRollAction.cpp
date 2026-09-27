@@ -9,6 +9,7 @@
 #include "Group.h"
 #include "ItemUsageValue.h"
 #include "LootAction.h"
+#include "ObjectAccessor.h"
 #include "ObjectMgr.h"
 #include "PlayerbotAIConfig.h"
 #include "Playerbots.h"
@@ -25,6 +26,32 @@ bool LootRollAction::Execute(Event /*event*/)
     {
         auto voteItr = roll->playerVote.find(bot->GetGUID());
         if (voteItr == roll->playerVote.end() || voteItr->second != NOT_EMITED_YET)
+            continue;
+
+        // Give eligible real players first priority on loot rolls.
+        // Bots wait until every eligible real player has voted. If any real
+        // player chooses Need, a bot's own Need vote will later be downgraded
+        // to Greed. If there are no eligible real players, bots roll normally.
+        bool waitingForRealPlayer = false;
+        bool realPlayerNeeded = false;
+
+        for (auto const& [playerGuid, playerVote] : roll->playerVote)
+        {
+            Player* player = ObjectAccessor::FindPlayer(playerGuid);
+            if (!IsRealPlayer(player))
+                continue;
+
+            if (playerVote == NOT_EMITED_YET)
+            {
+                waitingForRealPlayer = true;
+                break;
+            }
+
+            if (playerVote == NEED)
+                realPlayerNeeded = true;
+        }
+
+        if (waitingForRealPlayer)
             continue;
 
         ObjectGuid guid = roll->itemGUID;
@@ -87,7 +114,7 @@ bool LootRollAction::Execute(Event /*event*/)
         {
             if (sPlayerbotAIConfig.lootNeedRollLevel == 0 || RollUniqueCheck(proto, bot))
                 vote = PASS;
-            else if (sPlayerbotAIConfig.lootNeedRollLevel == 1)
+            else if (sPlayerbotAIConfig.lootNeedRollLevel == 1 || realPlayerNeeded)
                 vote = GREED;
         }
         else if (vote == GREED && !sPlayerbotAIConfig.lootGreedRollLevel)
