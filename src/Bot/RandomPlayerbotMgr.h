@@ -110,6 +110,8 @@ public:
     uint32 activeBots = 0;
     static bool HandlePlayerbotConsoleCommand(ChatHandler* handler, char const* args);
     bool IsRandomBot(Player* bot);
+    void StampMilestoneGearNormalization(Player* bot);
+    void StampEndgameGearRoll(Player* bot);
     bool IsRandomBot(ObjectGuid::LowType bot);
     bool IsAddclassBot(Player* bot);
     bool IsAddclassBot(ObjectGuid::LowType bot);
@@ -248,6 +250,8 @@ private:
     time_t printStatsTimer;
     uint32 AddRandomBots();
     bool ProcessBot(uint32 bot);
+    void ProcessMilestoneGearNormalization(Player* bot);
+    void ProcessEndgameGear(Player* bot);
     void ScheduleRandomize(uint32 bot, uint32 time);
     void RandomTeleport(Player* bot);
     void RandomTeleport(Player* bot, std::vector<WorldLocation>& locs, bool hearth = false);

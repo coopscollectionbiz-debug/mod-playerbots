@@ -54,6 +54,8 @@ enum spec : uint8
     ROLE_CDPS   = 3
 };*/
 
+class StatsWeightCalculator;
+
 class PlayerbotFactory
 {
 public:
@@ -78,6 +80,12 @@ public:
     void InitClassSpells();
     void InitSpecialSpells();
     void InitEquipment(bool incremental, bool second_chance = false);
+
+    // Try to replace one equipped slot with a legitimate, spec-appropriate
+    // item inside the supplied item-level range.
+    // Used by persistent level-80 simulated endgame progression.
+    bool UpgradeEquipmentSlot(uint8 slot, uint32 minItemLevel, uint32 maxItemLevel);
+
     void InitPet();
     void InitAmmo();
     static uint32 CalcMixedGearScore(uint32 gs, uint32 quality);
@@ -200,9 +208,42 @@ private:
     void ClearAllItems();
     void ResetQuests();
 
+    struct EquipCandidate
+    {
+        uint32 itemId = 0;
+        int32 randomProp = 0;
+    };
+
+    struct SlotChoice
+    {
+        uint32 itemId = 0;
+        int32 randomProp = 0;
+        float score = -1.0f;
+    };
+
+    struct EquipmentSearchOptions
+    {
+        uint32 minItemLevel = 0;
+        uint32 maxItemLevel = 0;
+        uint32 minQuality = ITEM_QUALITY_POOR;
+        uint32 maxQuality = ITEM_QUALITY_HEIRLOOM;
+        bool useFactoryQuality = true;
+    };
+
     std::vector<uint32> GetCurrentGemsCount();
     bool CanEquipArmor(ItemTemplate const* proto);
     bool CanEquipWeapon(ItemTemplate const* proto);
+
+    std::vector<EquipCandidate> BuildSlotCandidates(
+        uint8 slot,
+        StatsWeightCalculator& calculator,
+        bool incremental,
+        EquipmentSearchOptions const& options);
+
+    SlotChoice ChooseBestCandidate(
+        uint8 slot,
+        std::vector<EquipCandidate> const& candidates,
+        StatsWeightCalculator& calculator);
     static void BuildCcBreakTrinketCache();
     uint8 GetPreferredArmorType(uint8 cls);
     void EnchantItem(Item* item);

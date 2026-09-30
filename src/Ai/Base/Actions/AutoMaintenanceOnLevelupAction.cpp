@@ -174,5 +174,25 @@ void AutoMaintenanceOnLevelupAction::AutoUpgradeEquip()
     factory.InitPotions();
 
     if (sPlayerbotAIConfig.autoUpgradeEquip)
-        factory.InitEquipment(true);
+    {
+        uint32 const level = bot->GetLevel();
+        bool const milestoneGearLevel = level == 60 || level == 70 || level == 80;
+
+        // Normal level-ups only replace equipment with substantial upgrades.
+        // At expansion-cap milestones, generate a complete endgame-style set
+        // using the exact-level quality profile configured for that level.
+        factory.InitEquipment(!milestoneGearLevel);
+
+        // A natural milestone refresh already satisfies the milestone gear
+        // state. Stamp the same persistent marker used by the one-time
+        // migration so the manager cannot refresh this bot a second time.
+        if (milestoneGearLevel)
+            sRandomPlayerbotMgr.StampMilestoneGearNormalization(bot);
+
+        // The level-80 milestone refresh is this bot's initial endgame gear
+        // event. Start its real-time progression clock now so it cannot
+        // immediately receive another simulated upgrade event.
+        if (level == 80)
+            sRandomPlayerbotMgr.StampEndgameGearRoll(bot);
+    }
 }

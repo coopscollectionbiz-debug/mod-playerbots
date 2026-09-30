@@ -5,6 +5,7 @@
  */
 
 #include "WarriorTriggers.h"
+#include "Ai/Base/Util/GenericBuffUtils.h"
 #include "Playerbots.h"
 
 namespace
@@ -74,9 +75,6 @@ bool ShatteringThrowTrigger::IsActive()
 
 bool BattleShoutTrigger::IsActive()
 {
-    if (!BuffTrigger::IsActive())
-        return false;
-
     uint32 battleShoutSpellId = AI_VALUE2(uint32, "spell id", "battle shout");
     if (!battleShoutSpellId)
         return false;
@@ -94,11 +92,13 @@ bool BattleShoutTrigger::IsActive()
             break;
         }
     }
+
     if (!bsApValue)
         return false;
 
-    static const float commandingPresenceBonus[]   = {
-        0.05f, 0.10f, 0.15f, 0.20f, 0.25f };
+    static const float commandingPresenceBonus[] = {
+        0.05f, 0.10f, 0.15f, 0.20f, 0.25f
+    };
 
     float cpBonus = 0.0f;
     for (int rank = 4; rank >= 0; --rank)
@@ -109,32 +109,80 @@ bool BattleShoutTrigger::IsActive()
             break;
         }
     }
+
     int32 effectiveBsAp = int32(bsApValue * (1.0f + cpBonus));
 
     static char const* blessingNames[] = {
         "blessing of might", "greater blessing of might", nullptr
     };
-    for (int i = 0; blessingNames[i] != nullptr; ++i)
+
+    // Returns true when this unit would benefit from the warrior refreshing
+    // Battle Shout. An equal-or-stronger Blessing of Might means there is no
+    // reason to refresh Battle Shout for this unit.
+    auto needsBattleShout = [&](Unit* target) -> bool
     {
-        Aura* bom = botAI->GetAura(blessingNames[i], bot);
-        if (!bom)
-            continue;
+        if (!target || !target->IsAlive())
+            return false;
 
-        SpellInfo const* bomInfo = bom->GetSpellInfo();
-        if (!bomInfo)
-            continue;
+        Aura* battleShout = botAI->GetAura("battle shout", target);
+        if (!ai::buff::BuffBelowRefreshTarget(botAI, battleShout, 0))
+            return false;
 
-        for (uint8 eff = 0; eff < MAX_SPELL_EFFECTS; ++eff)
+        for (int i = 0; blessingNames[i] != nullptr; ++i)
         {
-            if (bomInfo->Effects[eff].ApplyAuraName == SPELL_AURA_MOD_ATTACK_POWER)
+            Aura* bom = botAI->GetAura(blessingNames[i], target);
+            if (!bom)
+                continue;
+
+            SpellInfo const* bomInfo = bom->GetSpellInfo();
+            if (!bomInfo)
+                continue;
+
+            for (uint8 eff = 0; eff < MAX_SPELL_EFFECTS; ++eff)
             {
+                if (bomInfo->Effects[eff].ApplyAuraName != SPELL_AURA_MOD_ATTACK_POWER)
+                    continue;
+
                 int32 bomApValue = bomInfo->Effects[eff].BasePoints + 1;
                 if (bomApValue >= effectiveBsAp)
                     return false;
+
                 break;
             }
         }
+
+        return true;
+    };
+
+    // Preserve the original solo/self-refresh behavior.
+    if (needsBattleShout(bot))
+        return true;
+
+    Group* group = bot->GetGroup();
+    if (!group)
+        return false;
+
+    // Battle Shout is an area buff centered on the warrior. If any living
+    // nearby group member would benefit, refresh it even when the warrior's
+    // own long-duration Battle Shout is still active.
+    for (GroupReference* itr = group->GetFirstMember(); itr != nullptr; itr = itr->next())
+    {
+        Player* member = itr->GetSource();
+        if (!member || member == bot)
+            continue;
+
+        if (!member->IsInWorld())
+            continue;
+
+        if (member->GetMap() != bot->GetMap() ||
+            bot->GetDistance(member) > sPlayerbotAIConfig.spellDistance)
+        {
+            continue;
+        }
+
+        if (needsBattleShout(member))
+            return true;
     }
 
-    return true;
+    return false;
 }

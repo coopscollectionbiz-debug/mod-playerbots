@@ -168,6 +168,12 @@ public:
     int32 randomGearScoreLimit;
     bool levelingGearQualityProfiles;
     std::map<uint32, std::array<uint32, 4>> levelingGearQualityWeights;
+    std::map<uint32, uint32> levelingGearMilestoneMaxItemLevel;
+
+    // Persistent level-80 simulated endgame progression.
+    bool endgameGearProgression;
+    uint32 endgameGearRollIntervalHours;
+    uint32 endgameGearMaxItemLevel;
     bool preferClassArmorType;
     bool preferredSpecWeapons;
     float randomBotMinLevelChance, randomBotMaxLevelChance;

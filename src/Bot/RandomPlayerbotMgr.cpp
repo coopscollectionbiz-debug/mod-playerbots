@@ -1368,6 +1368,313 @@ void RandomPlayerbotMgr::ScheduleChangeStrategy(uint32 bot, uint32 time)
     SetEventValue(bot, "change_strategy", 1, time);
 }
 
+namespace
+{
+    enum class EndgameGearResult
+    {
+        None,
+        Small,
+        Medium,
+        Large,
+        Exceptional
+    };
+
+    uint32 GetEndgameUpgradeChancePerTenThousand(uint32 itemLevel)
+    {
+        if (itemLevel <= 213)
+            return 2500; // 25.0%
+
+        if (itemLevel <= 226)
+            return 1800; // 18.0%
+
+        if (itemLevel <= 239)
+            return 1200; // 12.0%
+
+        if (itemLevel <= 251)
+            return 800;  // 8.0%
+
+        if (itemLevel <= 264)
+            return 500;  // 5.0%
+
+        if (itemLevel <= 277)
+            return 300;  // 3.0%
+
+        if (itemLevel <= 283)
+            return 150;  // 1.5%
+
+        return 0;
+    }
+
+    EndgameGearResult RollEndgameGearResult(uint32 itemLevel)
+    {
+        uint32 chance =
+            GetEndgameUpgradeChancePerTenThousand(itemLevel);
+
+        if (chance == 0 ||
+            urand(1, 10000) > chance)
+        {
+            return EndgameGearResult::None;
+        }
+
+        // Distribution among successful opportunities:
+        // 65% small, 22% medium, 10% large, 3% exceptional.
+        uint32 result = urand(1, 100);
+
+        if (result <= 65)
+            return EndgameGearResult::Small;
+
+        if (result <= 87)
+            return EndgameGearResult::Medium;
+
+        if (result <= 97)
+            return EndgameGearResult::Large;
+
+        return EndgameGearResult::Exceptional;
+    }
+
+    uint32 GetEndgameUpgradeCeiling(
+        uint32 currentItemLevel,
+        EndgameGearResult result,
+        uint32 absoluteCap)
+    {
+        uint32 increase = 0;
+
+        switch (result)
+        {
+            case EndgameGearResult::Small:
+                increase = urand(1, 7);
+                break;
+
+            case EndgameGearResult::Medium:
+                increase = urand(8, 14);
+                break;
+
+            case EndgameGearResult::Large:
+                increase = urand(15, 25);
+                break;
+
+            case EndgameGearResult::Exceptional:
+                increase = urand(26, 40);
+                break;
+
+            default:
+                return currentItemLevel;
+        }
+
+        uint32 ceiling =
+            currentItemLevel + increase;
+
+        return std::min(
+            ceiling,
+            absoluteCap);
+    }
+}
+
+void RandomPlayerbotMgr::ProcessMilestoneGearNormalization(Player* bot)
+{
+    if (!bot ||
+        !IsRandomBot(bot))
+    {
+        return;
+    }
+
+    uint32 const level = bot->GetLevel();
+
+    if (level != 60 &&
+        level != 70 &&
+        level != 80)
+    {
+        return;
+    }
+
+    uint32 const botId =
+        bot->GetGUID().GetCounter();
+
+    // Persistent per-character migration marker. Once this exists with a
+    // non-zero value, this bot must never receive this migration again.
+    CachedEvent* normalizationEvent =
+        FindEvent(
+            botId,
+            "milestone_gear_normalized_v1");
+
+    if (normalizationEvent &&
+        normalizationEvent->value != 0)
+    {
+        return;
+    }
+
+    // Wait until the bot is in a safe state. Group membership by itself is
+    // intentionally allowed so grouped bots are not permanently skipped.
+    if (bot->IsInCombat() ||
+        bot->HasUnitState(UNIT_STATE_IN_FLIGHT) ||
+        bot->InBattleground() ||
+        bot->InBattlegroundQueue())
+    {
+        return;
+    }
+
+    // This deliberately uses the same factory path as a natural milestone
+    // level-up. Non-incremental equipment generation gives the existing bot
+    // the new level-60, level-70, or level-80 baseline.
+    PlayerbotFactory factory(
+        bot,
+        level);
+
+    factory.InitEquipment(false);
+
+    // Only mark the milestone state complete after the refresh has executed.
+    StampMilestoneGearNormalization(bot);
+
+    // Level 80 normalization establishes the bot's initial endgame state.
+    // Start its persistent progression clock now so the endgame processor
+    // cannot immediately grant another simulated upgrade event.
+    if (level == 80)
+        StampEndgameGearRoll(bot);
+
+    LOG_INFO(
+        "playerbots",
+        "Bot #{} <{}>: one-time level {} milestone gear normalization complete",
+        botId,
+        bot->GetName(),
+        level);
+}
+
+void RandomPlayerbotMgr::ProcessEndgameGear(Player* bot)
+{
+    if (!bot ||
+        !sPlayerbotAIConfig.endgameGearProgression ||
+        bot->GetLevel() != 80 ||
+        !IsRandomBot(bot))
+    {
+        return;
+    }
+
+    // Gear changes should only happen while the bot is in a safe state.
+    // Being grouped is intentionally allowed.
+    if (bot->IsInCombat() ||
+        bot->HasUnitState(UNIT_STATE_IN_FLIGHT) ||
+        bot->InBattleground() ||
+        bot->InBattlegroundQueue())
+    {
+        return;
+    }
+
+    uint32 const intervalHours =
+        sPlayerbotAIConfig.endgameGearRollIntervalHours;
+
+    // Zero disables scheduled rolls rather than causing a roll every manager pass.
+    if (intervalHours == 0)
+        return;
+
+    uint32 const botId =
+        bot->GetGUID().GetCounter();
+
+    CachedEvent* endgameEvent =
+        FindEvent(
+            botId,
+            "endgame_gear_roll");
+
+    uint32 const now = NowSeconds();
+
+    uint64 const intervalSeconds =
+        static_cast<uint64>(intervalHours) * 60u * 60u;
+
+    bool due =
+        !endgameEvent ||
+        endgameEvent->lastChangeTime == 0;
+
+    if (!due)
+    {
+        uint32 const elapsed =
+            now - endgameEvent->lastChangeTime;
+
+        due =
+            static_cast<uint64>(elapsed) >= intervalSeconds;
+    }
+
+    if (!due)
+        return;
+
+    PlayerbotFactory factory(
+        bot,
+        bot->GetLevel());
+
+    uint32 const absoluteCap =
+        sPlayerbotAIConfig.endgameGearMaxItemLevel;
+
+    uint32 upgradedSlots = 0;
+
+    for (uint8 slot = EQUIPMENT_SLOT_START;
+         slot < EQUIPMENT_SLOT_END;
+         ++slot)
+    {
+        if (slot == EQUIPMENT_SLOT_BODY ||
+            slot == EQUIPMENT_SLOT_TABARD)
+        {
+            continue;
+        }
+
+        Item* currentItem =
+            bot->GetItemByPos(
+                INVENTORY_SLOT_BAG_0,
+                slot);
+
+        if (!currentItem)
+            continue;
+
+        ItemTemplate const* currentProto =
+            currentItem->GetTemplate();
+
+        if (!currentProto)
+            continue;
+
+        uint32 const currentItemLevel =
+            currentProto->ItemLevel;
+
+        if (currentItemLevel >= absoluteCap)
+            continue;
+
+        EndgameGearResult result =
+            RollEndgameGearResult(
+                currentItemLevel);
+
+        if (result == EndgameGearResult::None)
+            continue;
+
+        uint32 const ceiling =
+            GetEndgameUpgradeCeiling(
+                currentItemLevel,
+                result,
+                absoluteCap);
+
+        if (ceiling <= currentItemLevel)
+            continue;
+
+        if (factory.UpgradeEquipmentSlot(
+                slot,
+                currentItemLevel + 1,
+                ceiling))
+        {
+            ++upgradedSlots;
+        }
+    }
+
+    // Consume the event even if no slot upgraded. Failed rolls/searches
+    // never cause immediate retries.
+    SetEventValue(
+        botId,
+        "endgame_gear_roll",
+        1,
+        0);
+
+    LOG_DEBUG(
+        "playerbots",
+        "Bot #{} <{}>: endgame gear event processed, {} slot(s) upgraded",
+        botId,
+        bot->GetName(),
+        upgradedSlots);
+}
+
 bool RandomPlayerbotMgr::ProcessBot(uint32 bot)
 {
     ObjectGuid botGUID = ObjectGuid::Create<HighGuid::Player>(bot);
@@ -1425,6 +1732,15 @@ bool RandomPlayerbotMgr::ProcessBot(uint32 bot)
     if (!player->IsInWorld())
         return false;
 
+    // Normalize pre-existing bots sitting exactly at one of the new
+    // milestone levels. A persistent per-character marker makes this a
+    // one-time migration across server restarts.
+    ProcessMilestoneGearNormalization(player);
+
+    // Evaluate persistent endgame progression before the normal group/flight
+    // early return. Grouped bots are allowed to progress when otherwise safe.
+    ProcessEndgameGear(player);
+
     if (player->GetGroup() || player->HasUnitState(UNIT_STATE_IN_FLIGHT))
         return false;
 
@@ -1474,6 +1790,48 @@ bool RandomPlayerbotMgr::ProcessBot(uint32 bot)
     }
 
     return false;
+}
+
+
+
+void RandomPlayerbotMgr::StampMilestoneGearNormalization(Player* bot)
+{
+    if (!bot ||
+        !IsRandomBot(bot))
+    {
+        return;
+    }
+
+    uint32 const level = bot->GetLevel();
+
+    if (level != 60 &&
+        level != 70 &&
+        level != 80)
+    {
+        return;
+    }
+
+    SetEventValue(
+        bot->GetGUID().GetCounter(),
+        "milestone_gear_normalized_v1",
+        1,
+        0);
+}
+
+void RandomPlayerbotMgr::StampEndgameGearRoll(Player* bot)
+{
+    if (!bot ||
+        bot->GetLevel() != 80 ||
+        !IsRandomBot(bot))
+    {
+        return;
+    }
+
+    SetEventValue(
+        bot->GetGUID().GetCounter(),
+        "endgame_gear_roll",
+        1,
+        0);
 }
 
 bool RandomPlayerbotMgr::ProcessBot(Player* bot)
