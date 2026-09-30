@@ -2497,8 +2497,19 @@ PlayerbotFactory::BuildSlotCandidates(
         }
 
         // Normal InitEquipment preserves the existing quality fallback.
-        // Searches that do not use factory quality make only one pass.
+        // Milestone profile generation at expansion caps keeps the rolled
+        // quality whenever at least one valid candidate exists. Only fall
+        // back to a lower quality when the requested quality has no usable
+        // item for this slot.
         if (!options.useFactoryQuality)
+            break;
+
+        bool const milestoneProfile =
+            useLevelingGearQualityProfile &&
+            !incremental &&
+            (level == 60 || level == 70 || level == 80);
+
+        if (milestoneProfile && !candidates.empty())
             break;
 
     } while (candidates.size() < 25 &&
