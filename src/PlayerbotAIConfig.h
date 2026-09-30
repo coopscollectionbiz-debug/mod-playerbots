@@ -10,6 +10,7 @@
 #include "DBCEnums.h"
 #include "SharedDefines.h"
 #include <algorithm>
+#include <array>
 #include <map>
 #include <mutex>
 #include <set>
@@ -165,6 +166,8 @@ public:
     float randomGearLoweringChance;
     int32 randomGearQualityLimit;
     int32 randomGearScoreLimit;
+    bool levelingGearQualityProfiles;
+    std::map<uint32, std::array<uint32, 4>> levelingGearQualityWeights;
     bool preferClassArmorType;
     bool preferredSpecWeapons;
     float randomBotMinLevelChance, randomBotMaxLevelChance;

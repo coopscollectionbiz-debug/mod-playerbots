@@ -546,6 +546,7 @@ bool PlayerbotFactory::LearnProfessionSpecialization(Player* bot,
 PlayerbotFactory::PlayerbotFactory(Player* bot, uint32 level, uint32 itemQuality, uint32 gearScoreLimit)
     : level(level), itemQuality(itemQuality), gearScoreLimit(gearScoreLimit), bot(bot)
 {
+    useLevelingGearQualityProfile = (itemQuality == 0);
     botAI = GET_PLAYERBOT_AI(bot);
     if (!this->itemQuality)
     {
@@ -2278,6 +2279,63 @@ void Shuffle(std::vector<uint32>& items)
 //     }
 // }
 
+static uint32 GetLevelingGearQuality(uint32 level)
+{
+    if (!sPlayerbotAIConfig.levelingGearQualityProfiles || level < 5 || level > 80)
+        return 0;
+
+    uint32 profileKey = 0;
+
+    if (level <= 19)
+        profileKey = 5;
+    else if (level <= 29)
+        profileKey = 20;
+    else if (level <= 39)
+        profileKey = 30;
+    else if (level <= 49)
+        profileKey = 40;
+    else if (level <= 59)
+        profileKey = 50;
+    else if (level == 60)
+        profileKey = 60;
+    else if (level <= 69)
+        profileKey = 61;
+    else if (level == 70)
+        profileKey = 70;
+    else if (level <= 79)
+        profileKey = 71;
+    else
+        profileKey = 80;
+
+    auto itr = sPlayerbotAIConfig.levelingGearQualityWeights.find(profileKey);
+    if (itr == sPlayerbotAIConfig.levelingGearQualityWeights.end())
+        return 0;
+
+    std::array<uint32, 4> const& weights = itr->second;
+
+    uint32 totalWeight = 0;
+    for (uint32 weight : weights)
+        totalWeight += weight;
+
+    if (totalWeight == 0)
+        return 0;
+
+    uint32 roll = urand(1, totalWeight);
+    uint32 cumulative = 0;
+
+    for (uint32 i = 0; i < weights.size(); ++i)
+    {
+        cumulative += weights[i];
+
+        if (roll <= cumulative)
+        {
+            // 0 = white, 1 = green, 2 = blue, 3 = epic.
+            return ITEM_QUALITY_NORMAL + i;
+        }
+    }
+
+    return 0;
+}
 void PlayerbotFactory::InitEquipment(bool incremental, bool second_chance)
 {
     if (level < 5)
@@ -2411,8 +2469,21 @@ void PlayerbotFactory::InitEquipment(bool incremental, bool second_chance)
         }
 
         int32 desiredQuality = itemQuality;
-        if (urand(0, 100) < 100 * sPlayerbotAIConfig.randomGearLoweringChance && desiredQuality > ITEM_QUALITY_NORMAL)
+
+        if (useLevelingGearQualityProfile)
+        {
+            uint32 profileQuality = GetLevelingGearQuality(level);
+
+            if (profileQuality != 0)
+                desiredQuality = profileQuality;
+            else
+                desiredQuality = sPlayerbotAIConfig.randomGearQualityLimit;
+        }
+        else if (urand(0, 100) < 100 * sPlayerbotAIConfig.randomGearLoweringChance &&
+                 desiredQuality > ITEM_QUALITY_NORMAL)
+        {
             desiredQuality--;
+        }
 
         do
         {

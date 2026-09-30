@@ -1186,6 +1186,77 @@ AiPlayerbot.RandomGearQualityLimit = 3
 # Max iLVL Phase 1(Naxx) = 224 | Phase 2(Ulduar) = 245 | Phase 3(ToC) = 258 | Phase 4(ICC) = 290
 # Default: 0 (no limit)
 AiPlayerbot.RandomGearScoreLimit = 0
+# Enable level-based quality distributions for automatically generated randombot gear.
+#
+# This affects automatic equipment generation when no explicit gear quality was requested.
+# Manual autogear/BiS commands that specify a quality continue to use that requested quality.
+#
+# Each profile uses relative weights for White, Green, Blue, and Epic gear.
+# The weights do not need to total 100. A weight of 0 disables that quality.
+# Levels 1-4 continue to use normal starting equipment.
+#
+# Default: 1 (enabled)
+AiPlayerbot.LevelingGearQualityProfiles = 1
+
+# Levels 5-19: 35% white, 65% green
+AiPlayerbot.LevelingGearQuality.5-19.White = 35
+AiPlayerbot.LevelingGearQuality.5-19.Green = 65
+AiPlayerbot.LevelingGearQuality.5-19.Blue = 0
+AiPlayerbot.LevelingGearQuality.5-19.Epic = 0
+
+# Levels 20-29: 10% white, 80% green, 10% blue
+AiPlayerbot.LevelingGearQuality.20-29.White = 10
+AiPlayerbot.LevelingGearQuality.20-29.Green = 80
+AiPlayerbot.LevelingGearQuality.20-29.Blue = 10
+AiPlayerbot.LevelingGearQuality.20-29.Epic = 0
+
+# Levels 30-39: 70% green, 30% blue
+AiPlayerbot.LevelingGearQuality.30-39.White = 0
+AiPlayerbot.LevelingGearQuality.30-39.Green = 70
+AiPlayerbot.LevelingGearQuality.30-39.Blue = 30
+AiPlayerbot.LevelingGearQuality.30-39.Epic = 0
+
+# Levels 40-49: 55% green, 43% blue, 2% epic
+AiPlayerbot.LevelingGearQuality.40-49.White = 0
+AiPlayerbot.LevelingGearQuality.40-49.Green = 55
+AiPlayerbot.LevelingGearQuality.40-49.Blue = 43
+AiPlayerbot.LevelingGearQuality.40-49.Epic = 2
+
+# Levels 50-59: 35% green, 60% blue, 5% epic
+AiPlayerbot.LevelingGearQuality.50-59.White = 0
+AiPlayerbot.LevelingGearQuality.50-59.Green = 35
+AiPlayerbot.LevelingGearQuality.50-59.Blue = 60
+AiPlayerbot.LevelingGearQuality.50-59.Epic = 5
+
+# Fresh level 60 baseline: 20% green, 75% blue, 5% epic
+AiPlayerbot.LevelingGearQuality.60.White = 0
+AiPlayerbot.LevelingGearQuality.60.Green = 20
+AiPlayerbot.LevelingGearQuality.60.Blue = 75
+AiPlayerbot.LevelingGearQuality.60.Epic = 5
+
+# Levels 61-69: 30% green, 65% blue, 5% epic
+AiPlayerbot.LevelingGearQuality.61-69.White = 0
+AiPlayerbot.LevelingGearQuality.61-69.Green = 30
+AiPlayerbot.LevelingGearQuality.61-69.Blue = 65
+AiPlayerbot.LevelingGearQuality.61-69.Epic = 5
+
+# Fresh level 70 baseline: 10% green, 82% blue, 8% epic
+AiPlayerbot.LevelingGearQuality.70.White = 0
+AiPlayerbot.LevelingGearQuality.70.Green = 10
+AiPlayerbot.LevelingGearQuality.70.Blue = 82
+AiPlayerbot.LevelingGearQuality.70.Epic = 8
+
+# Levels 71-79: 25% green, 68% blue, 7% epic
+AiPlayerbot.LevelingGearQuality.71-79.White = 0
+AiPlayerbot.LevelingGearQuality.71-79.Green = 25
+AiPlayerbot.LevelingGearQuality.71-79.Blue = 68
+AiPlayerbot.LevelingGearQuality.71-79.Epic = 7
+
+# Fresh level 80 baseline: 5% green, 85% blue, 10% epic
+AiPlayerbot.LevelingGearQuality.80.White = 0
+AiPlayerbot.LevelingGearQuality.80.Green = 5
+AiPlayerbot.LevelingGearQuality.80.Blue = 85
+AiPlayerbot.LevelingGearQuality.80.Epic = 10
 
 # Prefer armor of the class's ideal type: apply 3x score multiplier to class-appropriate armor.
 # When enabled, Warriors strongly prefer plate, Shamans prefer mail, etc.

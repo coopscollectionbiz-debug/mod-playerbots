@@ -175,6 +175,80 @@ bool PlayerbotAIConfig::Initialize()
     randomGearLoweringChance = sConfigMgr->GetOption<float>("AiPlayerbot.RandomGearLoweringChance", 0.0f);
     randomGearQualityLimit = sConfigMgr->GetOption<int32>("AiPlayerbot.RandomGearQualityLimit", 3);
     randomGearScoreLimit = sConfigMgr->GetOption<int32>("AiPlayerbot.RandomGearScoreLimit", 0);
+    levelingGearQualityProfiles =
+        sConfigMgr->GetOption<bool>("AiPlayerbot.LevelingGearQualityProfiles", true);
+
+    levelingGearQualityWeights.clear();
+
+    levelingGearQualityWeights[5] = {
+        sConfigMgr->GetOption<uint32>("AiPlayerbot.LevelingGearQuality.5-19.White", 35),
+        sConfigMgr->GetOption<uint32>("AiPlayerbot.LevelingGearQuality.5-19.Green", 65),
+        sConfigMgr->GetOption<uint32>("AiPlayerbot.LevelingGearQuality.5-19.Blue", 0),
+        sConfigMgr->GetOption<uint32>("AiPlayerbot.LevelingGearQuality.5-19.Epic", 0)
+    };
+
+    levelingGearQualityWeights[20] = {
+        sConfigMgr->GetOption<uint32>("AiPlayerbot.LevelingGearQuality.20-29.White", 10),
+        sConfigMgr->GetOption<uint32>("AiPlayerbot.LevelingGearQuality.20-29.Green", 80),
+        sConfigMgr->GetOption<uint32>("AiPlayerbot.LevelingGearQuality.20-29.Blue", 10),
+        sConfigMgr->GetOption<uint32>("AiPlayerbot.LevelingGearQuality.20-29.Epic", 0)
+    };
+
+    levelingGearQualityWeights[30] = {
+        sConfigMgr->GetOption<uint32>("AiPlayerbot.LevelingGearQuality.30-39.White", 0),
+        sConfigMgr->GetOption<uint32>("AiPlayerbot.LevelingGearQuality.30-39.Green", 70),
+        sConfigMgr->GetOption<uint32>("AiPlayerbot.LevelingGearQuality.30-39.Blue", 30),
+        sConfigMgr->GetOption<uint32>("AiPlayerbot.LevelingGearQuality.30-39.Epic", 0)
+    };
+
+    levelingGearQualityWeights[40] = {
+        sConfigMgr->GetOption<uint32>("AiPlayerbot.LevelingGearQuality.40-49.White", 0),
+        sConfigMgr->GetOption<uint32>("AiPlayerbot.LevelingGearQuality.40-49.Green", 55),
+        sConfigMgr->GetOption<uint32>("AiPlayerbot.LevelingGearQuality.40-49.Blue", 43),
+        sConfigMgr->GetOption<uint32>("AiPlayerbot.LevelingGearQuality.40-49.Epic", 2)
+    };
+
+    levelingGearQualityWeights[50] = {
+        sConfigMgr->GetOption<uint32>("AiPlayerbot.LevelingGearQuality.50-59.White", 0),
+        sConfigMgr->GetOption<uint32>("AiPlayerbot.LevelingGearQuality.50-59.Green", 35),
+        sConfigMgr->GetOption<uint32>("AiPlayerbot.LevelingGearQuality.50-59.Blue", 60),
+        sConfigMgr->GetOption<uint32>("AiPlayerbot.LevelingGearQuality.50-59.Epic", 5)
+    };
+
+    levelingGearQualityWeights[60] = {
+        sConfigMgr->GetOption<uint32>("AiPlayerbot.LevelingGearQuality.60.White", 0),
+        sConfigMgr->GetOption<uint32>("AiPlayerbot.LevelingGearQuality.60.Green", 20),
+        sConfigMgr->GetOption<uint32>("AiPlayerbot.LevelingGearQuality.60.Blue", 75),
+        sConfigMgr->GetOption<uint32>("AiPlayerbot.LevelingGearQuality.60.Epic", 5)
+    };
+
+    levelingGearQualityWeights[61] = {
+        sConfigMgr->GetOption<uint32>("AiPlayerbot.LevelingGearQuality.61-69.White", 0),
+        sConfigMgr->GetOption<uint32>("AiPlayerbot.LevelingGearQuality.61-69.Green", 30),
+        sConfigMgr->GetOption<uint32>("AiPlayerbot.LevelingGearQuality.61-69.Blue", 65),
+        sConfigMgr->GetOption<uint32>("AiPlayerbot.LevelingGearQuality.61-69.Epic", 5)
+    };
+
+    levelingGearQualityWeights[70] = {
+        sConfigMgr->GetOption<uint32>("AiPlayerbot.LevelingGearQuality.70.White", 0),
+        sConfigMgr->GetOption<uint32>("AiPlayerbot.LevelingGearQuality.70.Green", 10),
+        sConfigMgr->GetOption<uint32>("AiPlayerbot.LevelingGearQuality.70.Blue", 82),
+        sConfigMgr->GetOption<uint32>("AiPlayerbot.LevelingGearQuality.70.Epic", 8)
+    };
+
+    levelingGearQualityWeights[71] = {
+        sConfigMgr->GetOption<uint32>("AiPlayerbot.LevelingGearQuality.71-79.White", 0),
+        sConfigMgr->GetOption<uint32>("AiPlayerbot.LevelingGearQuality.71-79.Green", 25),
+        sConfigMgr->GetOption<uint32>("AiPlayerbot.LevelingGearQuality.71-79.Blue", 68),
+        sConfigMgr->GetOption<uint32>("AiPlayerbot.LevelingGearQuality.71-79.Epic", 7)
+    };
+
+    levelingGearQualityWeights[80] = {
+        sConfigMgr->GetOption<uint32>("AiPlayerbot.LevelingGearQuality.80.White", 0),
+        sConfigMgr->GetOption<uint32>("AiPlayerbot.LevelingGearQuality.80.Green", 5),
+        sConfigMgr->GetOption<uint32>("AiPlayerbot.LevelingGearQuality.80.Blue", 85),
+        sConfigMgr->GetOption<uint32>("AiPlayerbot.LevelingGearQuality.80.Epic", 10)
+    };
     preferClassArmorType  = sConfigMgr->GetOption<bool>("AiPlayerbot.PreferClassArmorType", false);
     preferredSpecWeapons  = sConfigMgr->GetOption<bool>("AiPlayerbot.PreferredSpecWeapons", false);
 
