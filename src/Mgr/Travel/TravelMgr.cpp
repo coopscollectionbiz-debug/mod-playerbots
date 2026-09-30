@@ -23,6 +23,7 @@
 #include "TravelNode.h"
 #include "VMapFactory.h"
 #include "VMapMgr2.h"
+#include <cmath>
 #include <iomanip>
 #include <numeric>
 
@@ -680,7 +681,7 @@ std::vector<WorldPosition> WorldPosition::frommGridCoord(mGridCoord GridCoord)
     return retVec;
 }
 
-// TODO: Cleanup — make this actually work.
+// TODO: Cleanup â€” make this actually work.
 void WorldPosition::loadMapAndVMap(uint32 mapId, uint8 x, uint8 y)
 {
     std::string const fileName = "load_map_grid.csv";
@@ -4421,7 +4422,7 @@ std::vector<std::vector<uint32>> TravelMgr::GetOptimalFlightDestinations(Player*
     uint32 botLevel = bot->GetLevel();
 
     // Bots already in a capital shouldn't have another capital picked as a
-    // flight destination — that just shuffles them between cities.
+    // flight destination â€” that just shuffles them between cities.
     bool botInCapital = false;
     if (AreaTableEntry const* area = sAreaTableStore.LookupEntry(bot->GetZoneId()))
         botInCapital = (area->flags & AREA_FLAG_CAPITAL) != 0;
@@ -4555,56 +4556,73 @@ std::vector<WorldLocation> TravelMgr::GetCityLocations(Player* bot)
     return fallbackLocations;
 }
 
-static bool PickReachableCityLifeLocation(
-    Player* bot,
+static bool PickCityLifeLocation(
     std::vector<WorldLocation> const& cityLocations,
     WorldLocation& outLocation)
 {
-    if (!bot || cityLocations.empty())
+    if (cityLocations.empty())
         return false;
 
-    uint32 locationCount =
-        static_cast<uint32>(cityLocations.size());
+    WorldLocation const& base =
+        cityLocations[
+            urand(
+                0,
+                static_cast<uint32>(
+                    cityLocations.size() - 1))];
 
-    uint32 startIndex =
-        urand(0, locationCount - 1);
+    outLocation = base;
 
-    uint32 attempts =
-        locationCount < 8
-            ? locationCount
-            : 8;
-
-    for (uint32 attempt = 0;
-         attempt < attempts;
-         ++attempt)
+    // The cached base slot has already been validated on its own map.
+    // Add only a small amount of local variation so multiple bots do
+    // not stack on exactly the same coordinates.
+    if (Map* map = sMapMgr->FindMap(base.GetMapId(), 0))
     {
-        uint32 index =
-            (startIndex + attempt)
-            % locationCount;
+        float angle =
+            rand_norm() * static_cast<float>(2.0 * M_PI);
 
-        WorldPosition candidate(
-            cityLocations[index]);
+        float radius =
+            rand_norm() * 1.5f;
 
-        // Give the final cached point a small amount of natural
-        // variation while asking the map to resolve it to reachable
-        // ground for this actual bot.
-        if (!candidate.GetReachableRandomPointOnGround(
-                bot, 1.5f, true))
+        float nx =
+            base.GetPositionX() +
+            radius * cosf(angle);
+
+        float ny =
+            base.GetPositionY() +
+            radius * sinf(angle);
+
+        float nz =
+            map->GetHeight(
+                PHASEMASK_NORMAL,
+                nx,
+                ny,
+                base.GetPositionZ() + 2.0f,
+                true,
+                5.0f);
+
+        if (nz > INVALID_HEIGHT &&
+            std::fabs(nz - base.GetPositionZ()) < 1.5f &&
+            map->isInLineOfSight(
+                base.GetPositionX(),
+                base.GetPositionY(),
+                base.GetPositionZ() + 2.0f,
+                nx,
+                ny,
+                nz + 2.0f,
+                PHASEMASK_NORMAL,
+                LINEOFSIGHT_ALL_CHECKS,
+                VMAP::ModelIgnoreFlags::Nothing))
         {
-            continue;
+            outLocation = WorldLocation(
+                base.GetMapId(),
+                nx,
+                ny,
+                nz + 0.1f,
+                base.GetOrientation());
         }
-
-        outLocation = WorldLocation(
-            candidate.GetMapId(),
-            candidate.GetPositionX(),
-            candidate.GetPositionY(),
-            candidate.GetPositionZ(),
-            candidate.GetOrientation());
-
-        return true;
     }
 
-    return false;
+    return true;
 }
 
 bool TravelMgr::GetCityLifeLocation(Player* bot, WorldLocation& outLocation, uint32& outZoneId)
@@ -4669,44 +4687,13 @@ bool TravelMgr::GetCityLifeLocation(Player* bot, WorldLocation& outLocation, uin
         !cityHubItr->second.empty())
     {
         foundCityLifeLocation =
-            PickReachableCityLifeLocation(
-                bot,
+            PickCityLifeLocation(
                 cityHubItr->second,
                 outLocation);
     }
 
     if (!foundCityLifeLocation)
-    {
-        // Preserve the original banker-only behavior as a safe
-        // fallback if the congregation cache has no reachable
-        // location for this bot.
-        std::vector<WorldLocation> availableLocations;
-
-        for (uint16 bankerEntry :
-             selectedCapital->bankers)
-        {
-            auto itr =
-                bankerEntryToLocation.find(
-                    bankerEntry);
-
-            if (itr !=
-                bankerEntryToLocation.end())
-            {
-                availableLocations.push_back(
-                    itr->second);
-            }
-        }
-
-        if (availableLocations.empty())
-            return false;
-
-        outLocation =
-            availableLocations[
-                urand(
-                    0,
-                    static_cast<uint32>(
-                        availableLocations.size() - 1))];
-    }
+        return false;
 
     outZoneId = selectedCapital->zoneId;
 
@@ -4758,8 +4745,7 @@ bool TravelMgr::GetCityLifeLocationForZone(
                 cityLifeHubLocationsByZone.end() &&
             !cityHubItr->second.empty())
         {
-            if (PickReachableCityLifeLocation(
-                    bot,
+            if (PickCityLifeLocation(
                     cityHubItr->second,
                     outLocation))
             {
@@ -4767,34 +4753,7 @@ bool TravelMgr::GetCityLifeLocationForZone(
             }
         }
 
-        // Preserve banker-only fallback if the congregation
-        // cache has no reachable entries for this bot.
-        std::vector<WorldLocation> availableLocations;
-
-        for (uint16 bankerEntry : capital.bankers)
-        {
-            auto itr =
-                bankerEntryToLocation.find(
-                    bankerEntry);
-
-            if (itr != bankerEntryToLocation.end())
-            {
-                availableLocations.push_back(
-                    itr->second);
-            }
-        }
-
-        if (availableLocations.empty())
-            return false;
-
-        outLocation =
-            availableLocations[
-                urand(
-                    0,
-                    static_cast<uint32>(
-                        availableLocations.size() - 1))];
-
-        return true;
+        return false;
     }
 
     return false;
@@ -5018,11 +4977,53 @@ void TravelMgr::PrepareDestinationCache()
                     float slotY =
                         y + sin(slotAngle) * slotRadius;
 
+                    // Validate the congregation slot once on the
+                    // capital's own map. This deliberately validates
+                    // local ground, city zone and collision/LOS rather
+                    // than raycasting from a future bot on another map.
+                    float slotZ =
+                        map->GetHeight(
+                            PHASEMASK_NORMAL,
+                            slotX,
+                            slotY,
+                            z + 2.0f,
+                            true,
+                            10.0f);
+
+                    if (slotZ <= INVALID_HEIGHT ||
+                        std::fabs(slotZ - z) > 3.0f)
+                    {
+                        continue;
+                    }
+
+                    if (map->GetZoneId(
+                            PHASEMASK_NORMAL,
+                            slotX,
+                            slotY,
+                            slotZ) != areaId)
+                    {
+                        continue;
+                    }
+
+                    if (!map->isInLineOfSight(
+                            x,
+                            y,
+                            z + 2.0f,
+                            slotX,
+                            slotY,
+                            slotZ + 2.0f,
+                            PHASEMASK_NORMAL,
+                            LINEOFSIGHT_ALL_CHECKS,
+                            VMAP::ModelIgnoreFlags::Nothing))
+                    {
+                        continue;
+                    }
+
                     WorldLocation cityLifeLoc(
                         mapId,
                         slotX,
                         slotY,
-                        z + 0.5f,
+                        slotZ + 0.1f,
                         orient + M_PI);
 
                     cityLocations.push_back(
@@ -5088,7 +5089,7 @@ void TravelMgr::PrepareDestinationCache()
                 }
                 flightMastersCount++;
 
-                // Zones that have flight masters but no innkeepers — use flight master as hub
+                // Zones that have flight masters but no innkeepers â€” use flight master as hub
                 static const std::set<uint32> zonesWithoutInnkeeper = {
                     AREA_BLASTED_LANDS,
                     AREA_AZSHARA,

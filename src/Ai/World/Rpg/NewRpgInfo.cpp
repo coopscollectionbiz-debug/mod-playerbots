@@ -73,6 +73,8 @@ void NewRpgInfo::ChangeToCityLife(WorldPosition cityPos, uint32 cityZoneId)
     cityLife.idleDuration = 0;
     cityLife.hubStart = getMSTime();
     cityLife.hubDuration = urand(120000, 360000);
+    cityLife.teleportAttempts = 0;
+    cityLife.leaseStart = getMSTime();
 
     data = cityLife;
 }

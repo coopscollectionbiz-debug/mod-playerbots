@@ -95,6 +95,14 @@ struct CityLife
     // anchored to one service-NPC pocket.
     uint32 hubStart{0};
     uint32 hubDuration{0};
+
+    // Consecutive teleports that completed without putting the bot
+    // inside cityZoneId. Bounded so a bad destination can never
+    // produce an endless CityLife teleport loop.
+    uint8 teleportAttempts{0};
+
+    // Start of the current CityLife population lease.
+    uint32 leaseStart{0};
 };
 
 struct Idle

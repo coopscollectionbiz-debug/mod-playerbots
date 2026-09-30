@@ -3231,16 +3231,8 @@ void RandomPlayerbotMgr::PopulateCityForPlayer(
             continue;
         }
 
-        WorldLocation testLocation;
-
-        if (!sTravelMgr.GetCityLifeLocationForZone(
-                bot,
-                cityZoneId,
-                testLocation))
-        {
-            continue;
-        }
-
+        // Resolve the destination only after this bot is actually
+        // selected. Candidate gathering should remain cheap.
         candidates.push_back(bot);
     }
 

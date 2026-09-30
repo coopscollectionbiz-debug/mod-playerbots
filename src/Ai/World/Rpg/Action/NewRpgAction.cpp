@@ -328,6 +328,56 @@ bool NewRpgStatusUpdateAction::Execute(Event /*event*/)
             }
             break;
         }
+        case RPG_CITY_LIFE:
+        {
+            auto* cityLife = std::get_if<NewRpgInfo::CityLife>(&info.data);
+
+            if (!cityLife)
+            {
+                info.ChangeToIdle();
+                return true;
+            }
+
+            if (!cityLife->leaseStart)
+                cityLife->leaseStart = getMSTime();
+
+            if (GetMSTimeDiffToNow(cityLife->leaseStart) >=
+                statusCityLifeDuration)
+            {
+                bool realPlayerPresent = false;
+
+                for (auto const& playerRef : bot->GetMap()->GetPlayers())
+                {
+                    Player* player = playerRef.GetSource();
+
+                    if (!player ||
+                        !player->GetSession() ||
+                        player->GetSession()->IsBot())
+                    {
+                        continue;
+                    }
+
+                    if (player->GetZoneId() == cityLife->cityZoneId)
+                    {
+                        realPlayerPresent = true;
+                        break;
+                    }
+                }
+
+                if (!realPlayerPresent)
+                {
+                    info.ChangeToIdle();
+                    return true;
+                }
+
+                // A human is still using this capital. Renew the
+                // CityLife lease instead of draining the population
+                // while that player remains in the city.
+                cityLife->leaseStart = getMSTime();
+            }
+
+            break;
+        }
         default:
             break;
     }
@@ -516,7 +566,7 @@ bool NewRpgDoQuestAction::DoIncompleteQuest(NewRpgInfo::DoQuest& data)
     {
         if (MoveFarTo(data.pos))
             return true;
-        // Long-range sampler couldn't land a candidate — nudge the
+        // Long-range sampler couldn't land a candidate Ã¢â‚¬â€ nudge the
         // bot a short distance so the next tick retries from a
         // different position instead of sitting idle.
         return MoveRandomNear(10.0f);
@@ -727,12 +777,16 @@ bool NewRpgCityLifeAction::Execute(Event /*event*/)
     // Dungeon Finder owns the bot once it queues or joins a group.
     // Stop City Life before it can move or teleport the bot elsewhere.
     if (bot->GetGroup() ||
-        sLFGMgr->GetState(bot->GetGUID()) != lfg::LFG_STATE_NONE ||
-        bot->IsBeingTeleported())
+        sLFGMgr->GetState(bot->GetGUID()) != lfg::LFG_STATE_NONE)
     {
         botAI->rpgInfo.ChangeToIdle();
         return true;
     }
+
+    // Cross-map CityLife teleports complete asynchronously. Wait for
+    // the teleport to finish instead of cancelling the CityLife state.
+    if (bot->IsBeingTeleported())
+        return false;
 
     // Nearby player conversation temporarily owns autonomous
     // CityLife movement. Chatter has already paused any current
@@ -753,18 +807,58 @@ bool NewRpgCityLifeAction::Execute(Event /*event*/)
 
     auto& data = *dataPtr;
 
-    // If the bot has not yet reached its chosen capital, place it near
-    // the capital banker selected by TravelMgr.
+    // If the bot has not yet reached its chosen capital, teleport it
+    // to the assigned CityLife congregation point. Bound recovery so
+    // a bad destination can never create an endless teleport loop.
     if (bot->GetMapId() != data.cityPos.GetMapId() ||
         bot->GetZoneId() != data.cityZoneId)
     {
-        bot->TeleportTo(
-            data.cityPos.GetMapId(),
-            data.cityPos.GetPositionX(),
-            data.cityPos.GetPositionY(),
-            data.cityPos.GetPositionZ(),
-            data.cityPos.GetOrientation()
-        );
+        constexpr uint8 cityLifeMaxTeleportAttempts = 3;
+
+        if (data.teleportAttempts >= cityLifeMaxTeleportAttempts)
+        {
+            LOG_DEBUG(
+                "playerbots",
+                "[New RPG] {} CityLife: failed to reach zone {} after {} teleport attempts",
+                bot->GetName(),
+                data.cityZoneId,
+                data.teleportAttempts);
+
+            botAI->rpgInfo.ChangeToIdle();
+            return true;
+        }
+
+        // A previous teleport completed but did not put the bot inside
+        // its assigned capital. Select another validated point from
+        // that same city's cached congregation pool.
+        if (data.teleportAttempts > 0)
+        {
+            WorldLocation retryLocation;
+
+            if (!sTravelMgr.GetCityLifeLocationForZone(
+                    bot,
+                    data.cityZoneId,
+                    retryLocation))
+            {
+                botAI->rpgInfo.ChangeToIdle();
+                return true;
+            }
+
+            data.cityPos = WorldPosition(retryLocation);
+        }
+
+        ++data.teleportAttempts;
+
+        if (!bot->TeleportTo(
+                data.cityPos.GetMapId(),
+                data.cityPos.GetPositionX(),
+                data.cityPos.GetPositionY(),
+                data.cityPos.GetPositionZ(),
+                data.cityPos.GetOrientation()))
+        {
+            botAI->rpgInfo.ChangeToIdle();
+            return true;
+        }
 
         data.npcOrGo = ObjectGuid();
         data.lastReach = 0;
@@ -773,6 +867,9 @@ bool NewRpgCityLifeAction::Execute(Event /*event*/)
 
         return true;
     }
+
+    // Successful arrival clears any previous recovery attempts.
+    data.teleportAttempts = 0;
 
     // A large share of real players in capitals simply stand around.
     // Keep roughly 60% of CityLife cycles stationary for 20-75 seconds.
