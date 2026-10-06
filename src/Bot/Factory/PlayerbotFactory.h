@@ -85,6 +85,7 @@ public:
     // item inside the supplied item-level range.
     // Used by persistent level-80 simulated endgame progression.
     bool UpgradeEquipmentSlot(uint8 slot, uint32 minItemLevel, uint32 maxItemLevel);
+    void RefreshEquipmentForSpecChange();
 
     void InitPet();
     void InitAmmo();

@@ -693,7 +693,7 @@ void PlayerbotFactory::Init()
 void PlayerbotFactory::BuildCcBreakTrinketCache()
 {
     ccBreakTrinketCache.clear();
-    // Spell 42292: removes all movement-impairing and loss-of-control effects â€” the PvP trinket spell.
+    // Spell 42292: removes all movement-impairing and loss-of-control effects - the PvP trinket spell.
     QueryResult result = WorldDatabase.Query(
         "SELECT entry, ItemLevel FROM item_template "
         "WHERE Quality >= 2 AND InventoryType = 12 "
@@ -2572,6 +2572,325 @@ PlayerbotFactory::SlotChoice PlayerbotFactory::ChooseBestCandidate(
     return best;
 }
 
+void PlayerbotFactory::RefreshEquipmentForSpecChange()
+{
+    if (bot->GetLevel() < 5)
+        return;
+
+    StatsWeightCalculator calculator(bot);
+
+    bool isPvp =
+        sRandomPlayerbotMgr.IsSpecPvp(
+            bot->GetGUID().GetCounter(),
+            bot->getClass());
+
+    if (isPvp)
+        calculator.SetPvpSpec(true);
+
+    // Snapshot the qualities before changing anything. Each replacement
+    // preserves the quality tier of the item currently occupying that slot.
+    std::array<uint32, EQUIPMENT_SLOT_END> slotQualities{};
+    std::array<bool, EQUIPMENT_SLOT_END> hadItem{};
+
+    for (uint8 slot = EQUIPMENT_SLOT_START;
+         slot < EQUIPMENT_SLOT_END;
+         ++slot)
+    {
+        if (slot == EQUIPMENT_SLOT_BODY ||
+            slot == EQUIPMENT_SLOT_TABARD)
+        {
+            continue;
+        }
+
+        Item* item =
+            bot->GetItemByPos(
+                INVENTORY_SLOT_BAG_0,
+                slot);
+
+        if (!item || !item->GetTemplate())
+            continue;
+
+        hadItem[slot] = true;
+        slotQualities[slot] =
+            item->GetTemplate()->Quality;
+    }
+
+    // Work from a stable snapshot of the bag contents. Equipping one item
+    // mutates inventory positions, so do not iterate the live bags while
+    // performing swaps.
+    CollectItemsVisitor visitor;
+    IterateItemsInBags(&visitor);
+
+    std::vector<ObjectGuid> bagItemGuids;
+    bagItemGuids.reserve(visitor.items.size());
+
+    for (Item* item : visitor.items)
+    {
+        if (item)
+            bagItemGuids.push_back(item->GetGUID());
+    }
+
+    for (uint8 slot = EQUIPMENT_SLOT_START;
+         slot < EQUIPMENT_SLOT_END;
+         ++slot)
+    {
+        if (!hadItem[slot])
+        {
+            // A spec can change from a two-handed weapon configuration to
+            // one-hand + offhand. The outgoing spec has no offhand quality
+            // to preserve in that case, so inherit the outgoing main-hand
+            // quality and let current-spec scoring choose the proper offhand.
+            //
+            // Main-hand is processed before offhand, so only construct an
+            // offhand when the new configuration actually ended up with a
+            // non-two-handed main-hand weapon.
+            if (slot != EQUIPMENT_SLOT_OFFHAND ||
+                !hadItem[EQUIPMENT_SLOT_MAINHAND])
+            {
+                continue;
+            }
+
+            Item* mainHand =
+                bot->GetItemByPos(
+                    INVENTORY_SLOT_BAG_0,
+                    EQUIPMENT_SLOT_MAINHAND);
+
+            if (!mainHand ||
+                !mainHand->GetTemplate() ||
+                mainHand->GetTemplate()->InventoryType == INVTYPE_2HWEAPON)
+            {
+                continue;
+            }
+
+            slotQualities[slot] =
+                slotQualities[EQUIPMENT_SLOT_MAINHAND];
+        }
+
+        if (slot == EQUIPMENT_SLOT_BODY ||
+            slot == EQUIPMENT_SLOT_TABARD)
+        {
+            continue;
+        }
+
+
+        uint32 quality = slotQualities[slot];
+
+        bool isTrinketSlot =
+            (slot == EQUIPMENT_SLOT_TRINKET1 ||
+             slot == EQUIPMENT_SLOT_TRINKET2);
+
+        calculator.SetExcludeResilience(isTrinketSlot);
+
+
+        Item* bestBagItem = nullptr;
+        float bestBagScore = -1.0f;
+
+        for (ObjectGuid const& guid : bagItemGuids)
+        {
+            Item* item = bot->GetItemByGuid(guid);
+            if (!item)
+                continue;
+
+            ItemTemplate const* proto =
+                item->GetTemplate();
+
+            if (!proto ||
+                proto->Quality != quality)
+            {
+                continue;
+            }
+
+            if (proto->Class != ITEM_CLASS_WEAPON &&
+                proto->Class != ITEM_CLASS_ARMOR)
+            {
+                continue;
+            }
+
+            if (proto->Class == ITEM_CLASS_ARMOR &&
+                (slot == EQUIPMENT_SLOT_HEAD ||
+                 slot == EQUIPMENT_SLOT_SHOULDERS ||
+                 slot == EQUIPMENT_SLOT_CHEST ||
+                 slot == EQUIPMENT_SLOT_WAIST ||
+                 slot == EQUIPMENT_SLOT_LEGS ||
+                 slot == EQUIPMENT_SLOT_FEET ||
+                 slot == EQUIPMENT_SLOT_WRISTS ||
+                 slot == EQUIPMENT_SLOT_HANDS) &&
+                !CanEquipArmor(proto))
+            {
+                continue;
+            }
+
+            if (proto->Class == ITEM_CLASS_WEAPON &&
+                !CanEquipWeapon(proto))
+            {
+                continue;
+            }
+
+            uint16 dest;
+            InventoryResult equipResult =
+                bot->CanEquipItem(
+                    slot,
+                    dest,
+                    item,
+                    false);
+
+            if (equipResult != EQUIP_ERR_OK)
+                continue;
+
+            float score =
+                calculator.CalculateItem(
+                    item->GetEntry(),
+                    item->GetItemRandomPropertyId(),
+                    slot);
+
+            if (score > bestBagScore)
+            {
+                bestBagScore = score;
+                bestBagItem = item;
+            }
+        }
+
+        if (bestBagItem)
+        {
+            WorldPacket packet(
+                CMSG_AUTOEQUIP_ITEM_SLOT,
+                2);
+
+            ObjectGuid itemGuid =
+                bestBagItem->GetGUID();
+
+            packet << itemGuid << uint8(slot);
+
+            WorldPackets::Item::AutoEquipItemSlot nicePacket(
+                std::move(packet));
+
+            nicePacket.Read();
+
+            bot->GetSession()->
+                HandleAutoEquipItemSlotOpcode(
+                    nicePacket);
+
+            Item* equipped =
+                bot->GetItemByPos(
+                    INVENTORY_SLOT_BAG_0,
+                    slot);
+
+            if (equipped &&
+                equipped->GetGUID() == itemGuid)
+            {
+                continue;
+            }
+        }
+
+        // No suitable same-quality item already owned by the bot. Generate
+        // one for the new spec at exactly the incumbent slot's quality.
+        EquipmentSearchOptions options;
+        options.minQuality = quality;
+        options.maxQuality = quality;
+        options.useFactoryQuality = false;
+
+        std::vector<EquipCandidate> candidates =
+            BuildSlotCandidates(
+                slot,
+                calculator,
+                false,
+                options);
+
+        if (candidates.empty())
+            continue;
+
+        SlotChoice choice =
+            ChooseBestCandidate(
+                slot,
+                candidates,
+                calculator);
+
+        if (choice.itemId == 0)
+            continue;
+
+
+        Item* oldItem =
+            bot->GetItemByPos(
+                INVENTORY_SLOT_BAG_0,
+                slot);
+
+        if (oldItem)
+        {
+            uint8 bagIndex = oldItem->GetBagSlot();
+            uint8 oldSlot = oldItem->GetSlot();
+            uint8 dstBag = NULL_BAG;
+
+            WorldPacket storePacket(
+                CMSG_AUTOSTORE_BAG_ITEM,
+                3);
+
+            storePacket <<
+                bagIndex <<
+                oldSlot <<
+                dstBag;
+
+            WorldPackets::Item::AutoStoreBagItem nicePacket(
+                std::move(storePacket));
+
+            nicePacket.Read();
+
+            bot->GetSession()->
+                HandleAutoStoreBagItemOpcode(
+                    nicePacket);
+
+            oldItem =
+                bot->GetItemByPos(
+                    INVENTORY_SLOT_BAG_0,
+                    slot);
+
+            // No bag space: preserve the incumbent rather than destroying it.
+            if (oldItem)
+                continue;
+        }
+
+        uint16 dest;
+        if (!CanEquipUnseenItem(
+                slot,
+                dest,
+                choice.itemId))
+        {
+            continue;
+        }
+
+        Item* equipped =
+            bot->EquipNewItem(
+                dest,
+                choice.itemId,
+                true);
+
+        if (!equipped)
+            continue;
+
+        if (choice.randomProp != 0)
+        {
+            uint8 equipSlot =
+                equipped->GetSlot();
+
+            bot->_ApplyItemMods(
+                equipped,
+                equipSlot,
+                false);
+
+            equipped->SetItemRandomProperties(
+                choice.randomProp);
+
+            bot->_ApplyItemMods(
+                equipped,
+                equipSlot,
+                true);
+        }
+
+        bot->AutoUnequipOffhandIfNeed();
+    }
+
+    calculator.SetExcludeResilience(false);
+    bot->AutoUnequipOffhandIfNeed();
+}
 bool PlayerbotFactory::UpgradeEquipmentSlot(
     uint8 slot,
     uint32 minItemLevel,

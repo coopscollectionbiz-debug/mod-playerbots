@@ -31,6 +31,13 @@ private:
     std::string SpecList();
     std::string SpecPick(std::string param);
     std::string SpecApply(std::string param);
+
+    std::string GetSpecGearSetName() const;
+    int32 FindSpecGearSet(std::string const& name) const;
+    int32 FindFreeEquipmentSetSlot() const;
+    bool SaveCurrentSpecGear();
+    bool RestoreCurrentSpecGear();
+    void FinishSpecGearChange(uint8 oldSpecTab);
 };
 
 class AutoSetTalentsAction : public ChangeTalentsAction

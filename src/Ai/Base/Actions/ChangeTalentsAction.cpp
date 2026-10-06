@@ -14,6 +14,131 @@
 #include "PlayerbotFactory.h"
 #include "RandomPlayerbotMgr.h"
 
+std::string ChangeTalentsAction::GetSpecGearSetName() const
+{
+    return "PB_SPEC_" + std::to_string(AiFactory::GetPlayerSpecTab(bot));
+}
+
+int32 ChangeTalentsAction::FindSpecGearSet(std::string const& name) const
+{
+    for (uint32 index = 0; index < MAX_EQUIPMENT_SET_INDEX; ++index)
+    {
+        EquipmentSet const* set = bot->GetEquipmentSet(index);
+        if (set && set->Name == name)
+            return static_cast<int32>(index);
+    }
+
+    return -1;
+}
+
+int32 ChangeTalentsAction::FindFreeEquipmentSetSlot() const
+{
+    for (uint32 index = 0; index < MAX_EQUIPMENT_SET_INDEX; ++index)
+    {
+        if (!bot->GetEquipmentSet(index))
+            return static_cast<int32>(index);
+    }
+
+    return -1;
+}
+
+bool ChangeTalentsAction::SaveCurrentSpecGear()
+{
+    std::string const name = GetSpecGearSetName();
+
+    int32 index = FindSpecGearSet(name);
+    EquipmentSet set;
+
+    if (index >= 0)
+    {
+        EquipmentSet const* existing =
+            bot->GetEquipmentSet(static_cast<uint32>(index));
+
+        if (!existing)
+            return false;
+
+        set.Guid = existing->Guid;
+    }
+    else
+    {
+        index = FindFreeEquipmentSetSlot();
+        if (index < 0)
+        {
+            LOG_WARN(
+                "playerbots",
+                "Unable to save spec gear for {}: all equipment set slots are occupied",
+                bot->GetName());
+            return false;
+        }
+
+        set.Guid = 0;
+    }
+
+    set.Name = name;
+    set.IconName = "";
+    set.IgnoreMask = 0;
+    set.state = EQUIPMENT_SET_NEW;
+
+    for (uint32 slot = EQUIPMENT_SLOT_START;
+         slot < EQUIPMENT_SLOT_END;
+         ++slot)
+    {
+        if (slot == EQUIPMENT_SLOT_BODY ||
+            slot == EQUIPMENT_SLOT_TABARD)
+        {
+            set.IgnoreMask |= (1 << slot);
+            set.Items[slot].Clear();
+            continue;
+        }
+
+        Item* item =
+            bot->GetItemByPos(
+                INVENTORY_SLOT_BAG_0,
+                slot);
+
+        if (item)
+            set.Items[slot] = item->GetGUID();
+        else
+            set.Items[slot].Clear();
+    }
+
+    bot->SetEquipmentSet(
+        static_cast<uint32>(index),
+        set);
+
+    return true;
+}
+
+bool ChangeTalentsAction::RestoreCurrentSpecGear()
+{
+    int32 index = FindSpecGearSet(GetSpecGearSetName());
+    if (index < 0)
+        return false;
+
+    EquipmentSet const* set =
+        bot->GetEquipmentSet(static_cast<uint32>(index));
+
+    if (!set)
+        return false;
+
+    return bot->UseEquipmentSet(*set) == 0;
+}
+
+void ChangeTalentsAction::FinishSpecGearChange(uint8 oldSpecTab)
+{
+    uint8 newSpecTab = AiFactory::GetPlayerSpecTab(bot);
+
+    if (newSpecTab == oldSpecTab)
+        return;
+
+    if (RestoreCurrentSpecGear())
+        return;
+
+    PlayerbotFactory factory(bot, bot->GetLevel());
+    factory.RefreshEquipmentForSpecChange();
+
+    SaveCurrentSpecGear();
+}
 bool ChangeTalentsAction::Execute(Event event)
 {
     auto* flag = botAI->GetAiObjectContext()->GetValue<bool>("custom_glyphs"); // Added for custom Glyphs
@@ -37,7 +162,13 @@ bool ChangeTalentsAction::Execute(Event event)
         {
             if (param.find("switch 1") != std::string::npos)
             {
+                uint8 oldSpecTab = AiFactory::GetPlayerSpecTab(bot);
+                bool savedSpecGear = SaveCurrentSpecGear();
+
                 bot->ActivateSpec(0);
+                if (savedSpecGear)
+                    FinishSpecGearChange(oldSpecTab);
+
                 out << "Active first talent";
                 botAI->ResetStrategies();
             }
@@ -48,15 +179,27 @@ bool ChangeTalentsAction::Execute(Event event)
                     bot->CastSpell(bot, 63680, true, nullptr, nullptr, bot->GetGUID());
                     bot->CastSpell(bot, 63624, true, nullptr, nullptr, bot->GetGUID());
                 }
+                uint8 oldSpecTab = AiFactory::GetPlayerSpecTab(bot);
+                bool savedSpecGear = SaveCurrentSpecGear();
+
                 bot->ActivateSpec(1);
+                if (savedSpecGear)
+                    FinishSpecGearChange(oldSpecTab);
+
                 out << "Active second talent";
                 botAI->ResetStrategies();
             }
         }
         else if (param.find("autopick") != std::string::npos)
         {
+            uint8 oldSpecTab = AiFactory::GetPlayerSpecTab(bot);
+            bool savedSpecGear = SaveCurrentSpecGear();
+
             PlayerbotFactory factory(bot, bot->GetLevel());
             factory.InitTalentsTree(true);
+            if (savedSpecGear)
+                FinishSpecGearChange(oldSpecTab);
+
             out << "Auto pick talents";
             botAI->ResetStrategies();
         }
@@ -143,10 +286,17 @@ std::string ChangeTalentsAction::SpecPick(std::string param)
         }
         if (sPlayerbotAIConfig.premadeSpecName[cls][specNo] == param)
         {
+            uint8 oldSpecTab = AiFactory::GetPlayerSpecTab(bot);
+            bool savedSpecGear = SaveCurrentSpecGear();
+
             PlayerbotFactory::InitTalentsBySpecNo(bot, specNo, true);
 
             PlayerbotFactory factory(bot, bot->GetLevel());
             factory.InitGlyphs(false);
+
+            if (savedSpecGear)
+
+                FinishSpecGearChange(oldSpecTab);
 
             std::ostringstream out;
             out << "Picking " << sPlayerbotAIConfig.premadeSpecName[cls][specNo];
@@ -168,7 +318,13 @@ std::string ChangeTalentsAction::SpecApply(std::string param)
         out << "Invalid link " << param;
         return out.str();
     }
+    uint8 oldSpecTab = AiFactory::GetPlayerSpecTab(bot);
+    bool savedSpecGear = SaveCurrentSpecGear();
+
     PlayerbotFactory::InitTalentsByParsedSpecLink(bot, parsedSpecLink, true);
+    if (savedSpecGear)
+        FinishSpecGearChange(oldSpecTab);
+
     out << "Applying " << param;
     return out.str();
 }
