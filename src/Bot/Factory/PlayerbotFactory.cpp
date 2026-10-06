@@ -2111,6 +2111,14 @@ bool PlayerbotFactory::CanEquipWeapon(ItemTemplate const* proto)
 
 bool PlayerbotFactory::CanEquipItem(ItemTemplate const* proto)
 {
+    // Never allow the factory to select class- or race-restricted gear
+    // that this bot is not eligible to use. This is especially important
+    // for class-specific raid sets whose armor type and stats may otherwise
+    // make them attractive to another class.
+    if ((proto->AllowableClass & bot->getClassMask()) == 0 ||
+        (proto->AllowableRace & bot->getRaceMask()) == 0)
+        return false;
+
     if (proto->Duration != 0)
         return false;
 
