@@ -8,7 +8,10 @@
 #define PLAYERBOTS_PLAYERBOTSPELLREPOSITORY_H
 
 #include <cstdint>
+#include <map>
+#include <set>
 #include <unordered_map>
+#include <vector>
 
 #include "DBCStructure.h"
 
@@ -28,6 +31,7 @@ public:
 
     SkillLineAbilityEntry const* GetSkillLine(uint32_t spellId) const;
     bool IsItemBuyable(uint32_t itemId) const;
+    std::vector<uint32_t> const& GetOpeningSpells(uint32_t lockType) const;
     uint32_t GetRequiredRidingSkill(SpellInfo const* mountSpell) const;
 
 private:
@@ -42,6 +46,7 @@ private:
 
     std::map<uint32_t, SkillLineAbilityEntry const*> skillSpells;
     std::set<uint32_t> vendorItems;
+    std::map<uint32_t, std::vector<uint32_t>> _openingSpells;
     std::unordered_map<uint32_t, uint32_t> _ridingSkillByMount;
 };
 
