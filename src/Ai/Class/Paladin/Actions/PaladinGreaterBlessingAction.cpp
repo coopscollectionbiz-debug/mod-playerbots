@@ -1167,6 +1167,16 @@ bool CastGreaterBlessingAssignmentAction::Execute(Event /*event*/)
     if (!botAI->CastSpell(spellName, assignment.player))
         return false;
 
+    // The pending assignment is a cached calculated value. Once the cast
+    // succeeds, force the next blessing evaluation to inspect the updated
+    // auras instead of reusing the assignment that was just fulfilled.
+    if (Value<ai::gbless::CachedPendingBlessingAssignment>* pendingValue =
+            context->GetValue<ai::gbless::CachedPendingBlessingAssignment>(
+                "greater blessing pending assignment"))
+    {
+        pendingValue->Reset();
+    }
+
     if (!missingReagentGroupName.empty())
         ai::buff::TryAnnounceMissingBuffReagents(botAI, spellName, missingReagentGroupName);
 
