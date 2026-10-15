@@ -56,15 +56,6 @@ bool AcceptInvitationAction::Execute(Event event)
     botAI->ChangeStrategy("+follow,-lfg,-bg", BOT_STATE_NON_COMBAT);
     botAI->Reset();
 
-    // Autonomous random bots should not send a canned
-    // whisper simply because they accepted a group invite.
-    // Preserve the legacy greeting for non-random bots.
-    if (!sRandomPlayerbotMgr.IsRandomBot(bot))
-    {
-        botAI->TellMaster(
-            PlayerbotTextMgr::instance().GetBotTextOrDefault(
-                "hello", "Hello", {}));
-    }
 
     if (sPlayerbotAIConfig.summonWhenGroup && bot->GetDistance(inviter) > sPlayerbotAIConfig.sightDistance)
     {

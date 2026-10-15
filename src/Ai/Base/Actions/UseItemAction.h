@@ -36,6 +36,7 @@ protected:
 
 private:
     bool selfOnly;
+    bool reportItemUse = false;
 };
 
 class UseSpellItemAction : public UseItemAction

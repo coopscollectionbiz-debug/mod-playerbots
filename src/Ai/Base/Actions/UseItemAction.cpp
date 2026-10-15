@@ -14,6 +14,28 @@
 
 bool UseItemAction::Execute(Event event)
 {
+    // Report item usage only when explicitly requested by a real player.
+    // Restore the previous value when this action finishes.
+    struct FeedbackScope
+    {
+        bool& flag;
+        bool previous;
+
+        FeedbackScope(bool& flag, bool enabled)
+            : flag(flag), previous(flag)
+        {
+            flag = enabled;
+        }
+
+        ~FeedbackScope()
+        {
+            flag = previous;
+        }
+    };
+
+    FeedbackScope feedback(reportItemUse,
+        event.getOwner() && IsRealPlayer(event.getOwner()));
+
     std::string name = event.getParam();
     if (name.empty())
         name = getName();
@@ -49,11 +71,13 @@ bool UseItemAction::UseGameObject(ObjectGuid guid)
 
     go->Use(bot);
 
-    std::ostringstream out;
-    botAI->TellMasterNoFacing(PlayerbotTextMgr::instance().GetBotTextOrDefault(
-        "use_gameobject",
-        "Using %gameobject",
-        {{"%gameobject", chat->FormatGameobject(go)}}));
+    if (reportItemUse)
+    {
+        botAI->TellMasterNoFacing(PlayerbotTextMgr::instance().GetBotTextOrDefault(
+            "use_gameobject",
+            "Using %gameobject",
+            {{"%gameobject", chat->FormatGameobject(go)}}));
+    }
     return true;
 }
 
@@ -315,7 +339,8 @@ bool UseItemAction::UseItem(Item* item, ObjectGuid goGuid, Item* itemTarget, Uni
             "use_item_on_target", "Using %item on %target", {{"%item", itemText}, {"%target", targetText}})
         : PlayerbotTextMgr::instance().GetBotTextOrDefault(
             "use_item", "Using %item", {{"%item", itemText}});
-    botAI->TellMasterNoFacing(useText);
+    if (reportItemUse)
+        botAI->TellMasterNoFacing(useText);
     bot->GetSession()->HandleUseItemOpcode(packet);
     return true;
 }
@@ -329,7 +354,8 @@ void UseItemAction::TellConsumableUse(Item* item, std::string const action, floa
         out << "/x" << item->GetCount();
 
     out << " (" << round(percent) << "%)";
-    botAI->TellMasterNoFacing(out.str());
+    if (reportItemUse)
+        botAI->TellMasterNoFacing(out.str());
 }
 
 bool UseItemAction::SocketItem(Item* item, Item* gem, bool replace)
