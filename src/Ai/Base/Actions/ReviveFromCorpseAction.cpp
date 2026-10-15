@@ -321,7 +321,6 @@ bool SpiritHealerAction::Execute(Event /*event*/)
                 bot->SpawnCorpseBones();
                 context->GetValue<Unit*>("current target")->Set(nullptr);
                 bot->SetTarget();
-                botAI->TellMaster(PlayerbotTextMgr::instance().GetBotTextOrDefault("hello", "Hello", {}));
 
                 if (dCount > 20)
                     context->GetValue<uint32>("death count")->Set(0);

@@ -25,6 +25,7 @@ public:
     ItemIds SelectInventoryItemsToEquip();
 
 private:
+    bool reportEquip = false;
     void EquipItem(FindItemVisitor* visitor);
     uint8 GetSmallestBagSlot();
     void EquipItem(Item* item);

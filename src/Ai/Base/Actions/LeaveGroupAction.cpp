@@ -85,12 +85,6 @@ bool LeaveGroupAction::Leave()
     if (!botAI)
         return false;
 
-    Player* master = botAI -> GetMaster();
-    if (master)
-        botAI->TellMaster(
-            PlayerbotTextMgr::instance().GetBotTextOrDefault("goodbye", "Goodbye!", {}),
-            PLAYERBOT_SECURITY_TALK);
-
     botAI->LeaveOrDisbandGroup();
     return true;
 }

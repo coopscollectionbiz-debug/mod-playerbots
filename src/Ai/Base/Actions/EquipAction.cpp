@@ -16,6 +16,26 @@
 
 bool EquipAction::Execute(Event event)
 {
+    struct FeedbackScope
+    {
+        bool& flag;
+        bool previous;
+
+        FeedbackScope(bool& value, bool enabled)
+            : flag(value), previous(value)
+        {
+            flag = enabled;
+        }
+
+        ~FeedbackScope()
+        {
+            flag = previous;
+        }
+    };
+
+    FeedbackScope feedback(reportEquip,
+        event.getOwner() && IsRealPlayer(event.getOwner()) && getName() == "equip");
+
     std::string const text = event.getParam();
     ItemIds ids = chat->parseItems(text);
     EquipItems(ids);
@@ -76,7 +96,8 @@ void EquipAction::EquipItem(Item* item)
         bot->SetAmmo(itemId);
         std::ostringstream out;
         out << "equipping " << chat->FormatItem(itemProto);
-        botAI->TellMaster(out);
+        if (reportEquip)
+            botAI->TellMaster(out);
         return;
     }
 
@@ -113,7 +134,8 @@ void EquipAction::EquipItem(Item* item)
 
             std::ostringstream out;
             out << "Equipping " << chat->FormatItem(itemProto) << " in ranged slot";
-            botAI->TellMaster(out);
+            if (reportEquip)
+                botAI->TellMaster(out);
             return;
         }
 
@@ -225,12 +247,14 @@ void EquipAction::EquipItem(Item* item)
 
                     std::ostringstream moveMsg;
                     moveMsg << "Main hand upgrade found. Moving " << chat->FormatItem(oldMHProto) << " to offhand";
-                    botAI->TellMaster(moveMsg);
+                    if (reportEquip)
+                        botAI->TellMaster(moveMsg);
                 }
 
                 std::ostringstream out;
                 out << "Equipping " << chat->FormatItem(itemProto) << " in main hand";
-                botAI->TellMaster(out);
+                if (reportEquip)
+                    botAI->TellMaster(out);
                 return;
             }
 
@@ -247,7 +271,8 @@ void EquipAction::EquipItem(Item* item)
 
                 std::ostringstream out;
                 out << "Equipping " << chat->FormatItem(itemProto) << " in offhand";
-                botAI->TellMaster(out);
+                if (reportEquip)
+                    botAI->TellMaster(out);
                 return;
             }
             else
@@ -327,7 +352,8 @@ void EquipAction::EquipItem(Item* item)
 
     std::ostringstream out;
     out << "Equipping " << chat->FormatItem(itemProto);
-    botAI->TellMaster(out);
+    if (reportEquip)
+        botAI->TellMaster(out);
 }
 
 ItemIds EquipAction::SelectInventoryItemsToEquip()
