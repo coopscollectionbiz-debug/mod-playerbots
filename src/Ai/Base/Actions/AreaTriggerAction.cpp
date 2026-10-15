@@ -79,6 +79,5 @@ bool AreaTriggerAction::Execute(Event /*event*/)
     p.rpos(0);
     bot->GetSession()->HandleAreaTriggerOpcode(p);
 
-    botAI->TellMaster(PlayerbotTextMgr::instance().GetBotTextOrDefault("hello", "Hello", {}));
     return true;
 }
