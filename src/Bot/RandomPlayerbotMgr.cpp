@@ -306,6 +306,9 @@ void RandomPlayerbotMgr::UpdateAIInternal(uint32 /*elapsed*/, bool /*minimal*/)
     if (!sPlayerbotAIConfig.randomBotAutologin || !sPlayerbotAIConfig.enabled)
         return;
 
+    if (sPlayerbotAIConfig.RandomBotConcentrateInPlayerZone)
+        UpdatePlayerZones();
+
     /*if (sPlayerbotAIConfig.enablePrototypePerformanceDiff)
     {
         LOG_INFO("playerbots", "---------------------------------------");
@@ -2290,6 +2293,11 @@ std::vector<WorldLocation> RandomPlayerbotMgr::GetPlayerZoneTeleportLocations(st
     if (playerMapZones.empty())
         return filtered;
 
+    std::set<uint32> playerMaps;
+    for (auto const& mapZone : playerMapZones)
+        playerMaps.insert(mapZone.first);
+
+    PlayerbotAI* botAI = GET_PLAYERBOT_AI(bot);
     for (WorldLocation const& loc : locs)
     {
         if (playerMaps.find(loc.GetMapId()) == playerMaps.end())
