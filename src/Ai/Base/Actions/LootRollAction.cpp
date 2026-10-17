@@ -244,7 +244,7 @@ bool RollAction::Execute(Event event)
 
     if (link.empty())
     {
-        bot->DoRandomRoll(0,100);
+        bot->DoRandomRoll(1, 100);
         return false;
     }
     ItemIds itemIds = chat->parseItems(link);
@@ -253,9 +253,8 @@ bool RollAction::Execute(Event event)
     uint32 itemId = *itemIds.begin();
     ItemTemplate const* proto = sObjectMgr->GetItemTemplate(itemId);
     if (!proto)
-    {
         return false;
-    }
+
     std::string itemUsageParam;
     itemUsageParam = std::to_string(itemId);
 
@@ -265,9 +264,7 @@ bool RollAction::Execute(Event event)
         case ITEM_CLASS_WEAPON:
         case ITEM_CLASS_ARMOR:
         if (usage == ITEM_USAGE_EQUIP || usage == ITEM_USAGE_REPLACE || usage == ITEM_USAGE_BAD_EQUIP)
-        {
-            bot->DoRandomRoll(0,100);
-        }
+            bot->DoRandomRoll(1, 100);
     }
     return true;
 }
