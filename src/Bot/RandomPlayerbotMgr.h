@@ -12,6 +12,8 @@
 #include "ObjectGuid.h"
 #include "PlayerbotCommandServer.h"
 #include "PlayerbotMgr.h"
+#include <mutex>
+#include <set>
 #include <unordered_set>
 
 struct BattlegroundInfo
@@ -105,6 +107,7 @@ public:
     }
 
     void LogPlayerLocation();
+    void UpdatePlayerZones();
     void UpdateAIInternal(uint32 elapsed, bool minimal = false) override;
 
     uint32 activeBots = 0;
@@ -259,6 +262,8 @@ private:
     std::vector<WorldLocation> GetPlayerZoneTeleportLocations(std::vector<WorldLocation> const& locs, Player* bot);
     typedef void (RandomPlayerbotMgr::*ConsoleCommandHandler)(Player*);
     std::vector<Player*> players;
+    std::set<std::pair<uint32, uint32>> _playerZones;
+    std::mutex _playerZonesLock;
 
     // std::map<uint32, std::vector<WorldLocation>> rpgLocsCache;
     std::map<uint32, std::map<uint32, std::vector<WorldLocation>>> rpgLocsCacheLevel;

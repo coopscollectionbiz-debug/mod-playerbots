@@ -883,7 +883,12 @@ public:
     bool GetCityLifeLocationForZone(Player* bot, uint32 cityZoneId, WorldLocation& outLocation);
     std::vector<uint32> GetFlightNodesInZone(uint32 zoneId, TeamId team, uint32 excludeNode = 0) const;
     bool SelectAuctioneerByMap(Player* bot, NpcLocation& outAuctioneer);
-    std::vector<WorldLocation> const& GetLocsPerLevelCache(uint8 level) { return locsPerLevelCache[level]; }
+    std::vector<WorldLocation> const& GetLocsPerLevelCache(uint8 level) const
+    {
+        static const std::vector<WorldLocation> emptyLocations;
+        auto itr = locsPerLevelCache.find(level);
+        return itr != locsPerLevelCache.end() ? itr->second : emptyLocations;
+    }
 
     template <class D, class W, class URBG>
     void weighted_shuffle(D first, D last, W first_weight, W last_weight, URBG&& g)
