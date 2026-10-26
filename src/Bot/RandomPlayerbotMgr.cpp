@@ -2213,6 +2213,8 @@ std::vector<WorldLocation> RandomPlayerbotMgr::GetPlayerZoneTeleportLocations(st
         playerMapZones = _playerZones;
     }
 
+    PlayerbotAI* botAI = GET_PLAYERBOT_AI(bot);
+
     std::set<uint32> playerMaps;
     for (auto const& mapZone : playerMapZones)
         playerMaps.insert(mapZone.first);
@@ -2241,6 +2243,14 @@ std::vector<WorldLocation> RandomPlayerbotMgr::GetPlayerZoneTeleportLocations(st
             if (zone->team == 2 && bot->GetTeamId() == TEAM_HORDE)
                 continue;
         }
+
+        if (std::find(sPlayerbotAIConfig.randomBotMaps.begin(),
+                      sPlayerbotAIConfig.randomBotMaps.end(),
+                      loc.GetMapId()) == sPlayerbotAIConfig.randomBotMaps.end())
+            continue;
+
+        if (botAI && !botAI->StarterLevelDistanceCheck(bot, loc, true))
+            continue;
 
         filtered.push_back(loc);
     }
