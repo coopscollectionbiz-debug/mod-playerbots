@@ -4480,20 +4480,26 @@ std::vector<std::vector<uint32>> TravelMgr::GetOptimalFlightDestinations(Player*
 
 const std::vector<WorldLocation> TravelMgr::GetTeleportLocations(Player* bot)
 {
-    uint32 level = bot->GetLevel();
-    uint8 isAlliance = bot->GetTeamId() == TEAM_ALLIANCE;
-    if (sPlayerbotAIConfig.enableNewRpgStrategy)
-        return isAlliance ? allianceHubsPerLevelCache[level] : hordeHubsPerLevelCache[level];
+    uint8 level = static_cast<uint8>(bot->GetLevel());
 
-    return locsPerLevelCache[level];
+    std::map<uint8, std::vector<WorldLocation>> const& cache =
+        !sPlayerbotAIConfig.enableNewRpgStrategy ? locsPerLevelCache
+        : bot->GetTeamId() == TEAM_ALLIANCE      ? allianceHubsPerLevelCache
+                                                 : hordeHubsPerLevelCache;
+
+    auto itr = cache.find(level);
+    return itr != cache.end() ? itr->second : std::vector<WorldLocation>();
 }
 
 const std::vector<WorldLocation> TravelMgr::GetTravelHubs(Player* bot)
 {
-    std::vector<WorldLocation> locs = bot->GetTeamId() == TEAM_ALLIANCE
-                                                 ? allianceHubsPerLevelCache[bot->GetLevel()]
-                                                 : hordeHubsPerLevelCache[bot->GetLevel()];
-    return locs;
+    uint8 level = static_cast<uint8>(bot->GetLevel());
+
+    std::map<uint8, std::vector<WorldLocation>> const& cache =
+        bot->GetTeamId() == TEAM_ALLIANCE ? allianceHubsPerLevelCache : hordeHubsPerLevelCache;
+
+    auto itr = cache.find(level);
+    return itr != cache.end() ? itr->second : std::vector<WorldLocation>();
 }
 
 std::vector<WorldLocation> TravelMgr::GetCityLocations(Player* bot)
@@ -5228,6 +5234,14 @@ void TravelMgr::PrepareDestinationCache()
             }
             break;
         }
+    }
+    for (uint32 level = 1; level <= maxLevel; ++level)
+    {
+        uint8 const key = static_cast<uint8>(level);
+        locsPerLevelCache.try_emplace(key);
+        allianceHubsPerLevelCache.try_emplace(key);
+        hordeHubsPerLevelCache.try_emplace(key);
+        bankerLocsPerLevelCache.try_emplace(key);
     }
     LOG_INFO("playerbots", ">> {} flight masters and {} innkeepers and {} banker locations for level collected.", flightMastersCount, innkeepersCount, bankerCount);
 }

@@ -436,6 +436,22 @@ public:
     void OnUpdate(uint32 diff) override
     {
         PlayerbotWorldThreadProcessor::instance().Update(diff);
+        static uint32 playerZoneRefreshTimer = 0;
+        if (sPlayerbotAIConfig.enabled &&
+            sPlayerbotAIConfig.randomBotConcentrateInPlayerZone)
+        {
+            playerZoneRefreshTimer += diff;
+            if (playerZoneRefreshTimer >= 1000)
+            {
+                sRandomPlayerbotMgr.UpdatePlayerZones();
+                playerZoneRefreshTimer = 0;
+            }
+        }
+        else
+        {
+            playerZoneRefreshTimer = 0;
+        }
+
         sRandomPlayerbotMgr.UpdateAI(diff);  // World thread only
     }
 };
@@ -565,10 +581,13 @@ public:
                 break;
         }
 
-        bgStrategies[bg->GetInstanceID()] = data;
+        BGTactics::SetBotStrategies(bg->GetInstanceID(), data);
     }
 
-    void OnBattlegroundEnd(Battleground* bg, TeamId /*winnerTeam*/) override { bgStrategies.erase(bg->GetInstanceID()); }
+    void OnBattlegroundEnd(Battleground* bg, TeamId /*winnerTeam*/) override
+    {
+        BGTactics::ClearBotStrategies(bg->GetInstanceID());
+    }
 };
 
 // Workaround for missing InitEnabledHooksIfNeeded for new BattlefieldScript in ScriptMgr
