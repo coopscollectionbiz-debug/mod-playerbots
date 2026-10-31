@@ -128,6 +128,7 @@ public:
     bool autoSaveMana;
     uint32 saveManaThreshold;
     AutoPartyBuffMode autoGreaterBlessings;
+    uint32 blessingRefreshThresholdSeconds;
     AutoPartyBuffMode autoPartyBuffs;
     bool tellWhenMissingBuffReagents;
     uint32 missingBuffReagentMessageCooldown;
