@@ -64,7 +64,7 @@ namespace ZaHelpers
 
 // Akil'zon <Eagle Avatar>
 
-std::unordered_map<uint32, uint32> akilzonStormTimer;
+EncounterStateMap<uint32, uint32> akilzonStormTimer;
 
 bool IsInStormWindow(uint32 startMs)
 {

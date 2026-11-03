@@ -9,6 +9,7 @@
 
 #include "Common.h"
 #include "ObjectGuid.h"
+#include "EncounterStateMap.h"
 #include "Position.h"
 #include <array>
 #include <type_traits>
@@ -119,7 +120,7 @@ inline constexpr uint32 AKILZON_STORM_DURATION_MS = 10000;
 // Centerish of the platform
 inline Position const AKILZON_TANK_POSITION = { 378.369f, 1407.718f, 74.797f };
 
-extern std::unordered_map<uint32, uint32> akilzonStormTimer;
+extern EncounterStateMap<uint32, uint32> akilzonStormTimer;
 
 bool IsInStormWindow(uint32 startMs);
 Player* GetElectricalStormTarget(Player* bot);
