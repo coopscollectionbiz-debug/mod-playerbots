@@ -58,7 +58,15 @@ namespace
 
         bool Execute() override
         {
-            _response->set_value(RandomPlayerbotMgr::instance().HandleRemoteCommand(_request));
+            try
+            {
+                _response->set_value(RandomPlayerbotMgr::instance().HandleRemoteCommand(_request));
+            }
+            catch (...)
+            {
+                _response->set_value("error");
+                return false;
+            }
             return true;
         }
 

@@ -698,6 +698,7 @@ protected:
     PacketHandlingHelper masterIncomingPacketHandlers;
     PacketHandlingHelper masterOutgoingPacketHandlers;
     OwnerThreadInbox<OwnerThreadWork> ownerThreadInbox;
+    bool ownerThreadDraining = false; // Accessed only by the owner context.
     std::atomic<uint32> worldThreadBatches{0};    // batches handed to the world thread and not yet run
     std::atomic<uint32> ownerThreadDropped{0};
     // Tells a world batch whether this AI is still the one it was queued for (the bot may have relogged).
@@ -706,7 +707,6 @@ protected:
     PlayerbotSecurity security;
     std::map<std::string, time_t> whispers;
     std::pair<ChatMsg, time_t> currentChat;
-    static std::set<std::string> unsecuredCommands;
     bool allowActive[MAX_ACTIVITY_TYPE];
     time_t allowActiveCheckTimer[MAX_ACTIVITY_TYPE];
     bool inCombat = false;
