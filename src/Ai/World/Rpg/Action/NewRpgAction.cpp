@@ -5,6 +5,7 @@
  */
 
 #include "NewRpgAction.h"
+#include "CityLifeMgr.h"
 #include "LFGMgr.h"
 #include "AreaDefines.h"
 #include "BroadcastHelper.h"
@@ -26,6 +27,7 @@
 #include "Player.h"
 #include "PlayerbotAI.h"
 #include "PlayerbotTextMgr.h"
+#include "Playerbots.h"
 #include "QuestDef.h"
 #include "Random.h"
 #include "SharedDefines.h"
@@ -330,6 +332,9 @@ bool NewRpgStatusUpdateAction::Execute(Event /*event*/)
         }
         case RPG_CITY_LIFE:
         {
+            // Natural admission owns lease expiry on the world thread, even during minimal AI.
+            if (sPlayerbotAIConfig.cityLifeNaturalActivation)
+                return false;
             auto* cityLife = std::get_if<NewRpgInfo::CityLife>(&info.data);
 
             if (!cityLife)
@@ -772,8 +777,216 @@ void NewRpgTravelFlightAction::ContinueCrossMapTaxi()
     bot->TeleportTo(nextNode->map_id, node->x, node->y, node->z, bot->GetOrientation(), TELE_TO_NOT_LEAVE_TAXI);
 }
 
+void NewRpgCityLifeAction::FailDestination(NewRpgInfo::CityLife& data, uint32 now)
+{
+    data.FailedTarget = data.npcOrGo;
+    data.FailedTargetStart = now;
+    data.npcOrGo.Clear();
+    data.lastReach = 0;
+    data.MoveStart = 0;
+    CityLifePolicy::Fail(data.Schedule, bot->GetGUID().GetRawValue(), now);
+    CityLifeMgr::Instance().Count(CityLifeMgr::Metric::DestinationFailures);
+}
+
+bool NewRpgCityLifeAction::ExecuteNatural()
+{
+    auto* data = std::get_if<NewRpgInfo::CityLife>(&botAI->rpgInfo.data);
+    if (!data)
+        return false;
+    // Dungeon Finder is checked on the world thread by CityLifeMgr::RefreshPopulation and
+    // RandomPlayerbotMgr::ProcessCityLifeRequests; LFGMgr is not safe to read from a map thread.
+    if (bot->GetGroup() || botAI->HasGameClientMaster())
+    {
+        botAI->rpgInfo.ChangeToIdle();
+        return false;
+    }
+    if (!bot->IsInWorld() || bot->IsBeingTeleported() || bot->IsInCombat() || bot->isDead() || bot->InBattleground() ||
+        bot->InBattlegroundQueue() || bot->IsInFlight() || bot->GetTransport() || bot->IsFlying() ||
+        bot->GetVehicle() || !botAI->CanMove())
+        return false;
+    if (!CityLifeMgr::Instance().IsObserved(data->cityZoneId, bot->GetTeamId()))
+    {
+        data->Schedule.Suspended = true;
+        return true;
+    }
+    if (botAI->GetSocialPauseUntil() > time(nullptr))
+    {
+        data->Schedule.Suspended = true;
+        return true;
+    }
+
+    uint32 now = getMSTime();
+    uint64 guid = bot->GetGUID().GetRawValue();
+    if (bot->GetMapId() != data->cityPos.GetMapId() || bot->GetZoneId() != data->cityZoneId)
+    {
+        // Only the bounded world admission pass may transfer a new resident.
+        // Do not retry a failed transfer or recover with a visible teleport.
+        return true;
+    }
+    if (!data->Schedule.Initialized || !data->Arrived)
+    {
+        bool existing = !data->Managed;
+        bool validIdle =
+            existing && data->idleStart && !CityLifePolicy::Elapsed(now, data->idleStart, data->idleDuration);
+        CityLifePolicy::Begin(data->Schedule, guid, now, data->Schedule.Intent);
+        if (validIdle)
+        {
+            data->Schedule.ActivityStart = data->idleStart;
+            data->Schedule.ActivityDuration = data->idleDuration;
+        }
+        data->Arrived = true;
+        data->Managed = true;
+        data->Schedule.Suspended = existing;
+    }
+    if (CityLifePolicy::Reconcile(data->Schedule, guid, now))
+    {
+        // Preserve valid intent/target. Only overdue deadlines get fresh remaining time.
+        if (data->idleStart && CityLifePolicy::Elapsed(now, data->idleStart, data->idleDuration))
+        {
+            data->idleStart = now;
+            data->idleDuration = data->Schedule.ActivityDuration;
+        }
+        if (CityLifePolicy::Elapsed(now, data->hubStart, data->hubDuration))
+        {
+            data->hubStart = now;
+            data->hubDuration = CityLifePolicy::Duration(guid, data->Schedule.Sequence + 1);
+        }
+        if (data->lastReach)
+            data->lastReach = now;
+        CityLifeMgr::Instance().Count(CityLifeMgr::Metric::Resumptions);
+    }
+
+    // Never replace a valid spline or a higher-priority command's movement.
+    if (bot->isMoving() || IsWaitingForLastMove(MovementPriority::MOVEMENT_NORMAL))
+        return true;
+    if (CityLifePolicy::CoolingDown(data->Schedule, now))
+        return true;
+    if (bot->GetExactDist(data->cityPos) > CityLifePolicy::HomeRadius)
+    {
+        // Combat/commands can displace a resident. Adopt its safe current neighborhood;
+        // do not use MoveFarTo's teleport/random-path recovery to drag it back.
+        data->cityPos = WorldPosition(bot);
+        data->npcOrGo.Clear();
+        data->MoveStart = 0;
+        CityLifePolicy::Begin(data->Schedule, guid, now, CityLifePolicy::Activity::Waiting);
+        return true;
+    }
+    if (!data->MoveStart &&
+        !CityLifePolicy::Elapsed(now, data->Schedule.ActivityStart, data->Schedule.ActivityDuration))
+        return true;
+
+    if (data->npcOrGo)
+    {
+        WorldObject* target = ObjectAccessor::GetWorldObject(*bot, data->npcOrGo);
+        Creature* creature = target ? target->ToCreature() : nullptr;
+        if (!creature || !creature->IsInWorld() || creature->isDead() || creature->IsInCombat() ||
+            creature->IsHostileTo(bot) || !creature->InSamePhase(bot) ||
+            creature->GetDefaultMovementType() != IDLE_MOTION_TYPE ||
+            bot->GetExactDist(creature) > CityLifePolicy::HomeRadius ||
+            creature->GetExactDist(data->cityPos) > CityLifePolicy::HomeRadius)
+        {
+            FailDestination(*data, now);
+            return true;
+        }
+        if (IsWithinInteractionDist(creature))
+        {
+            if (!data->lastReach)
+            {
+                data->lastReach = now;
+                data->MoveStart = 0;
+                auto intent = CityLifePolicy::Activity::Waiting;
+                if (creature->HasNpcFlag(UNIT_NPC_FLAG_BANKER))
+                    intent = CityLifePolicy::Activity::Banking;
+                else if (creature->HasNpcFlag(UNIT_NPC_FLAG_AUCTIONEER))
+                    intent = CityLifePolicy::Activity::Browsing;
+                else if (creature->HasNpcFlag(UNIT_NPC_FLAG_INNKEEPER))
+                    intent = CityLifePolicy::Activity::Resting;
+                else if ((creature->HasNpcFlag(UNIT_NPC_FLAG_TRAINER) ||
+                          creature->HasNpcFlag(UNIT_NPC_FLAG_TRAINER_CLASS) ||
+                          creature->HasNpcFlag(UNIT_NPC_FLAG_TRAINER_PROFESSION)))
+                    intent = CityLifePolicy::Activity::Training;
+                else if (creature->HasNpcFlag(UNIT_NPC_FLAG_VENDOR))
+                    intent = CityLifePolicy::Activity::Shopping;
+                CityLifePolicy::Begin(data->Schedule, guid, now, intent);
+                bot->SetFacingToObject(creature);
+                return true;
+            }
+            data->npcOrGo.Clear();
+            data->lastReach = 0;
+        }
+        else if (data->MoveStart)
+        {
+            // A committed move ended without arrival. One failed attempt becomes a rest,
+            // not another move reset, random-path loop, or teleport.
+            FailDestination(*data, now);
+            return true;
+        }
+    }
+
+    if (!data->npcOrGo)
+    {
+        GuidVector targets = AI_VALUE(GuidVector, "possible new rpg targets");
+        if (targets.empty())
+        {
+            CityLifePolicy::Begin(data->Schedule, guid, now, CityLifePolicy::Activity::Waiting);
+            return true;
+        }
+        uint32 offset = CityLifePolicy::Hash(guid, data->Schedule.Sequence) % static_cast<uint32>(targets.size());
+        for (uint32 attempt = 0; attempt < std::min<std::size_t>(targets.size(), CityLifePolicy::PlacementBudget);
+             ++attempt)
+        {
+            ObjectGuid targetGuid = targets[(offset + attempt) % targets.size()];
+            Creature* creature = ObjectAccessor::GetCreatureOrPetOrVehicle(*bot, targetGuid);
+            if (!creature || !creature->IsInWorld() || creature->isDead() || creature->IsInCombat() ||
+                creature->IsHostileTo(bot) || !creature->InSamePhase(bot) ||
+                creature->GetDefaultMovementType() != IDLE_MOTION_TYPE ||
+                !CityLifePolicy::TargetInRange(bot->GetExactDist(creature), creature->GetExactDist(data->cityPos)) ||
+                (targetGuid == data->FailedTarget && !CityLifePolicy::Elapsed(now, data->FailedTargetStart, 180000)))
+                continue;
+            data->npcOrGo = targetGuid;
+            break;
+        }
+        if (!data->npcOrGo)
+        {
+            CityLifePolicy::Begin(data->Schedule, guid, now, CityLifePolicy::Activity::Waiting);
+            return true;
+        }
+    }
+
+    Creature* target = ObjectAccessor::GetCreatureOrPetOrVehicle(*bot, data->npcOrGo);
+    if (!target)
+    {
+        FailDestination(*data, now);
+        return true;
+    }
+    if (IsWithinInteractionDist(target))
+    {
+        // Process arrival on the next tick without generating a zero-length path.
+        return true;
+    }
+    PathGenerator path(bot);
+    if (!path.CalculatePath(target->GetPositionX(), target->GetPositionY(), target->GetPositionZ()) ||
+        path.GetPathType() != PATHFIND_NORMAL)
+    {
+        FailDestination(*data, now);
+        return true;
+    }
+    if (MoveWorldObjectTo(data->npcOrGo))
+    {
+        data->MoveStart = now;
+        data->Schedule.Intent = CityLifePolicy::Activity::Traveling;
+        CityLifeMgr::Instance().Count(CityLifeMgr::Metric::MovementStarts);
+        return true;
+    }
+    FailDestination(*data, now);
+    return true;
+}
+
 bool NewRpgCityLifeAction::Execute(Event /*event*/)
 {
+    if (sPlayerbotAIConfig.cityLifeNaturalActivation)
+        return ExecuteNatural();
+
     // Dungeon Finder owns the bot once it queues or joins a group.
     // Stop City Life before it can move or teleport the bot elsewhere.
     // LFGMgr is not map-thread data: the queued case is released on the world thread by

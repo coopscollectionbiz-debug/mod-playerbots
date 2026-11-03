@@ -5,6 +5,7 @@
  */
 
 #include "Playerbots.h"
+#include "CityLifeMgr.h"
 #include "BattleGroundTactics.h"
 #include "BattlefieldScript.h"
 #include "Channel.h"
@@ -140,6 +141,8 @@ public:
         {
             PlayerbotsMgr::instance().AddPlayerbotData(player, false);
             sRandomPlayerbotMgr.OnPlayerLogin(player);
+            if (sPlayerbotAIConfig.cityLifeNaturalActivation)
+                CityLifeMgr::Instance().OnEntry(player, player->GetZoneId());
 
             // Before modifying the following messages, please make sure it does not violate the GNU GPLv2
             // license especially if you are distributing a repack or hosting a public server
@@ -456,6 +459,7 @@ public:
             playerZoneRefreshTimer = 0;
         }
 
+        CityLifeMgr::Instance().Update(diff);
         sRandomPlayerbotMgr.UpdateAI(diff);  // World thread only
     }
 };

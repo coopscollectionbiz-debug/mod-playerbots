@@ -109,7 +109,11 @@ public:
     NewRpgCityLifeAction(PlayerbotAI* botAI) : NewRpgBaseAction(botAI, "new rpg city life") {}
     bool Execute(Event event) override;
 
-    // How long the bot stands near each city NPC before choosing another.
+private:
+    bool ExecuteNatural();
+    void FailDestination(NewRpgInfo::CityLife& data, uint32 now);
+
+    // Legacy CityLife dwell; natural activities have individual schedules.
     const uint32 npcStayTime = 8 * 1000;
 };
 

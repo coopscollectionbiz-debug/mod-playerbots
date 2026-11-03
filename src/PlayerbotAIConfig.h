@@ -409,6 +409,13 @@ public:
     bool autoLearnTrainerSpells;
     bool autoDoQuests;
     bool enableNewRpgStrategy;
+    bool cityLifeNaturalActivation;
+    bool cityLifeDiagnostics;
+    uint32 cityLifeAdmissionBudget;
+    uint32 CityLifeActivationBudget;
+    uint32 CityLifeActivationDurationMs;
+    uint32 CityLifeActivationMaxTickMs;
+    uint32 cityLifeLocationCapacity;
     std::unordered_map<NewRpgStatus, uint32> RpgStatusProbWeight;
     bool syncLevelWithPlayers;
     bool randomBotConcentrateInPlayerZone;

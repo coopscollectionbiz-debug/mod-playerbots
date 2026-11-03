@@ -2826,3 +2826,36 @@ AiPlayerbot.TargetPosRecalcDistance = 0.1
 
 # Allow bots to be summoned near innkeepers
 AiPlayerbot.SummonAtInnkeepersEnabled = 1
+
+# CityLife natural activation (opt-in). Restart after changing NaturalActivation because it
+# builds the verified service destination cache at startup. Installed configuration is untouched.
+# Uses existing online bots, with bounded world-thread admission and no empty-city movement.
+AiPlayerbot.CityLife.NaturalActivation = 0
+
+# Rapid initial window: maximum transfer attempts across ALL cities per 250ms slice (1-8).
+# Four attempts per slice can theoretically cover a 100-bot deficit in about 6 seconds;
+# visibility, eligible bots, time/pressure limits and competing cities can slow this substantially.
+AiPlayerbot.CityLife.ActivationBudget = 4
+
+# Initial window per city/faction, started only on its first observer's arrival (1000-30000ms).
+# Additional entry events while observed do not restart the window.
+AiPlayerbot.CityLife.ActivationDurationMs = 10000
+
+# Slow/pause admissions using the core's measured world tick interval (50-1000ms).
+# Budget halves at 75% of this limit; admission pauses at the limit. Includes normal tick sleep;
+# choose a limit above your configured minimum world tick. No global activity setting changes.
+AiPlayerbot.CityLife.ActivationMaxTickMs = 100
+
+# Normal maintenance: transfer attempts across ALL cities per 2 seconds (1-4).
+AiPlayerbot.CityLife.MaintenanceBudget = 2
+
+# Backward-compatible maintenance fallback when MaintenanceBudget is absent in installed config.
+AiPlayerbot.CityLife.AdmissionBudget = 2
+
+# Soft admission capacity within 25 yards of a service footprint (clamped to 1-20).
+# Actual nearby bodies and pending hub reservations both count. Unsafe/full cities may underfill.
+AiPlayerbot.CityLife.LocationCapacity = 8
+
+# Aggregate 30-second counters, plus 2-second sampled ordinary movement/visibility observations.
+# No per-bot tick logging. Sampling can miss short transitions; these counters do not prove causation.
+AiPlayerbot.CityLife.Diagnostics = 0

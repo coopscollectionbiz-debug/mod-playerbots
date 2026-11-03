@@ -5,6 +5,7 @@
  */
 
 #include "RandomPlayerbotMgr.h"
+#include "CityLifeMgr.h"
 #include "PlayerbotsDatabase.h"
 #include "AiFactory.h"
 #include "Battleground.h"
@@ -3028,6 +3029,12 @@ void RandomPlayerbotMgr::PopulateCityForPlayer(
         !player->GetSession() ||
         player->GetSession()->IsBot())
     {
+        return;
+    }
+
+    if (sPlayerbotAIConfig.cityLifeNaturalActivation)
+    {
+        CityLifeMgr::Instance().OnEntry(player, cityZoneId);
         return;
     }
 

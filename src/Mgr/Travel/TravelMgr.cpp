@@ -4706,6 +4706,12 @@ bool TravelMgr::GetCityLifeLocation(Player* bot, WorldLocation& outLocation, uin
     return true;
 }
 
+std::vector<TravelMgr::CityLifeHub> const& TravelMgr::GetNaturalCityLifeHubs(uint32 zone) const
+{
+    static std::vector<CityLifeHub> const empty;
+    auto it = _naturalCityLifeHubs.find(zone);
+    return it == _naturalCityLifeHubs.end() ? empty : it->second;
+}
 
 bool TravelMgr::GetCityLifeLocationForZone(
     Player* bot,
@@ -4853,6 +4859,7 @@ void TravelMgr::PrepareDestinationCache()
     uint32 bankerCount = 0;
 
     cityLifeHubLocationsByZone.clear();
+    _naturalCityLifeHubs.clear();
 
     LOG_INFO("playerbots", "Preparing destination caches for {} levels...", maxLevel);
     // Temporary map to group creatures by entry and area
@@ -4925,6 +4932,30 @@ void TravelMgr::PrepareDestinationCache()
                 UNIT_NPC_FLAG_FLIGHTMASTER)
             {
                 cityLifeWeight += 1;
+            }
+
+            CityLifePolicy::Activity activity = CityLifePolicy::Activity::Waiting;
+            if (sPlayerbotAIConfig.cityLifeNaturalActivation)
+            {
+                // Equal slots per verified service spawn; actual occupancy, not NPC count,
+                // chooses admissions. Do not invent street coordinates from service positions.
+                cityLifeWeight = 3;
+                if (creatureTemplate->npcflag & UNIT_NPC_FLAG_BANKER)
+                    activity = CityLifePolicy::Activity::Banking;
+                else if (creatureTemplate->npcflag & UNIT_NPC_FLAG_AUCTIONEER)
+                    activity = CityLifePolicy::Activity::Browsing;
+                else if (creatureTemplate->npcflag & UNIT_NPC_FLAG_INNKEEPER)
+                    activity = CityLifePolicy::Activity::Resting;
+                else if (creatureTemplate->npcflag &
+                         (UNIT_NPC_FLAG_TRAINER | UNIT_NPC_FLAG_TRAINER_CLASS | UNIT_NPC_FLAG_TRAINER_PROFESSION))
+                    activity = CityLifePolicy::Activity::Training;
+                else if (creatureTemplate->npcflag & (UNIT_NPC_FLAG_VENDOR | UNIT_NPC_FLAG_REPAIR))
+                    activity = CityLifePolicy::Activity::Shopping;
+                else if (!(creatureTemplate->npcflag & UNIT_NPC_FLAG_FLIGHTMASTER))
+                    cityLifeWeight = 0;
+
+                if (creatureData.movementType != IDLE_MOTION_TYPE)
+                    cityLifeWeight = 0;
             }
 
             if (cityLifeWeight)
@@ -5032,8 +5063,10 @@ void TravelMgr::PrepareDestinationCache()
                         slotZ + 0.1f,
                         orient + M_PI);
 
-                    cityLocations.push_back(
-                        cityLifeLoc);
+                    cityLocations.push_back(cityLifeLoc);
+                    if (sPlayerbotAIConfig.cityLifeNaturalActivation)
+                        _naturalCityLifeHubs[areaId].push_back(
+                            {cityLifeLoc, activity, guid});
                 }
             }
         }

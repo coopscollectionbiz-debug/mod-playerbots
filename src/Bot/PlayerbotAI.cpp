@@ -4972,6 +4972,9 @@ bool PlayerbotAI::AllowActivity(ActivityType activityType, bool checkNow)
         return allowActive[activityIndex];
 
     const bool allowed = AllowActive(activityType);
+    if (sPlayerbotAIConfig.cityLifeNaturalActivation && activityType == ALL_ACTIVITY && !allowed)
+        if (auto* city = std::get_if<NewRpgInfo::CityLife>(&rpgInfo.data))
+            city->Schedule.Suspended = true;
     allowActive[activityIndex] = allowed;
     allowActiveCheckTimer[activityIndex] = getMSTime();
 

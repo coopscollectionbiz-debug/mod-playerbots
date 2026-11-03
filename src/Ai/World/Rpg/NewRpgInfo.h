@@ -8,6 +8,7 @@
 #define PLAYERBOTS_NEWRPGINFO_H
 
 #include "Define.h"
+#include "CityLifePolicy.h"
 #include "ObjectGuid.h"
 #include "ObjectMgr.h"
 #include "QuestDef.h"
@@ -103,6 +104,13 @@ struct CityLife
 
     // Start of the current CityLife population lease.
     uint32 leaseStart{0};
+
+    CityLifePolicy::Schedule Schedule;
+    bool Managed = false;
+    bool Arrived = false;
+    uint32 MoveStart = 0;
+    ObjectGuid FailedTarget;
+    uint32 FailedTargetStart = 0;
 };
 
 struct Idle

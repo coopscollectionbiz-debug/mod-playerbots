@@ -8,6 +8,7 @@
 #define PLAYERBOTS_TRAVELMGR_H
 
 #include "AiObject.h"
+#include "CityLifePolicy.h"
 #include "CreatureData.h"
 #include "GameObject.h"
 #include "GridDefines.h"
@@ -879,6 +880,13 @@ public:
     const std::vector<WorldLocation> GetTeleportLocations(Player* bot);
     const std::vector<WorldLocation> GetTravelHubs(Player* bot);
     std::vector<WorldLocation> GetCityLocations(Player* bot);
+    struct CityLifeHub
+    {
+        WorldLocation Location;
+        CityLifePolicy::Activity Activity;
+        uint32 SpawnId;
+    };
+    std::vector<CityLifeHub> const& GetNaturalCityLifeHubs(uint32 zone) const;
     bool GetCityLifeLocation(Player* bot, WorldLocation& outLocation, uint32& outZoneId);
     bool GetCityLifeLocationForZone(Player* bot, uint32 cityZoneId, WorldLocation& outLocation);
     std::vector<uint32> GetFlightNodesInZone(uint32 zoneId, TeamId team, uint32 excludeNode = 0) const;
@@ -1010,6 +1018,7 @@ private:
     // on-demand CityLife. Keyed by capital zone ID.
     std::unordered_map<uint32, std::vector<WorldLocation>>
         cityLifeHubLocationsByZone;
+    std::unordered_map<uint32, std::vector<CityLifeHub>> _naturalCityLifeHubs;
 
     std::map<uint8, std::vector<WorldLocation>> locsPerLevelCache;
     std::unordered_map<uint32, std::vector<WorldLocation>> creatureSpawnsByTemplate;

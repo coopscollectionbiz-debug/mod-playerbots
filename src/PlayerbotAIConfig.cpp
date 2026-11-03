@@ -867,6 +867,20 @@ bool PlayerbotAIConfig::Initialize()
     autoTeleportForLevel = sConfigMgr->GetOption<bool>("AiPlayerbot.AutoTeleportForLevel", false);
     autoDoQuests = sConfigMgr->GetOption<bool>("AiPlayerbot.AutoDoQuests", true);
     enableNewRpgStrategy = sConfigMgr->GetOption<bool>("AiPlayerbot.EnableNewRpgStrategy", true);
+    cityLifeNaturalActivation = sConfigMgr->GetOption<bool>("AiPlayerbot.CityLife.NaturalActivation", false);
+    cityLifeDiagnostics = sConfigMgr->GetOption<bool>("AiPlayerbot.CityLife.Diagnostics", false);
+    uint32 legacyCityLifeBudget =
+        std::clamp(sConfigMgr->GetOption<uint32>("AiPlayerbot.CityLife.AdmissionBudget", 2), 1u, 4u);
+    cityLifeAdmissionBudget = std::clamp(
+        sConfigMgr->GetOption<uint32>("AiPlayerbot.CityLife.MaintenanceBudget", legacyCityLifeBudget), 1u, 4u);
+    CityLifeActivationBudget =
+        std::clamp(sConfigMgr->GetOption<uint32>("AiPlayerbot.CityLife.ActivationBudget", 4), 1u, 8u);
+    CityLifeActivationDurationMs =
+        std::clamp(sConfigMgr->GetOption<uint32>("AiPlayerbot.CityLife.ActivationDurationMs", 10000), 1000u, 30000u);
+    CityLifeActivationMaxTickMs =
+        std::clamp(sConfigMgr->GetOption<uint32>("AiPlayerbot.CityLife.ActivationMaxTickMs", 100), 50u, 1000u);
+    cityLifeLocationCapacity = std::clamp(
+        sConfigMgr->GetOption<uint32>("AiPlayerbot.CityLife.LocationCapacity", 8), 1u, 20u);
 
     RpgStatusProbWeight[RPG_WANDER_RANDOM] = sConfigMgr->GetOption<int32>("AiPlayerbot.RpgStatusProbWeight.WanderRandom", 15);
     RpgStatusProbWeight[RPG_WANDER_NPC] = sConfigMgr->GetOption<int32>("AiPlayerbot.RpgStatusProbWeight.WanderNpc", 20);
