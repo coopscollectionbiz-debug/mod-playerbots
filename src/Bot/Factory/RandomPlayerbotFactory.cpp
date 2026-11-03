@@ -17,6 +17,7 @@
 #include "PlayerbotAIConfig.h"
 #include "PlayerbotOperations.h"
 #include "PlayerbotWorldThreadProcessor.h"
+#include "RaceClassAllowlist.h"
 #include "RaceMgr.h"
 #include "ScriptMgr.h"
 #include "SharedDefines.h"
@@ -59,7 +60,12 @@ bool RandomPlayerbotFactory::IsValidRaceClassCombination(uint8 race, uint8 cls, 
         return false;
 
     PlayerInfo const* info = sObjectMgr->GetPlayerInfo(race, cls);
-    return info != nullptr;
+    if (!info)
+        return false;
+
+    // Same allowlist as player character creation (mod-uac). Pairs added by
+    // mod-uac are only used for new bots when enabled in mod_uac.conf.
+    return RaceClassAllowlist::IsCreationAllowed(race, cls);
 }
 
 
