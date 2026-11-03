@@ -617,7 +617,7 @@ bool AnyGroupMemberHasDoom(Player* bot)
 
 // Archimonde
 
-std::unordered_map<uint32, AirBurstData> archimondeAirBurstTargets;
+EncounterStateMap<uint32, AirBurstData> archimondeAirBurstTargets;
 
 bool HasProtectionOfElune(Player* bot)
 {

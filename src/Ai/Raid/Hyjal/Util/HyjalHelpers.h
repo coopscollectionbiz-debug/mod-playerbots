@@ -9,6 +9,7 @@
 
 #include "Common.h"
 #include "ObjectGuid.h"
+#include "EncounterStateMap.h"
 #include "Position.h"
 #include <functional>
 #include <type_traits>
@@ -246,7 +247,7 @@ inline constexpr float ARCHIMONDE_RANGED_SPREAD_DISTANCE = 10.0f;
 // Archimonde slaps so the tank will pause moving whenever below 60% HP.
 inline Position const ARCHIMONDE_INITIAL_POSITION = { 5640.502f, -3421.238f, 1587.453f };
 
-extern std::unordered_map<uint32, AirBurstData> archimondeAirBurstTargets;
+extern EncounterStateMap<uint32, AirBurstData> archimondeAirBurstTargets;
 
 // Invincibility applied by Tyrande when Archimonde is at 10% HP. Used to cut off boss strategies
 // since the fight is effectively over at this point.
