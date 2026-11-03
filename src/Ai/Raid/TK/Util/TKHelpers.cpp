@@ -92,8 +92,8 @@ Unit* GetCenturionCastingArcaneFlurry(PlayerbotAI* botAI)
 
 // Al'ar <Phoenix God>
 
-std::unordered_map<uint32, bool> lastRebirthState;
-std::unordered_map<uint32, bool> isAlarInPhase2;
+EncounterStateMap<uint32, bool> lastRebirthState;
+EncounterStateMap<uint32, bool> isAlarInPhase2;
 
 // Entry into phase 2 is measured as the moment that Rebirth (34342) finishes casting.
 bool IsAlarInPhase2(uint32 instanceId)
@@ -277,7 +277,7 @@ std::vector<Unit*> GetFlamePatches(PlayerbotAI* botAI)
 
 // Void Reaver
 
-std::unordered_map<uint32, std::vector<ArcaneOrbData>> voidReaverArcaneOrbs;
+EncounterStateMap<uint32, std::vector<ArcaneOrbData>> voidReaverArcaneOrbs;
 
 std::vector<Position> GetActiveArcaneOrbs(uint32 instanceId)
 {
@@ -344,7 +344,7 @@ Creature* GetLegendaryWeaponByState(PlayerbotAI* botAI, uint32 weaponEntry, bool
 
 } // end anonymous namespace
 
-std::unordered_map<uint32, uint32> advisorDpsWaitTimer;
+EncounterStateMap<uint32, uint32> advisorDpsWaitTimer;
 
 uint32 GetKaelthasTkPhase(Unit* kaelthas)
 {

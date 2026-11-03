@@ -9,6 +9,7 @@
 
 #include "Common.h"
 #include "ObjectGuid.h"
+#include "EncounterStateMap.h"
 #include "Position.h"
 #include <array>
 #include <type_traits>
@@ -181,8 +182,8 @@ inline Position const ALAR_ROOM_S_CENTER       = { 281.064f,   0.000f, -2.389f }
 
 inline constexpr float ALAR_FLAME_PATCH_SEARCH_DISTANCE = 40.0f;
 
-extern std::unordered_map<uint32, bool> lastRebirthState;
-extern std::unordered_map<uint32, bool> isAlarInPhase2;
+extern EncounterStateMap<uint32, bool> lastRebirthState;
+extern EncounterStateMap<uint32, bool> isAlarInPhase2;
 
 bool IsAlarInPhase2(uint32 instanceId);
 int8 GetAlarDestinationLocationIndex(Unit* alar);
@@ -213,7 +214,7 @@ inline constexpr float ARCANE_ORB_BUFFER_DISTANCE = 30.0f;
 // Center of the room
 inline Position const VOID_REAVER_TANK_POSITION = { 423.845f, 371.733f, 14.897f };
 
-extern std::unordered_map<uint32, std::vector<ArcaneOrbData>> voidReaverArcaneOrbs;
+extern EncounterStateMap<uint32, std::vector<ArcaneOrbData>> voidReaverArcaneOrbs;
 
 std::vector<Position> GetActiveArcaneOrbs(uint32 instanceId);
 bool IsNearArcaneOrb(Player* bot, std::vector<Position> const& orbs, float radius);
@@ -254,7 +255,7 @@ inline Position const ADVISOR_HEAL_POSITION      = { 752.171f,  19.494f, 46.779f
 inline Position const KAELTHAS_TANK_POSITION     = { 774.008f,  -0.631f, 48.729f };
 
 inline constexpr uint32 ADVISOR_DPS_WAIT_NOT_STARTED = 0;
-extern std::unordered_map<uint32, uint32> advisorDpsWaitTimer;
+extern EncounterStateMap<uint32, uint32> advisorDpsWaitTimer;
 
 uint32 GetKaelthasTkPhase(Unit* kaelthas);
 bool IsAdvisorActive(Unit* advisor);
