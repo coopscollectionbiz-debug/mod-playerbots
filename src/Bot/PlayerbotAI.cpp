@@ -37,7 +37,9 @@
 #include "PlayerbotAIConfig.h"
 #include "PlayerbotGuildMgr.h"
 #include "PlayerbotMgr.h"
+#include "PlayerbotOperation.h"
 #include "PlayerbotTextMgr.h"
+#include "PlayerbotWorldThreadProcessor.h"
 #include "Playerbots.h"
 #include "PositionValue.h"
 #include "RBAC.h"
@@ -57,6 +59,7 @@
 #include <mutex>
 #include <sstream>
 #include <string>
+#include <thread>
 
 namespace
 {
@@ -64,6 +67,82 @@ constexpr uint32 SPELL_TITAN_GRIP = 49152;
 constexpr uint32 SPELL_DK_FROST_PRESENCE = 48263;
 constexpr uint32 SPELL_GRAVITY_LAPSE_TK = 39432;
 constexpr uint32 SPELL_GRAVITY_LAPSE_MGT = 44226;
+}
+
+namespace
+{
+    std::atomic<std::thread::id> worldThreadId{};
+    std::atomic<uint64> nextOwnerThreadToken{1};
+
+    // Built once (thread-safe static init): HandleCommand runs for different bots on different threads.
+    std::map<std::string, ChatMsg> const& ChatPrefixes()
+    {
+        static std::map<std::string, ChatMsg> const prefixes = {
+            { "#w ", CHAT_MSG_WHISPER }, { "#p ", CHAT_MSG_PARTY }, { "#r ", CHAT_MSG_RAID },
+            { "#a ", CHAT_MSG_ADDON }, { "#g ", CHAT_MSG_GUILD } };
+        return prefixes;
+    }
+
+    // Runs, on the world thread, work a bot's owner thread handed over because it can log the bot out.
+    class OwnerThreadWorkOperation : public PlayerbotOperation
+    {
+    public:
+        OwnerThreadWorkOperation(ObjectGuid bot, uint64 token, std::vector<PlayerbotAI::OwnerThreadWork> work)
+            : _bot(bot), _token(token), _work(std::move(work))
+        {
+        }
+
+        bool Execute() override
+        {
+            // Connected, not only in-world: the bot may be between maps.
+            Player* bot = ObjectAccessor::FindConnectedPlayer(_bot);
+            PlayerbotAI* botAI = bot ? GET_PLAYERBOT_AI(bot) : nullptr;
+            if (!botAI)
+                return false;
+
+            botAI->ExecuteWorldThreadBatch(_token, _work);
+            return true;
+        }
+
+        ObjectGuid GetBotGuid() const override { return _bot; }
+        std::string GetName() const override { return "Bot work handed to the world thread"; }
+
+    private:
+        ObjectGuid _bot;
+        uint64 _token;
+        std::vector<PlayerbotAI::OwnerThreadWork> _work;
+    };
+}
+
+void PlayerbotThreadOwnership::MarkWorldThread()
+{
+    worldThreadId.store(std::this_thread::get_id(), std::memory_order_relaxed);
+}
+
+bool PlayerbotThreadOwnership::IsWorldThread()
+{
+    return worldThreadId.load(std::memory_order_relaxed) == std::this_thread::get_id();
+}
+
+bool PlayerbotThreadOwnership::IsWorldThreadBetweenMapUpdates()
+{
+    return IsWorldThread() && !Map::GetUpdatingMapOfCurrentThread();
+}
+
+bool PlayerbotThreadOwnership::IsOwnerContextFor(Player const* bot)
+{
+    return bot && IsOwnerContext(Map::GetUpdatingMapOfCurrentThread(), bot->FindMap(), IsWorldThread());
+}
+
+void PlayerbotThreadOwnership::ReportIfNotOwner(Player const* bot, char const* where)
+{
+    if (bot && !IsOwnerContextFor(bot))
+        LOG_ERROR("playerbots", "Thread ownership: {} ran for bot {} off its owning thread", where, bot->GetName());
+}
+
+uint64 PlayerbotAI::NextOwnerThreadToken()
+{
+    return nextOwnerThreadToken.fetch_add(1, std::memory_order_relaxed);
 }
 
 std::vector<std::string> PlayerbotAI::dispel_whitelist = {
@@ -255,6 +334,15 @@ void PlayerbotAI::UpdateAI(uint32 elapsed, bool minimal)
     if (!bot || !bot->GetSession() || !bot->IsInWorld() || bot->IsBeingTeleported() ||
         bot->GetSession()->IsLoggingOut() || bot->IsDuringRemoveFromWorld())
         return;
+
+    // Commands and packets other threads handed to this bot run here, on its own map thread.
+    if (ownerThreadInbox.HasPending())
+    {
+        DrainOwnerThreadWork();
+        if (!bot->IsInWorld() || bot->IsBeingTeleported() || bot->GetSession()->IsLoggingOut() ||
+            bot->IsDuringRemoveFromWorld())
+            return;
+    }
 
     // Bots send no movement opcodes, so m_lastFallZ stays frozen and Player::IsFalling() (a Z test
     // against it) blocks LFG teleports. Unit::IsFalling() is the flag test, so real falls keep theirs.
@@ -606,7 +694,6 @@ void PlayerbotAI::HandleCommands()
     }
 }
 
-std::map<std::string, ChatMsg> chatMap;
 void PlayerbotAI::HandleCommand(uint32 type, std::string const& text, Player& fromPlayer, const uint32 lang)
 {
     if (!bot)
@@ -648,16 +735,8 @@ void PlayerbotAI::HandleCommand(uint32 type, std::string const& text, Player& fr
         filtered = filtered.substr(sPlayerbotAIConfig.commandPrefix.size());
     }
 
-    if (chatMap.empty())
-    {
-        chatMap["#w "] = CHAT_MSG_WHISPER;
-        chatMap["#p "] = CHAT_MSG_PARTY;
-        chatMap["#r "] = CHAT_MSG_RAID;
-        chatMap["#a "] = CHAT_MSG_ADDON;
-        chatMap["#g "] = CHAT_MSG_GUILD;
-    }
     currentChat = std::pair<ChatMsg, time_t>(CHAT_MSG_WHISPER, 0);
-    for (std::map<std::string, ChatMsg>::iterator i = chatMap.begin(); i != chatMap.end(); ++i)
+    for (auto i = ChatPrefixes().begin(); i != ChatPrefixes().end(); ++i)
     {
         if (filtered.find(i->first) == 0)
         {
@@ -966,6 +1045,33 @@ bool PlayerbotAI::IsAllowedCommand(std::string const text)
 
 void PlayerbotAI::HandleCommand(uint32 type, std::string const text, Player* fromPlayer)
 {
+    // Security refuses a null sender anyway; checking first keeps the sender's GUID valid below.
+    if (!fromPlayer)
+        return;
+
+    // Chat hooks also fire on other maps' threads (a bot whispering this bot, scripts), and the command can
+    // act on this bot at once (do, reset, debug, logout) or queue it. Run it here only on the owner thread.
+    // Logout can delete the bot, so it runs at once only on the world thread between map updates (where
+    // players' chat is handled); from a map thread it goes through the inbox to the world thread.
+    if (!RunsOnOwnerThread() ||
+        (!PlayerbotThreadOwnership::IsWorldThreadBetweenMapUpdates() && IsLifecycleCommand(text)))
+    {
+        OwnerThreadWork work;
+        work.kind = OwnerThreadWork::Kind::Command;
+        work.type = type;
+        work.text = text;
+        work.sender = fromPlayer->GetGUID();
+        QueueForOwnerThread(std::move(work));
+        return;
+    }
+
+    HandleCommandOnOwnerThread(type, text, fromPlayer);
+}
+
+void PlayerbotAI::HandleCommandOnOwnerThread(uint32 type, std::string const text, Player* fromPlayer)
+{
+    PLAYERBOT_CHECK_OWNER_THREAD(bot);
+
     if (!GetSecurity()->CheckLevelFor(PLAYERBOT_SECURITY_INVITE, type != CHAT_MSG_WHISPER, fromPlayer))
         return;
 
@@ -981,7 +1087,7 @@ void PlayerbotAI::HandleCommand(uint32 type, std::string const text, Player* fro
         split(commands, text, sPlayerbotAIConfig.commandSeparator.c_str());
         for (std::vector<std::string>::iterator i = commands.begin(); i != commands.end(); ++i)
         {
-            HandleCommand(type, *i, fromPlayer);
+            HandleCommandOnOwnerThread(type, *i, fromPlayer);
         }
 
         return;
@@ -996,17 +1102,8 @@ void PlayerbotAI::HandleCommand(uint32 type, std::string const text, Player* fro
         filtered = filtered.substr(sPlayerbotAIConfig.commandPrefix.size());
     }
 
-    if (chatMap.empty())
-    {
-        chatMap["#w "] = CHAT_MSG_WHISPER;
-        chatMap["#p "] = CHAT_MSG_PARTY;
-        chatMap["#r "] = CHAT_MSG_RAID;
-        chatMap["#a "] = CHAT_MSG_ADDON;
-        chatMap["#g "] = CHAT_MSG_GUILD;
-    }
-
     currentChat = std::pair<ChatMsg, time_t>(CHAT_MSG_WHISPER, 0);
-    for (std::map<std::string, ChatMsg>::iterator i = chatMap.begin(); i != chatMap.end(); ++i)
+    for (auto i = ChatPrefixes().begin(); i != ChatPrefixes().end(); ++i)
     {
         if (filtered.find(i->first) == 0)
         {
@@ -1142,6 +1239,49 @@ void PlayerbotAI::HandleCommand(uint32 type, std::string const text, Player* fro
 
 void PlayerbotAI::HandleBotOutgoingPacket(WorldPacket const& packet)
 {
+    if (packet.empty())
+        return;
+
+    // Packets reach a bot's session from whichever thread sends them (chat and group traffic from other
+    // maps). Only opcodes this bot reacts to are handed to its owner thread; the rest were dropped anyway.
+    if (!RunsOnOwnerThread())
+    {
+        uint16 const opcode = packet.GetOpcode();
+        if (IsBotPacketHandledDirectly(opcode) || botOutgoingPacketHandlers.Handles(opcode))
+        {
+            OwnerThreadWork work;
+            work.kind = OwnerThreadWork::Kind::BotOutgoingPacket;
+            work.packet = packet;
+            QueueForOwnerThread(std::move(work));
+        }
+        return;
+    }
+
+    HandleBotOutgoingPacketOnOwnerThread(packet);
+}
+
+bool PlayerbotAI::IsBotPacketHandledDirectly(uint16 opcode)
+{
+    switch (opcode)
+    {
+        case SMSG_SPELL_FAILURE:
+        case SMSG_SPELL_DELAYED:
+        case SMSG_EMOTE:
+        case SMSG_MESSAGECHAT:
+        case SMSG_FORCE_MOVE_ROOT:
+        case SMSG_FORCE_MOVE_UNROOT:
+        case SMSG_MOVE_KNOCK_BACK:
+        case SMSG_DISMOUNT:
+            return true;
+        default:
+            return false;
+    }
+}
+
+void PlayerbotAI::HandleBotOutgoingPacketOnOwnerThread(WorldPacket const& packet)
+{
+    PLAYERBOT_CHECK_OWNER_THREAD(bot);
+
     if (packet.empty())
         return;
 
@@ -1447,12 +1587,155 @@ int32 PlayerbotAI::CalculateGlobalCooldown(uint32 spellid)
 
 void PlayerbotAI::HandleMasterIncomingPacket(WorldPacket const& packet)
 {
+    // The master's thread-safe packets are relayed from the master's map thread, which may not be this bot's.
+    if (!RunsOnOwnerThread())
+    {
+        if (masterIncomingPacketHandlers.Handles(packet.GetOpcode()))
+        {
+            OwnerThreadWork work;
+            work.kind = OwnerThreadWork::Kind::MasterIncomingPacket;
+            work.packet = packet;
+            QueueForOwnerThread(std::move(work));
+        }
+        return;
+    }
+
     masterIncomingPacketHandlers.AddPacket(packet);
 }
 
 void PlayerbotAI::HandleMasterOutgoingPacket(WorldPacket const& packet)
 {
+    if (!RunsOnOwnerThread())
+    {
+        if (masterOutgoingPacketHandlers.Handles(packet.GetOpcode()))
+        {
+            OwnerThreadWork work;
+            work.kind = OwnerThreadWork::Kind::MasterOutgoingPacket;
+            work.packet = packet;
+            QueueForOwnerThread(std::move(work));
+        }
+        return;
+    }
+
     masterOutgoingPacketHandlers.AddPacket(packet);
+}
+
+// Owner-thread hand-off (see PlayerbotThreadOwnership.h).
+//
+// While anything is queued or handed to the world thread, new work queues behind it too, so every bot
+// sees its commands and packets in arrival order no matter which thread delivered them.
+bool PlayerbotAI::RunsOnOwnerThread() const
+{
+    return !ownerThreadInbox.HasPending() && worldThreadBatches.load(std::memory_order_acquire) == 0 &&
+           PlayerbotThreadOwnership::IsOwnerContextFor(bot);
+}
+
+void PlayerbotAI::QueueForOwnerThread(OwnerThreadWork&& work)
+{
+    if (ownerThreadInbox.Push(std::move(work)))
+        return;
+
+    uint32 const dropped = ownerThreadDropped.fetch_add(1, std::memory_order_relaxed);
+    if (dropped % 100 == 0)
+        LOG_ERROR("playerbots", "Bot {}: owner-thread inbox full, dropped {} item(s)", bot ? bot->GetName() : "?",
+                  dropped + 1);
+}
+
+void PlayerbotAI::DrainOwnerThreadWork()
+{
+    PLAYERBOT_CHECK_OWNER_THREAD(bot);
+
+    std::vector<OwnerThreadWork> work = ownerThreadInbox.Take();
+    for (std::size_t i = 0; i < work.size(); ++i)
+    {
+        // Logout can delete this bot and its AI, so it must not run inside the bot's own update. It and
+        // everything after it (to keep the order) go to the world thread, as do items queued behind an
+        // earlier batch that has not run yet.
+        if (worldThreadBatches.load(std::memory_order_acquire) == 0 &&
+            (work[i].kind != OwnerThreadWork::Kind::Command || !IsLifecycleCommand(work[i].text)))
+        {
+            ExecuteOwnerThreadWork(work[i]);
+            continue;
+        }
+
+        std::vector<OwnerThreadWork> rest(std::make_move_iterator(work.begin() + i),
+                                          std::make_move_iterator(work.end()));
+        worldThreadBatches.fetch_add(1, std::memory_order_acq_rel);
+        if (!PlayerbotWorldThreadProcessor::instance().QueueOperation(
+                std::make_unique<OwnerThreadWorkOperation>(bot->GetGUID(), ownerThreadToken, std::move(rest))))
+            worldThreadBatches.fetch_sub(1, std::memory_order_acq_rel);
+
+        return;
+    }
+}
+
+void PlayerbotAI::ExecuteWorldThreadBatch(uint64 token, std::vector<OwnerThreadWork>& work)
+{
+    // A bot that relogged has a new AI; the old AI's commands are not replayed on it.
+    if (token != ownerThreadToken)
+        return;
+
+    for (OwnerThreadWork& item : work)
+        ExecuteOwnerThreadWork(item);
+
+    worldThreadBatches.fetch_sub(1, std::memory_order_acq_rel);
+}
+
+void PlayerbotAI::ExecuteOwnerThreadWork(OwnerThreadWork& work)
+{
+    switch (work.kind)
+    {
+        case OwnerThreadWork::Kind::Command:
+            // The sender may have logged out meanwhile. Security is checked again now, for the current master.
+            if (Player* sender = ObjectAccessor::FindConnectedPlayer(work.sender))
+                HandleCommandOnOwnerThread(work.type, work.text, sender);
+            break;
+        case OwnerThreadWork::Kind::BotOutgoingPacket:
+            HandleBotOutgoingPacketOnOwnerThread(work.packet);
+            break;
+        case OwnerThreadWork::Kind::MasterIncomingPacket:
+            masterIncomingPacketHandlers.AddPacket(work.packet);
+            break;
+        case OwnerThreadWork::Kind::MasterOutgoingPacket:
+            masterOutgoingPacketHandlers.AddPacket(work.packet);
+            break;
+    }
+}
+
+// Mirrors the parsing in HandleCommandOnOwnerThread: true if any part of the text is logout/logout cancel.
+bool PlayerbotAI::IsLifecycleCommand(std::string const& text)
+{
+    if (text.find(sPlayerbotAIConfig.commandSeparator) != std::string::npos)
+    {
+        std::vector<std::string> commands;
+        split(commands, text, sPlayerbotAIConfig.commandSeparator.c_str());
+        for (std::string const& command : commands)
+            if (IsLifecycleCommand(command))
+                return true;
+
+        return false;
+    }
+
+    std::string filtered = text;
+    if (!sPlayerbotAIConfig.commandPrefix.empty())
+    {
+        if (filtered.find(sPlayerbotAIConfig.commandPrefix) != 0)
+            return false;
+
+        filtered = filtered.substr(sPlayerbotAIConfig.commandPrefix.size());
+    }
+
+    for (auto const& [prefix, chatType] : ChatPrefixes())
+    {
+        if (filtered.find(prefix) == 0)
+        {
+            filtered = filtered.substr(3);
+            break;
+        }
+    }
+
+    filtered = chatFilter.Filter(trim(filtered));
+    return filtered == "logout" || filtered == "logout cancel";
 }
 
 void PlayerbotAI::ChangeEngine(BotState type)
@@ -1825,6 +2108,8 @@ bool PlayerbotAI::HasTargetExclusions() const
 
 bool PlayerbotAI::DoSpecificAction(std::string const name, Event event, bool silent, std::string const qualifier)
 {
+    PLAYERBOT_CHECK_OWNER_THREAD(bot);
+
     std::ostringstream out;
 
     for (uint8 i = 0; i < BOT_STATE_MAX; i++)

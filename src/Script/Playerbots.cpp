@@ -436,6 +436,8 @@ public:
 
     void OnUpdate(uint32 diff) override
     {
+        // Lets bots tell the world thread apart from map threads (PlayerbotThreadOwnership).
+        PlayerbotThreadOwnership::MarkWorldThread();
         PlayerbotWorldThreadProcessor::instance().Update(diff);
         sRandomPlayerbotMgr.ProcessCityLifeRequests(diff);
         static uint32 playerZoneRefreshTimer = 0;

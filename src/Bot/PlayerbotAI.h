@@ -21,6 +21,7 @@
 #include "PlayerbotAIConfig.h"
 #include "PlayerbotSecurity.h"
 #include "PlayerbotTextMgr.h"
+#include "PlayerbotThreadOwnership.h"
 #include "SpellAuras.h"
 #include "Util.h"
 #include "WorldPacket.h"
@@ -352,6 +353,8 @@ public:
     void AddHandler(uint16 opcode, std::string const handler);
     void Handle(ExternalEventHelper& helper);
     void AddPacket(WorldPacket const& packet);
+    // handlers is filled in the PlayerbotAI constructor and only read afterwards, so any thread may ask.
+    bool Handles(uint16 opcode) const { return handlers.find(opcode) != handlers.end(); }
 
 private:
     std::map<uint16, std::string> handlers;
@@ -405,6 +408,29 @@ public:
     void HandleBotOutgoingPacket(WorldPacket const& packet);
     void HandleMasterIncomingPacket(WorldPacket const& packet);
     void HandleMasterOutgoingPacket(WorldPacket const& packet);
+
+    // Commands and packets for this bot that arrive on a thread that does not own it (another map's thread,
+    // a socket thread, a script). They are queued and run by the owner, in arrival order.
+    struct OwnerThreadWork
+    {
+        enum class Kind : uint8
+        {
+            Command,
+            BotOutgoingPacket,
+            MasterIncomingPacket,
+            MasterOutgoingPacket
+        };
+
+        Kind kind = Kind::Command;
+        uint32 type = 0;
+        std::string text;
+        ObjectGuid sender;
+        WorldPacket packet;
+    };
+
+    // World thread only: runs work the owner handed over because it can log the bot out.
+    void ExecuteWorldThreadBatch(uint64 token, std::vector<OwnerThreadWork>& work);
+
     void HandleTeleportAck();
     void ChangeEngine(BotState type);
     void ChangeEngineOnCombat();
@@ -639,6 +665,15 @@ private:
     Item* FindItemInInventory(std::function<bool(ItemTemplate const*)> checkItem) const;
     void HandleCommands();
     void HandleCommand(uint32 type, std::string const& text, Player& fromPlayer, const uint32 lang = LANG_UNIVERSAL);
+    void HandleCommandOnOwnerThread(uint32 type, std::string const text, Player* fromPlayer);
+    void HandleBotOutgoingPacketOnOwnerThread(WorldPacket const& packet);
+    bool RunsOnOwnerThread() const;
+    void QueueForOwnerThread(OwnerThreadWork&& work);
+    void DrainOwnerThreadWork();
+    void ExecuteOwnerThreadWork(OwnerThreadWork& work);
+    bool IsLifecycleCommand(std::string const& text);
+    static bool IsBotPacketHandledDirectly(uint16 opcode);
+    static uint64 NextOwnerThreadToken();
     inline bool IsValidUnit(Unit const* unit) const
     {
         return unit && unit->IsInWorld() && !unit->IsDuringRemoveFromWorld();
@@ -662,6 +697,11 @@ protected:
     PacketHandlingHelper botOutgoingPacketHandlers;
     PacketHandlingHelper masterIncomingPacketHandlers;
     PacketHandlingHelper masterOutgoingPacketHandlers;
+    OwnerThreadInbox<OwnerThreadWork> ownerThreadInbox;
+    std::atomic<uint32> worldThreadBatches{0};    // batches handed to the world thread and not yet run
+    std::atomic<uint32> ownerThreadDropped{0};
+    // Tells a world batch whether this AI is still the one it was queued for (the bot may have relogged).
+    uint64 const ownerThreadToken = NextOwnerThreadToken();
     CompositeChatFilter chatFilter;
     PlayerbotSecurity security;
     std::map<std::string, time_t> whispers;

@@ -6,12 +6,17 @@
 
 #include "PlayerbotCommandServer.h"
 #include "IoContext.h"
+#include "PlayerbotOperation.h"
+#include "PlayerbotWorldThreadProcessor.h"
 #include "RandomPlayerbotMgr.h"
 #include <boost/asio.hpp>
 #include <boost/bind.hpp>
 #include <boost/smart_ptr.hpp>
 #include <boost/thread/thread.hpp>
+#include <chrono>
 #include <cstdlib>
+#include <future>
+#include <memory>
 
 using boost::asio::ip::tcp;
 typedef boost::shared_ptr<tcp::socket> socket_ptr;
@@ -39,6 +44,46 @@ bool ReadLine(socket_ptr sock, std::string* buffer, std::string* line)
     return true;
 }
 
+namespace
+{
+    // Remote commands read bot AI state, which only its map thread or the world thread between map updates
+    // may touch. The socket thread hands the request to the world thread and waits for the answer.
+    class RemoteCommandOperation : public PlayerbotOperation
+    {
+    public:
+        RemoteCommandOperation(std::string request, std::shared_ptr<std::promise<std::string>> response)
+            : _request(std::move(request)), _response(std::move(response))
+        {
+        }
+
+        bool Execute() override
+        {
+            _response->set_value(RandomPlayerbotMgr::instance().HandleRemoteCommand(_request));
+            return true;
+        }
+
+        std::string GetName() const override { return "Remote playerbot command"; }
+
+    private:
+        std::string _request;
+        std::shared_ptr<std::promise<std::string>> _response;
+    };
+
+    std::string HandleRemoteCommandOnWorldThread(std::string const& request)
+    {
+        auto response = std::make_shared<std::promise<std::string>>();
+        std::future<std::string> result = response->get_future();
+        if (!PlayerbotWorldThreadProcessor::instance().QueueOperation(
+                std::make_unique<RemoteCommandOperation>(request, response)))
+            return "busy";
+
+        if (result.wait_for(std::chrono::seconds(5)) != std::future_status::ready)
+            return "timeout";
+
+        return result.get();
+    }
+}
+
 void session(socket_ptr sock)
 {
     try
@@ -46,7 +91,7 @@ void session(socket_ptr sock)
         std::string buffer, request;
         while (ReadLine(sock, &buffer, &request))
         {
-            std::string const response = RandomPlayerbotMgr::instance().HandleRemoteCommand(request) + "\n";
+            std::string const response = HandleRemoteCommandOnWorldThread(request) + "\n";
             boost::asio::write(*sock, boost::asio::buffer(response.c_str(), response.size()));
             request = "";
         }
