@@ -1174,9 +1174,10 @@ bool MotherShahrazTanksPositionBossUnderPillarAction::Execute(Event /*event*/)
     if (playerVictim && botAI->IsTank(playerVictim))
     {
         const ObjectGuid guid = bot->GetGUID();
-        auto it = shahrazTankStep.try_emplace(
-            guid, TankPositionState::MovingToTransition).first;
-        TankPositionState state = it->second;
+        // Other group members read this tank's step (GetShahrazTankPositionState), so it is copied.
+        shahrazTankStep.try_emplace(guid, TankPositionState::MovingToTransition);
+        TankPositionState state =
+            shahrazTankStep.get(guid).value_or(TankPositionState::MovingToTransition);
 
         constexpr float maxDistance = 0.5f;
         Position const& position = state == TankPositionState::MovingToTransition ?
@@ -1192,14 +1193,14 @@ bool MotherShahrazTanksPositionBossUnderPillarAction::Execute(Event /*event*/)
         }
 
         if (state == TankPositionState::MovingToTransition && distToPosition <= maxDistance)
-            shahrazTankStep[guid] = TankPositionState::MovingToFinal;
+            shahrazTankStep.insert_or_assign(guid, TankPositionState::MovingToFinal);
 
         if (state != TankPositionState::MovingToTransition && distToPosition <= maxDistance)
         {
             const float orientation = atan2(shahraz->GetPositionY() - bot->GetPositionY(),
                                             shahraz->GetPositionX() - bot->GetPositionX());
             bot->SetFacingTo(orientation);
-            shahrazTankStep[guid] = TankPositionState::Positioned;
+            shahrazTankStep.insert_or_assign(guid, TankPositionState::Positioned);
         }
     }
 

@@ -162,7 +162,7 @@ int GetGurtoggActiveRotationGroup(Unit* gurtogg);
 extern const Position SHAHRAZ_TANK_POSITION;
 extern const Position SHAHRAZ_TRANSITION_POSITION;
 extern const Position SHAHRAZ_RANGED_POSITION;
-extern EncounterStateMap<ObjectGuid, TankPositionState> shahrazTankStep;
+extern EncounterSharedStateMap<ObjectGuid, TankPositionState> shahrazTankStep;
 TankPositionState GetShahrazTankPositionState(Player* bot);
 
 // Illidari Council

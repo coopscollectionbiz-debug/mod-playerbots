@@ -164,9 +164,9 @@ namespace SerpentShrineCavernHelpers
     extern const Position VASHJ_PLATFORM_CENTER_POSITION;
     extern EncounterStateMap<ObjectGuid, bool> hasReachedVashjRangedPosition;
     extern EncounterStateMap<uint32, ObjectGuid> nearestTriggerGuid;
-    extern EncounterStateMap<ObjectGuid, Position> intendedLineup;
+    extern EncounterSharedStateMap<ObjectGuid, Position> intendedLineup;
     extern EncounterStateMap<uint32, time_t> lastImbueAttempt;
-    extern EncounterStateMap<ObjectGuid, time_t> lastCoreInInventoryTime;
+    extern EncounterSharedStateMap<ObjectGuid, time_t> lastCoreInInventoryTime;
     bool IsMainTankInSameSubgroup(PlayerbotAI* botAI, Player* bot);
     bool IsLadyVashjInPhase1(PlayerbotAI* botAI);
     bool IsLadyVashjInPhase2(PlayerbotAI* botAI);

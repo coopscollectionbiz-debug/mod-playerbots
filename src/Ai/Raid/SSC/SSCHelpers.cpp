@@ -176,9 +176,9 @@ const Position VASHJ_PLATFORM_CENTER_POSITION = { 29.634f, -923.541f, 42.902f };
 
 EncounterStateMap<ObjectGuid, bool> hasReachedVashjRangedPosition;
 EncounterStateMap<uint32, ObjectGuid> nearestTriggerGuid;
-EncounterStateMap<ObjectGuid, Position> intendedLineup;
+EncounterSharedStateMap<ObjectGuid, Position> intendedLineup;
 EncounterStateMap<uint32, time_t> lastImbueAttempt;
-EncounterStateMap<ObjectGuid, time_t> lastCoreInInventoryTime;
+EncounterSharedStateMap<ObjectGuid, time_t> lastCoreInInventoryTime;
 
 bool IsMainTankInSameSubgroup(PlayerbotAI* botAI, Player* bot)
 {
@@ -482,9 +482,9 @@ bool AnyRecentCoreInInventory(PlayerbotAI* botAI, Player* bot)
         if (handler->HasItemCount(ITEM_TAINTED_CORE, 1, false))
             return true;
 
-        auto it = lastCoreInInventoryTime.find(handler->GetGUID());
-        if (it != lastCoreInInventoryTime.end() &&
-            (now - it->second) <= static_cast<time_t>(lookbackSeconds))
+        // Another handler's entry: copied under the lock (see EncounterSharedStateMap).
+        std::optional<time_t> const lastSeen = lastCoreInInventoryTime.get(handler->GetGUID());
+        if (lastSeen && (now - *lastSeen) <= static_cast<time_t>(lookbackSeconds))
             return true;
     }
 

@@ -102,7 +102,7 @@ int GetGurtoggActiveRotationGroup(Unit* gurtogg)
 const Position SHAHRAZ_TANK_POSITION       = { 960.438f, 178.989f, 192.826f };
 const Position SHAHRAZ_TRANSITION_POSITION = { 951.327f, 179.550f, 192.550f };
 const Position SHAHRAZ_RANGED_POSITION     = { 935.267f, 175.459f, 192.821f };
-EncounterStateMap<ObjectGuid, TankPositionState> shahrazTankStep;
+EncounterSharedStateMap<ObjectGuid, TankPositionState> shahrazTankStep;
 
 TankPositionState GetShahrazTankPositionState(Player* bot)
 {
@@ -110,11 +110,8 @@ TankPositionState GetShahrazTankPositionState(Player* bot)
     if (!mainTank)
         return TankPositionState::Unknown;
 
-    auto it = shahrazTankStep.find(mainTank->GetGUID());
-    if (it != shahrazTankStep.end())
-        return it->second;
-
-    return TankPositionState::Unknown;
+    // The main tank's entry, read by every group member: copied under the lock.
+    return shahrazTankStep.get(mainTank->GetGUID()).value_or(TankPositionState::Unknown);
 }
 
 // Illidari Council

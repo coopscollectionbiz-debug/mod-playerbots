@@ -10,6 +10,7 @@
 #include <cstddef>
 #include <functional>
 #include <mutex>
+#include <optional>
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
@@ -19,9 +20,10 @@
 //
 // Lookups hand back a handle to the node rather than a std iterator. unordered_map nodes never move,
 // so a handle stays valid while other threads insert or erase other keys; it only dies when its own key
-// is erased. Every key here is an instance id or a bot GUID, and that key is only used by the map
-// thread updating that instance, which is the same ownership rule the per-instance state of upstream
-// mod-playerbots 52178c72 relies on. No lock is held while the caller works with the value.
+// is erased. Use it only when every access to a key comes from the map thread updating the instance
+// that owns the key (its instance id, or the executing bot's own GUID): the same ownership rule the
+// per-instance state of upstream mod-playerbots 52178c72 relies on. No lock is held while the caller
+// works with the value. State that other players' actions also touch belongs in EncounterSharedStateMap.
 template <typename Key, typename Value, typename Hash = std::hash<Key>>
 class EncounterStateMap
 {
@@ -106,6 +108,56 @@ public:
 private:
     mutable std::mutex _lock;
     Container _map;
+};
+
+// For state keyed by one player but also read or erased by other players' actions (for example the tank's
+// or a core passer's entry). Those players can be in another instance of the same raid, on another map
+// thread, so the single-owner rule behind EncounterStateMap handles does not hold. Values are therefore
+// copied in and out under the lock and no handle or reference is ever returned.
+template <typename Key, typename Value, typename Hash = std::hash<Key>>
+class EncounterSharedStateMap
+{
+public:
+    std::optional<Value> get(Key const& key) const
+    {
+        std::lock_guard<std::mutex> guard(_lock);
+        auto it = _map.find(key);
+        if (it == _map.end())
+            return std::nullopt;
+
+        return it->second;
+    }
+
+    // Returns true if the value was inserted.
+    template <typename... Args>
+    bool try_emplace(Key const& key, Args&&... args)
+    {
+        std::lock_guard<std::mutex> guard(_lock);
+        return _map.try_emplace(key, std::forward<Args>(args)...).second;
+    }
+
+    template <typename V>
+    void insert_or_assign(Key const& key, V&& value)
+    {
+        std::lock_guard<std::mutex> guard(_lock);
+        _map.insert_or_assign(key, std::forward<V>(value));
+    }
+
+    std::size_t erase(Key const& key)
+    {
+        std::lock_guard<std::mutex> guard(_lock);
+        return _map.erase(key);
+    }
+
+    bool contains(Key const& key) const
+    {
+        std::lock_guard<std::mutex> guard(_lock);
+        return _map.contains(key);
+    }
+
+private:
+    mutable std::mutex _lock;
+    std::unordered_map<Key, Value, Hash> _map;
 };
 
 // Set form of EncounterStateMap; membership only, so nothing outlives the lock.

@@ -2294,8 +2294,8 @@ bool LadyVashjPassTheTaintedCoreAction::LineUpFirstCorePasser(
     const float centerY = VASHJ_PLATFORM_CENTER_POSITION.GetPositionY();
     constexpr float radius = 57.5f;
 
-    auto it = intendedLineup.find(bot->GetGUID());
-    if (it == intendedLineup.end())
+    std::optional<Position> lineup = intendedLineup.get(bot->GetGUID());
+    if (!lineup)
     {
         float mx = designatedLooter->GetPositionX();
         float my = designatedLooter->GetPositionY();
@@ -2306,10 +2306,12 @@ bool LadyVashjPassTheTaintedCoreAction::LineUpFirstCorePasser(
         constexpr float targetZ = VASHJ_PLATFORM_CENTER_Z;
 
         intendedLineup.try_emplace(bot->GetGUID(), Position(targetX, targetY, targetZ));
-        it = intendedLineup.find(bot->GetGUID());
+        lineup = intendedLineup.get(bot->GetGUID());
+        if (!lineup)
+            return false;
     }
 
-    Position const& pos = it->second;
+    Position const& pos = *lineup;
     float targetX = pos.GetPositionX();
     float targetY = pos.GetPositionY();
     float targetZ = pos.GetPositionZ();
@@ -2323,15 +2325,16 @@ bool LadyVashjPassTheTaintedCoreAction::LineUpFirstCorePasser(
 bool LadyVashjPassTheTaintedCoreAction::LineUpSecondCorePasser(
     Player* firstCorePasser, Unit* closestTrigger)
 {
-    auto itFirst = intendedLineup.find(firstCorePasser->GetGUID());
-    if (itFirst == intendedLineup.end())
+    // The previous passer's entry is another player's state, so it is copied under the lock.
+    std::optional<Position> const previousLineup = intendedLineup.get(firstCorePasser->GetGUID());
+    if (!previousLineup)
         return false;
 
-    auto itSecond = intendedLineup.find(bot->GetGUID());
-    if (itSecond == intendedLineup.end())
+    std::optional<Position> lineup = intendedLineup.get(bot->GetGUID());
+    if (!lineup)
     {
-        float fx = itFirst->second.GetPositionX();
-        float fy = itFirst->second.GetPositionY();
+        float fx = previousLineup->GetPositionX();
+        float fy = previousLineup->GetPositionY();
 
         float dx = closestTrigger->GetPositionX() - fx;
         float dy = closestTrigger->GetPositionY() - fy;
@@ -2361,10 +2364,12 @@ bool LadyVashjPassTheTaintedCoreAction::LineUpSecondCorePasser(
         }
 
         intendedLineup.try_emplace(bot->GetGUID(), Position(targetX, targetY, targetZ));
-        itSecond = intendedLineup.find(bot->GetGUID());
+        lineup = intendedLineup.get(bot->GetGUID());
+        if (!lineup)
+            return false;
     }
 
-    Position const& pos = itSecond->second;
+    Position const& pos = *lineup;
     float targetX = pos.GetPositionX();
     float targetY = pos.GetPositionY();
     float targetZ = pos.GetPositionZ();
@@ -2388,15 +2393,16 @@ bool LadyVashjPassTheTaintedCoreAction::LineUpThirdCorePasser(
     if (!needThirdPasser)
         return false;
 
-    auto itSecond = intendedLineup.find(secondCorePasser->GetGUID());
-    if (itSecond == intendedLineup.end())
+    // The previous passer's entry is another player's state, so it is copied under the lock.
+    std::optional<Position> const previousLineup = intendedLineup.get(secondCorePasser->GetGUID());
+    if (!previousLineup)
         return false;
 
-    auto itThird = intendedLineup.find(bot->GetGUID());
-    if (itThird == intendedLineup.end())
+    std::optional<Position> lineup = intendedLineup.get(bot->GetGUID());
+    if (!lineup)
     {
-        float sx = itSecond->second.GetPositionX();
-        float sy = itSecond->second.GetPositionY();
+        float sx = previousLineup->GetPositionX();
+        float sy = previousLineup->GetPositionY();
 
         float dx = closestTrigger->GetPositionX() - sx;
         float dy = closestTrigger->GetPositionY() - sy;
@@ -2426,10 +2432,12 @@ bool LadyVashjPassTheTaintedCoreAction::LineUpThirdCorePasser(
         }
 
         intendedLineup.try_emplace(bot->GetGUID(), Position(targetX, targetY, targetZ));
-        itThird = intendedLineup.find(bot->GetGUID());
+        lineup = intendedLineup.get(bot->GetGUID());
+        if (!lineup)
+            return false;
     }
 
-    Position const& pos = itThird->second;
+    Position const& pos = *lineup;
     float targetX = pos.GetPositionX();
     float targetY = pos.GetPositionY();
     float targetZ = pos.GetPositionZ();
@@ -2453,15 +2461,16 @@ bool LadyVashjPassTheTaintedCoreAction::LineUpFourthCorePasser(
     if (!needFourthPasser)
         return false;
 
-    auto itThird = intendedLineup.find(thirdCorePasser->GetGUID());
-    if (itThird == intendedLineup.end())
+    // The previous passer's entry is another player's state, so it is copied under the lock.
+    std::optional<Position> const previousLineup = intendedLineup.get(thirdCorePasser->GetGUID());
+    if (!previousLineup)
         return false;
 
-    auto itFourth = intendedLineup.find(bot->GetGUID());
-    if (itFourth == intendedLineup.end())
+    std::optional<Position> lineup = intendedLineup.get(bot->GetGUID());
+    if (!lineup)
     {
-        float sx = itThird->second.GetPositionX();
-        float sy = itThird->second.GetPositionY();
+        float sx = previousLineup->GetPositionX();
+        float sy = previousLineup->GetPositionY();
 
         float tx = closestTrigger->GetPositionX();
         float ty = closestTrigger->GetPositionY();
@@ -2481,10 +2490,12 @@ bool LadyVashjPassTheTaintedCoreAction::LineUpFourthCorePasser(
         constexpr float targetZ = VASHJ_PLATFORM_CENTER_Z;
 
         intendedLineup.try_emplace(bot->GetGUID(), Position(targetX, targetY, targetZ));
-        itFourth = intendedLineup.find(bot->GetGUID());
+        lineup = intendedLineup.get(bot->GetGUID());
+        if (!lineup)
+            return false;
     }
 
-    Position const& pos = itFourth->second;
+    Position const& pos = *lineup;
     float targetX = pos.GetPositionX();
     float targetY = pos.GetPositionY();
     float targetZ = pos.GetPositionZ();
@@ -2499,11 +2510,9 @@ bool LadyVashjPassTheTaintedCoreAction::LineUpFourthCorePasser(
 // position and are used to determine when the prior bot in the chain can pass the core
 bool LadyVashjPassTheTaintedCoreAction::IsFirstCorePasserInPosition(Player* firstCorePasser)
 {
-    auto itSnap = intendedLineup.find(firstCorePasser->GetGUID());
-    if (itSnap != intendedLineup.end())
+    if (std::optional<Position> const lineup = intendedLineup.get(firstCorePasser->GetGUID()))
     {
-        float dist2d = firstCorePasser->GetExactDist2d(itSnap->second.GetPositionX(),
-                                                       itSnap->second.GetPositionY());
+        float dist2d = firstCorePasser->GetExactDist2d(lineup->GetPositionX(), lineup->GetPositionY());
         return dist2d <= 2.0f;
     }
 
@@ -2512,11 +2521,9 @@ bool LadyVashjPassTheTaintedCoreAction::IsFirstCorePasserInPosition(Player* firs
 
 bool LadyVashjPassTheTaintedCoreAction::IsSecondCorePasserInPosition(Player* secondCorePasser)
 {
-    auto itSnap = intendedLineup.find(secondCorePasser->GetGUID());
-    if (itSnap != intendedLineup.end())
+    if (std::optional<Position> const lineup = intendedLineup.get(secondCorePasser->GetGUID()))
     {
-        float dist2d = secondCorePasser->GetExactDist2d(itSnap->second.GetPositionX(),
-                                                        itSnap->second.GetPositionY());
+        float dist2d = secondCorePasser->GetExactDist2d(lineup->GetPositionX(), lineup->GetPositionY());
         return dist2d <= 2.0f;
     }
 
@@ -2525,11 +2532,9 @@ bool LadyVashjPassTheTaintedCoreAction::IsSecondCorePasserInPosition(Player* sec
 
 bool LadyVashjPassTheTaintedCoreAction::IsThirdCorePasserInPosition(Player* thirdCorePasser)
 {
-    auto itSnap = intendedLineup.find(thirdCorePasser->GetGUID());
-    if (itSnap != intendedLineup.end())
+    if (std::optional<Position> const lineup = intendedLineup.get(thirdCorePasser->GetGUID()))
     {
-        float dist2d = thirdCorePasser->GetExactDist2d(itSnap->second.GetPositionX(),
-                                                       itSnap->second.GetPositionY());
+        float dist2d = thirdCorePasser->GetExactDist2d(lineup->GetPositionX(), lineup->GetPositionY());
         return dist2d <= 2.0f;
     }
 
@@ -2538,11 +2543,9 @@ bool LadyVashjPassTheTaintedCoreAction::IsThirdCorePasserInPosition(Player* thir
 
 bool LadyVashjPassTheTaintedCoreAction::IsFourthCorePasserInPosition(Player* fourthCorePasser)
 {
-    auto itSnap = intendedLineup.find(fourthCorePasser->GetGUID());
-    if (itSnap != intendedLineup.end())
+    if (std::optional<Position> const lineup = intendedLineup.get(fourthCorePasser->GetGUID()))
     {
-        float dist2d = fourthCorePasser->GetExactDist2d(itSnap->second.GetPositionX(),
-                                                        itSnap->second.GetPositionY());
+        float dist2d = fourthCorePasser->GetExactDist2d(lineup->GetPositionX(), lineup->GetPositionY());
         return dist2d <= 2.0f;
     }
 
