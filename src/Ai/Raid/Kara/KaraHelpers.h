@@ -9,6 +9,7 @@
 
 #include "Common.h"
 #include "ObjectGuid.h"
+#include "EncounterStateMap.h"
 #include "Position.h"
 #include <array>
 #include <ctime>
@@ -97,7 +98,7 @@ bool IsSafePosition (float x, float y, std::vector<Unit*> const& hazards, float 
 
 // Attumen the Huntsman
 inline Position const ATTUMEN_TANK_POSITION = { -11123.762f, -1926.619f, 49.215f };
-extern std::unordered_map<uint32, time_t> attumenDpsWaitTimer;
+extern EncounterStateMap<uint32, time_t> attumenDpsWaitTimer;
 Unit* GetAttumenMounted(Player* bot);
 
 // Maiden of Virtue
@@ -139,10 +140,10 @@ bool IsAranCastingArcaneExplosion(Unit* aran);
 bool IsFlameWreathActive(Player* bot);
 
 // Netherspite
-extern std::unordered_map<uint32, time_t> netherspiteDpsWaitTimer;
-extern std::unordered_map<uint32, ObjectGuid> currentRedBlocker;
-extern std::unordered_map<uint32, ObjectGuid> currentGreenBlocker;
-extern std::unordered_map<uint32, ObjectGuid> currentBlueBlocker;
+extern EncounterStateMap<uint32, time_t> netherspiteDpsWaitTimer;
+extern EncounterStateMap<uint32, ObjectGuid> currentRedBlocker;
+extern EncounterStateMap<uint32, ObjectGuid> currentGreenBlocker;
+extern EncounterStateMap<uint32, ObjectGuid> currentBlueBlocker;
 bool IsBanishPhase(Unit* netherspite);
 std::vector<Player*> GetRedBlockers(Player* bot);
 std::vector<Player*> GetBlueBlockers(Player* bot);
@@ -178,8 +179,8 @@ inline std::array const NIGHTBANE_RAIN_OF_BONES_POSITIONS = {
     Position{ -11158.752f, -1909.394f, 91.473f },  // backup in case of charred earth
 };
 inline Position const NIGHTBANE_TELEPORT_POSITION = { -11159.555f, -1893.526f, 91.473f };
-extern std::unordered_map<uint32, time_t> nightbaneDpsWaitTimer;
-extern std::unordered_map<uint32, time_t> nightbaneFlightPhaseStartTimer;
+extern EncounterStateMap<uint32, time_t> nightbaneDpsWaitTimer;
+extern EncounterStateMap<uint32, time_t> nightbaneFlightPhaseStartTimer;
 
 }
 
