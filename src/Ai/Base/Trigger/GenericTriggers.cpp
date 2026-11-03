@@ -421,6 +421,17 @@ bool InterruptSpellTrigger::IsActive()
     return SpellTrigger::IsActive() && botAI->IsInterruptableSpellCasting(GetTarget(), getName());
 }
 
+bool WarriorArcaneTorrentTrigger::IsActive()
+{
+    Unit* target = GetTarget();
+    SpellInfo const* torrent = sSpellMgr->GetSpellInfo(110101);
+    return bot->getRace() == RACE_BLOODELF && bot->getClass() == CLASS_WARRIOR
+        && bot->HasSpell(110101) && torrent && target && bot->IsValidAttackTarget(target)
+        && bot->IsWithinDistInMap(target, 8.0f) && !target->IsImmunedToSpellEffect(torrent, EFFECT_0, bot)
+        && botAI->CanCastSpell("arcane torrent", bot)
+        && InterruptSpellTrigger::IsActive();
+}
+
 bool DeflectSpellTrigger::IsActive()
 {
     Unit* target = GetTarget();

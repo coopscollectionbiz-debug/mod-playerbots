@@ -33,6 +33,7 @@ class TriggerContext : public NamedObjectContext<Trigger>
 public:
     TriggerContext()
     {
+        creators["warrior arcane torrent interrupt"] = &TriggerContext::warrior_arcane_torrent;
         creators["return"] = &TriggerContext::_return;
         creators["sit"] = &TriggerContext::sit;
         creators["return to stay position"] = &TriggerContext::return_to_stay_position;
@@ -461,6 +462,7 @@ static Trigger* city_life_status(PlayerbotAI* botAI) { return new NewRpgStatusTr
 static Trigger* do_quest_status(PlayerbotAI* botAI) { return new NewRpgStatusTrigger(botAI, RPG_DO_QUEST); }
     static Trigger* travel_flight_status(PlayerbotAI* botAI) { return new NewRpgStatusTrigger(botAI, RPG_TRAVEL_FLIGHT); }
     static Trigger* outdoor_pvp_status(PlayerbotAI* botAI) { return new NewRpgStatusTrigger(botAI, RPG_OUTDOOR_PVP); }
+    static Trigger* warrior_arcane_torrent(PlayerbotAI* ai) { return new WarriorArcaneTorrentTrigger(ai); }
     static Trigger* can_self_resurrect(PlayerbotAI* ai) { return new SelfResurrectTrigger(ai); }
     static Trigger* can_fish(PlayerbotAI* ai) { return new CanFishTrigger(ai); }
     static Trigger* can_use_fishing_bobber(PlayerbotAI* ai) { return new CanUseFishingBobberTrigger(ai); }

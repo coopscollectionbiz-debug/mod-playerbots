@@ -9,6 +9,7 @@
 
 namespace
 {
+    constexpr uint32 SPELL_ARAC_WARRIOR_TORRENT = 110101;
     constexpr uint32 SPELL_ARCANE_TORRENT_ENERGY = 25046;
     constexpr uint32 SPELL_ARCANE_TORRENT_MANA = 28730;
     constexpr uint32 SPELL_ARCANE_TORRENT_RUNIC_POWER = 50613;
@@ -28,6 +29,13 @@ RacialsStrategy::RacialsStrategy(PlayerbotAI* botAI) : Strategy(botAI)
 void RacialsStrategy::InitTriggers(std::vector<TriggerNode*>& triggers)
 {
     Player* bot = botAI->GetBot();
+
+    if (bot->getRace() == RACE_BLOODELF && bot->getClass() == CLASS_WARRIOR
+        && bot->HasSpell(SPELL_ARAC_WARRIOR_TORRENT))
+    {
+        triggers.push_back(new TriggerNode(
+            "warrior arcane torrent interrupt", { NextAction("arcane torrent", ACTION_INTERRUPT) }));
+    }
 
     if (bot->HasSpell(SPELL_ARCANE_TORRENT_MANA))
     {

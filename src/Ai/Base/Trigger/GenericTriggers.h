@@ -202,6 +202,14 @@ public:
     bool IsActive() override;
 };
 
+class WarriorArcaneTorrentTrigger : public InterruptSpellTrigger
+{
+public:
+    WarriorArcaneTorrentTrigger(PlayerbotAI* botAI) : InterruptSpellTrigger(botAI, "arcane torrent") { }
+
+    bool IsActive() override;
+};
+
 class DeflectSpellTrigger : public SpellTrigger
 {
 public:
