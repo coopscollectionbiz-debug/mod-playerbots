@@ -18,11 +18,11 @@ using namespace EncounterHelpers;
 namespace MagHelpers
 {
 
-std::unordered_map<uint32, uint32> magDpsWaitTimer;
-std::unordered_map<uint32, uint32> blastNovaTimer;
-std::unordered_map<uint32, bool> lastBlastNovaState;
-std::unordered_set<uint32> ceilingCollapseApplied;
-std::unordered_map<uint32, std::unordered_map<ObjectGuid, CubeInfo>> botToCubeAssignments;
+EncounterStateMap<uint32, uint32> magDpsWaitTimer;
+EncounterStateMap<uint32, uint32> blastNovaTimer;
+EncounterStateMap<uint32, bool> lastBlastNovaState;
+EncounterStateSet<uint32> ceilingCollapseApplied;
+EncounterStateMap<uint32, std::unordered_map<ObjectGuid, CubeInfo>> botToCubeAssignments;
 
 std::vector<uint32> const MANTICRON_CUBE_DB_GUIDS = { 43157, 43158, 43159, 43160, 43161 };
 

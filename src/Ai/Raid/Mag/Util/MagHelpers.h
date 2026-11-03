@@ -9,6 +9,7 @@
 
 #include "Common.h"
 #include "ObjectGuid.h"
+#include "EncounterStateMap.h"
 #include "Position.h"
 #include <type_traits>
 #include <unordered_map>
@@ -99,11 +100,11 @@ inline Position const MAGTHERIDON_TANK_POSITION =        {  -6.147f, -37.812f, -
 inline Position const NW_CHANNELER_TANK_POSITION =       { -11.764f,  30.818f, -0.411f,   0.0f };
 inline Position const NE_CHANNELER_TANK_POSITION =       { -12.490f, -26.211f, -0.411f,   0.0f };
 
-extern std::unordered_map<uint32, uint32> magDpsWaitTimer;
-extern std::unordered_map<uint32, uint32> blastNovaTimer;
-extern std::unordered_map<uint32, bool> lastBlastNovaState;
-extern std::unordered_set<uint32> ceilingCollapseApplied;
-extern std::unordered_map<uint32, std::unordered_map<ObjectGuid, CubeInfo>> botToCubeAssignments;
+extern EncounterStateMap<uint32, uint32> magDpsWaitTimer;
+extern EncounterStateMap<uint32, uint32> blastNovaTimer;
+extern EncounterStateMap<uint32, bool> lastBlastNovaState;
+extern EncounterStateSet<uint32> ceilingCollapseApplied;
+extern EncounterStateMap<uint32, std::unordered_map<ObjectGuid, CubeInfo>> botToCubeAssignments;
 
 extern std::vector<uint32> const MANTICRON_CUBE_DB_GUIDS;
 // Get the positions of all Manticron Cubes by their database GUIDs.
