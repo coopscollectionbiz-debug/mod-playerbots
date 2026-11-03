@@ -776,8 +776,9 @@ bool NewRpgCityLifeAction::Execute(Event /*event*/)
 {
     // Dungeon Finder owns the bot once it queues or joins a group.
     // Stop City Life before it can move or teleport the bot elsewhere.
-    if (bot->GetGroup() ||
-        sLFGMgr->GetState(bot->GetGUID()) != lfg::LFG_STATE_NONE)
+    // LFGMgr is not map-thread data: the queued case is released on the world thread by
+    // RandomPlayerbotMgr::ProcessCityLifeRequests.
+    if (bot->GetGroup())
     {
         botAI->rpgInfo.ChangeToIdle();
         return true;

@@ -3328,6 +3328,47 @@ void RandomPlayerbotMgr::PopulateCityForPlayer(
     }
 }
 
+void RandomPlayerbotMgr::QueueCityLifeRequest(Player* player, uint32 cityZoneId)
+{
+    if (!player || !player->GetSession() || player->GetSession()->IsBot())
+        return;
+
+    _cityLifeRequests.Push(player->GetGUID().GetRawValue(), cityZoneId);
+}
+
+void RandomPlayerbotMgr::ProcessCityLifeRequests(uint32 diff)
+{
+    for (CityLifeRequestQueue::Request const& request : _cityLifeRequests.Take())
+    {
+        // The player may have logged out or left the capital since the entry was queued.
+        Player* player = ObjectAccessor::FindPlayer(ObjectGuid(request.player));
+        if (player && player->GetZoneId() == request.zone)
+            PopulateCityForPlayer(player, request.zone);
+    }
+
+    _cityLifeLfgTimer += diff;
+    if (_cityLifeLfgTimer < 1000)
+        return;
+
+    _cityLifeLfgTimer = 0;
+
+    // LFGMgr is world-thread data (its stage 1 update runs beside the map workers), so CityLife bots
+    // are checked for Dungeon Finder here instead of in their map-thread actions.
+    for (PlayerBotMap::const_iterator it = GetPlayerBotsBegin(); it != GetPlayerBotsEnd(); ++it)
+    {
+        Player* bot = it->second;
+        if (!bot)
+            continue;
+
+        PlayerbotAI* botAI = GET_PLAYERBOT_AI(bot);
+        if (botAI && botAI->rpgInfo.GetStatus() == RPG_CITY_LIFE &&
+            sLFGMgr->GetState(bot->GetGUID()) != lfg::LFG_STATE_NONE)
+        {
+            botAI->rpgInfo.ChangeToIdle();
+        }
+    }
+}
+
 void RandomPlayerbotMgr::HandleCommand(uint32 type, std::string const text, Player* fromPlayer, std::string channelName)
 {
     for (PlayerBotMap::const_iterator it = GetPlayerBotsBegin(); it != GetPlayerBotsEnd(); ++it)

@@ -171,7 +171,8 @@ public:
             return;
         }
 
-        sRandomPlayerbotMgr.PopulateCityForPlayer(player, newZone);
+        // This runs on the player's map thread; populating the city happens on the world thread.
+        sRandomPlayerbotMgr.QueueCityLifeRequest(player, newZone);
     }
 
     bool OnPlayerBeforeTeleport(Player* /*player*/, uint32 /*mapid*/, float /*x*/, float /*y*/, float /*z*/,
@@ -436,6 +437,7 @@ public:
     void OnUpdate(uint32 diff) override
     {
         PlayerbotWorldThreadProcessor::instance().Update(diff);
+        sRandomPlayerbotMgr.ProcessCityLifeRequests(diff);
         static uint32 playerZoneRefreshTimer = 0;
         if (sPlayerbotAIConfig.enabled &&
             sPlayerbotAIConfig.randomBotConcentrateInPlayerZone)

@@ -7,6 +7,7 @@
 #ifndef PLAYERBOTS_RANDOMPLAYERBOTMGR_H
 #define PLAYERBOTS_RANDOMPLAYERBOTMGR_H
 
+#include "CityLifeRequestQueue.h"
 #include "GameTime.h"
 #include "NewRpgInfo.h"
 #include "ObjectGuid.h"
@@ -169,7 +170,15 @@ public:
 
     // Populate a capital on demand when a real player enters it.
     // Only progression-safe autonomous random bots are borrowed.
+    // World thread only: it reads and changes bots on every map.
     void PopulateCityForPlayer(Player* player, uint32 cityZoneId);
+
+    // Map-thread safe: records a real player's capital entry for ProcessCityLifeRequests.
+    void QueueCityLifeRequest(Player* player, uint32 cityZoneId);
+
+    // World thread only, after MapMgr has joined its workers: runs queued capital entries and
+    // releases CityLife bots that Dungeon Finder has claimed.
+    void ProcessCityLifeRequests(uint32 diff);
 
     void LogBattlegroundInfo();
 
@@ -264,6 +273,8 @@ private:
     std::vector<Player*> players;
     std::set<std::pair<uint32, uint32>> _playerZones;
     std::mutex _playerZonesLock;
+    CityLifeRequestQueue _cityLifeRequests;
+    uint32 _cityLifeLfgTimer = 0;
 
     // std::map<uint32, std::vector<WorldLocation>> rpgLocsCache;
     std::map<uint32, std::map<uint32, std::vector<WorldLocation>>> rpgLocsCacheLevel;
