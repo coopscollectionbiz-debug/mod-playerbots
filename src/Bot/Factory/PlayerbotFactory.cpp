@@ -5,7 +5,11 @@
  */
 
 #include "PlayerbotFactory.h"
-#include "PlayerbotsDatabase.h"
+
+#include <array>
+#include <unordered_set>
+#include <utility>
+
 #include "AccountMgr.h"
 #include "AiFactory.h"
 #include "AiObjectContext.h"
@@ -29,22 +33,19 @@
 #include "PlayerbotAIConfig.h"
 #include "PlayerbotGuildMgr.h"
 #include "PlayerbotRepository.h"
+#include "PlayerbotSpellRepository.h"
 #include "Playerbots.h"
+#include "PlayerbotsDatabase.h"
 #include "QuestDef.h"
 #include "RandomItemMgr.h"
 #include "RandomPlayerbotFactory.h"
 #include "ReputationMgr.h"
 #include "SharedDefines.h"
-#include "StatsWeightCalculator.h"
 #include "SpellMgr.h"
+#include "StatsWeightCalculator.h"
 #include "Trainer.h"
+#include "WorgoblinMounts.h"
 #include "World.h"
-#include <array>
-#include <unordered_set>
-#include <utility>
-
-#include <array>
-#include <utility>
 
 const uint64 diveMask = (1LL << 7) | (1LL << 44) | (1LL << 37) | (1LL << 38) | (1LL << 26) | (1LL << 30) | (1LL << 27) |
                         (1LL << 33) | (1LL << 24) | (1LL << 34);
@@ -4829,6 +4830,7 @@ void PlayerbotFactory::InitMounts()
     if (bot->GetLevel() < firstmount)
         return;
 
+    uint32 const ridingSkill = bot->GetPureSkillValue(SKILL_RIDING);
     std::map<uint8, std::map<uint32, std::vector<uint32>>> mounts;
     std::vector<uint32> slow, fast, fslow, ffast;
 
@@ -4874,16 +4876,37 @@ void PlayerbotFactory::InitMounts()
             slow = {33660, 35020, 35022, 35018};
             fast = {35025, 35025, 35027};
             break;
+        case RACE_WORGOBLIN_GOBLIN:
+            if (sSpellMgr->GetSpellInfo(SPELL_GOBLIN_TRIKE) && sSpellMgr->GetSpellInfo(SPELL_GOBLIN_TURBO_TRIKE))
+            {
+                slow = {SPELL_GOBLIN_TRIKE};
+                fast = {SPELL_GOBLIN_TURBO_TRIKE};
+                break;
+            }
+            [[fallthrough]];
+        case RACE_WORGOBLIN_WORGEN:
+            // Running Wild covers both ground tiers; mod-worgoblin scales its speed with Riding.
+            if (bot->getRace() == RACE_WORGOBLIN_WORGEN && sSpellMgr->GetSpellInfo(SPELL_RUNNING_WILD))
+            {
+                // Empty below Apprentice: mod-worgoblin unlearns Running Wild without Riding.
+                if (ridingSkill >= WORGOBLIN_RIDING_APPRENTICE)
+                {
+                    slow = {SPELL_RUNNING_WILD};
+                    fast = {SPELL_RUNNING_WILD};
+                }
+                break;
+            }
+            [[fallthrough]];
         default:
             if (bot->GetTeamId() == TEAM_HORDE)
             { // Orc mounts
-                slow = {470, 6648, 458, 472};
-                fast = {23228, 23227, 23229};
+                slow = {6654, 6653, 580};
+                fast = {23250, 23252, 23251};
             }
             else // Human mounts
             {
-                slow = {6654, 6653, 580};
-                fast = {23250, 23252, 23251};
+                slow = {470, 6648, 458, 472};
+                fast = {23228, 23227, 23229};
             }
     }
 
@@ -4929,8 +4952,15 @@ void PlayerbotFactory::InitMounts()
         if (bot->GetLevel() < fourthmount && type == 3)
             continue;
 
+        if (mounts[bot->getRace()][type].empty())
+            continue;
+
         uint32 index = urand(0, mounts[bot->getRace()][type].size() - 1);
         uint32 spell = mounts[bot->getRace()][type][index];
+        SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(spell);
+        if (spellInfo && PlayerbotSpellRepository::Instance().GetRequiredRidingSkill(spellInfo) > ridingSkill)
+            continue;
+
         if (spell)
         {
             bot->learnSpell(spell);
