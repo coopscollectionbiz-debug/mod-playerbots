@@ -17,7 +17,7 @@ namespace BlackTempleHelpers
 const Position NAJENTUS_TANK_POSITION = { 438.515f, 772.436f, 11.931f };
 
 // Supremus
-std::unordered_map<uint32, time_t> supremusPhaseTimer;
+EncounterStateMap<uint32, time_t> supremusPhaseTimer;
 
 bool HasSupremusVolcanoNearby(PlayerbotAI*, Player* bot)
 {
@@ -39,7 +39,7 @@ bool HasSupremusVolcanoNearby(PlayerbotAI*, Player* bot)
 // Shade of Akama
 const Position AKAMA_CHANNELER_POSITION = { 467.851f, 401.622f, 118.538f };
 
-std::unordered_set<ObjectGuid> hasReachedAkamaChannelerPosition;
+EncounterStateSet<ObjectGuid> hasReachedAkamaChannelerPosition;
 
 // Teron Gorefiend
 const Position GOREFIEND_TANK_POSITION  = { 597.653f, 402.284f, 187.090f };
@@ -50,7 +50,7 @@ const Position GURTOGG_TANK_POSITION    = { 735.987f, 272.451f, 063.554f };
 const Position GURTOGG_RANGED_POSITION  = { 762.265f, 277.183f, 063.781f };
 const Position GURTOGG_SOAKER_POSITION  = { 769.348f, 280.116f, 063.780f };
 
-std::unordered_map<uint32, time_t> gurtoggPhaseTimer;
+EncounterStateMap<uint32, time_t> gurtoggPhaseTimer;
 
 std::vector<std::vector<Player*>> GetGurtoggRangedRotationGroups(Player* bot)
 {
@@ -102,7 +102,7 @@ int GetGurtoggActiveRotationGroup(Unit* gurtogg)
 const Position SHAHRAZ_TANK_POSITION       = { 960.438f, 178.989f, 192.826f };
 const Position SHAHRAZ_TRANSITION_POSITION = { 951.327f, 179.550f, 192.550f };
 const Position SHAHRAZ_RANGED_POSITION     = { 935.267f, 175.459f, 192.821f };
-std::unordered_map<ObjectGuid, TankPositionState> shahrazTankStep;
+EncounterStateMap<ObjectGuid, TankPositionState> shahrazTankStep;
 
 TankPositionState GetShahrazTankPositionState(Player* bot)
 {
@@ -131,9 +131,9 @@ const std::array<Position, 2> ZEREVOR_HEALER_POSITIONS = {{
 }};
 const Position MALANDE_TANK_POSITION = { 690.590f, 299.790f, 277.443f };
 
-std::unordered_map<uint32, time_t> councilDpsWaitTimer;
-std::unordered_map<ObjectGuid, uint8> gathiosTankStep;
-std::unordered_map<ObjectGuid, uint8> zerevorHealStep;
+EncounterStateMap<uint32, time_t> councilDpsWaitTimer;
+EncounterStateMap<ObjectGuid, uint8> gathiosTankStep;
+EncounterStateMap<ObjectGuid, uint8> zerevorHealStep;
 
 // (1) First priority is an assistant Mage (real player or bot)
 // (2) If no assistant Mage, then look for any Mage bot
@@ -212,14 +212,14 @@ const std::array<Position, 7> W_GLAIVE_TANK_POSITIONS = {{
     { 690.889f, 324.277f, 354.204f }
 }};
 
-std::unordered_map<ObjectGuid, size_t> flameTankWaypointIndex;
-std::unordered_map<ObjectGuid, ObjectGuid> illidanShadowTrapGuid;
-std::unordered_map<ObjectGuid, Position> illidanShadowTrapDestination;
-std::unordered_map<uint32, int> illidanLastPhase;
-std::unordered_map<uint32, time_t> illidanBossDpsWaitTimer;
-std::unordered_map<uint32, time_t> illidanFlameDpsWaitTimer;
-std::unordered_map<uint32, ObjectGuid> eastFlameGuid;
-std::unordered_map<uint32, ObjectGuid> westFlameGuid;
+EncounterStateMap<ObjectGuid, size_t> flameTankWaypointIndex;
+EncounterStateMap<ObjectGuid, ObjectGuid> illidanShadowTrapGuid;
+EncounterStateMap<ObjectGuid, Position> illidanShadowTrapDestination;
+EncounterStateMap<uint32, int> illidanLastPhase;
+EncounterStateMap<uint32, time_t> illidanBossDpsWaitTimer;
+EncounterStateMap<uint32, time_t> illidanFlameDpsWaitTimer;
+EncounterStateMap<uint32, ObjectGuid> eastFlameGuid;
+EncounterStateMap<uint32, ObjectGuid> westFlameGuid;
 
 int GetIllidanPhase(Unit* illidan)
 {

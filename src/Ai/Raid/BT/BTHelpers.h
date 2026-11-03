@@ -9,6 +9,7 @@
 
 #include "Common.h"
 #include "ObjectGuid.h"
+#include "EncounterStateMap.h"
 #include "Position.h"
 #include <array>
 #include <unordered_map>
@@ -138,12 +139,12 @@ constexpr uint32 BLACK_TEMPLE_MAP_ID = 564;
 extern const Position NAJENTUS_TANK_POSITION;
 
 // Supremus
-extern std::unordered_map<uint32, time_t> supremusPhaseTimer;
+extern EncounterStateMap<uint32, time_t> supremusPhaseTimer;
 bool HasSupremusVolcanoNearby(PlayerbotAI* botAI, Player* bot);
 
 // Shade of Akama
 extern const Position AKAMA_CHANNELER_POSITION;
-extern std::unordered_set<ObjectGuid> hasReachedAkamaChannelerPosition;
+extern EncounterStateSet<ObjectGuid> hasReachedAkamaChannelerPosition;
 
 // Teron Gorefiend
 extern const Position GOREFIEND_TANK_POSITION;
@@ -153,7 +154,7 @@ extern const Position GOREFIEND_DIE_POSITION;
 extern const Position GURTOGG_TANK_POSITION;
 extern const Position GURTOGG_RANGED_POSITION;
 extern const Position GURTOGG_SOAKER_POSITION;
-extern std::unordered_map<uint32, time_t> gurtoggPhaseTimer;
+extern EncounterStateMap<uint32, time_t> gurtoggPhaseTimer;
 std::vector<std::vector<Player*>> GetGurtoggRangedRotationGroups(Player* bot);
 int GetGurtoggActiveRotationGroup(Unit* gurtogg);
 
@@ -161,7 +162,7 @@ int GetGurtoggActiveRotationGroup(Unit* gurtogg);
 extern const Position SHAHRAZ_TANK_POSITION;
 extern const Position SHAHRAZ_TRANSITION_POSITION;
 extern const Position SHAHRAZ_RANGED_POSITION;
-extern std::unordered_map<ObjectGuid, TankPositionState> shahrazTankStep;
+extern EncounterStateMap<ObjectGuid, TankPositionState> shahrazTankStep;
 TankPositionState GetShahrazTankPositionState(Player* bot);
 
 // Illidari Council
@@ -170,9 +171,9 @@ extern const std::array<Position, 4> GATHIOS_TANK_POSITIONS;
 extern const Position MALANDE_TANK_POSITION;
 extern const Position ZEREVOR_TANK_POSITION;
 extern const std::array<Position, 2> ZEREVOR_HEALER_POSITIONS;
-extern std::unordered_map<uint32, time_t> councilDpsWaitTimer;
-extern std::unordered_map<ObjectGuid, uint8> gathiosTankStep;
-extern std::unordered_map<ObjectGuid, uint8> zerevorHealStep;
+extern EncounterStateMap<uint32, time_t> councilDpsWaitTimer;
+extern EncounterStateMap<ObjectGuid, uint8> gathiosTankStep;
+extern EncounterStateMap<ObjectGuid, uint8> zerevorHealStep;
 Player* GetZerevorMageTank(Player* bot);
 bool HasDangerousCouncilAura(Unit* unit);
 
@@ -186,14 +187,14 @@ extern const Position ILLIDAN_E_GLAIVE_WAITING_POSITION;
 extern const std::array<Position, 7> E_GLAIVE_TANK_POSITIONS;
 extern const Position ILLIDAN_W_GLAIVE_WAITING_POSITION;
 extern const std::array<Position, 7> W_GLAIVE_TANK_POSITIONS;
-extern std::unordered_map<ObjectGuid, size_t> flameTankWaypointIndex;
-extern std::unordered_map<ObjectGuid, ObjectGuid> illidanShadowTrapGuid;
-extern std::unordered_map<ObjectGuid, Position> illidanShadowTrapDestination;
-extern std::unordered_map<uint32, int> illidanLastPhase;
-extern std::unordered_map<uint32, time_t> illidanBossDpsWaitTimer;
-extern std::unordered_map<uint32, time_t> illidanFlameDpsWaitTimer;
-extern std::unordered_map<uint32, ObjectGuid> eastFlameGuid;
-extern std::unordered_map<uint32, ObjectGuid> westFlameGuid;
+extern EncounterStateMap<ObjectGuid, size_t> flameTankWaypointIndex;
+extern EncounterStateMap<ObjectGuid, ObjectGuid> illidanShadowTrapGuid;
+extern EncounterStateMap<ObjectGuid, Position> illidanShadowTrapDestination;
+extern EncounterStateMap<uint32, int> illidanLastPhase;
+extern EncounterStateMap<uint32, time_t> illidanBossDpsWaitTimer;
+extern EncounterStateMap<uint32, time_t> illidanFlameDpsWaitTimer;
+extern EncounterStateMap<uint32, ObjectGuid> eastFlameGuid;
+extern EncounterStateMap<uint32, ObjectGuid> westFlameGuid;
 int GetIllidanPhase(Unit* illidan);
 std::vector<Unit*> GetAllFlameCrashes(Player* bot);
 std::pair<Unit*, Unit*> GetFlamesOfAzzinoth(Player* bot);
