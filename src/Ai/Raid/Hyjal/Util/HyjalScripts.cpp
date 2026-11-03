@@ -78,7 +78,8 @@ public:
 
     void OnSpellPrepare(Spell* spell, Unit* caster, SpellInfo const* spellInfo) override
     {
-        if (spellInfo->Id != Id(HyjalSpells::SPELL_AIR_BURST))
+        // Only Hyjal instances have a unique instance id; every continent map shares id 0 on its own thread.
+        if (spellInfo->Id != Id(HyjalSpells::SPELL_AIR_BURST) || !caster || caster->GetMapId() != HYJAL_MAP_ID)
             return;
 
         Player* target = GetTargetedPlayer(spell);

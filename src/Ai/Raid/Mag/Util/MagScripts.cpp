@@ -20,6 +20,10 @@ public:
     void OnSpellCast(
         Spell* /*spell*/, Unit* caster, SpellInfo const* spellInfo, bool /*skipCheck*/) override
     {
+        // Only Magtheridon instances have a unique instance id; every continent map shares id 0 on its own thread.
+        if (!caster || caster->GetMapId() != MAG_MAP_ID)
+            return;
+
         switch (spellInfo->Id)
         {
             case Id(MagSpells::SPELL_QUAKE):
