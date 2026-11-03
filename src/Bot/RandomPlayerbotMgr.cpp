@@ -4018,17 +4018,20 @@ ObjectGuid RandomPlayerbotMgr::GetBattleMasterGUID(Player* bot, BattlegroundType
     TeamId team = bot->GetTeamId();
     std::vector<uint32> Bms;
 
-    for (auto i = std::begin(BattleMastersCache[team][bgTypeId]); i != std::end(BattleMastersCache[team][bgTypeId]);
-         ++i)
+    // Map threads call this concurrently: look the cache up with find(), since operator[] would insert.
+    auto addBattleMasters = [&](TeamId cacheTeam)
     {
-        Bms.insert(Bms.end(), *i);
-    }
+        auto teamIt = BattleMastersCache.find(cacheTeam);
+        if (teamIt == BattleMastersCache.end())
+            return;
 
-    for (auto i = std::begin(BattleMastersCache[TEAM_NEUTRAL][bgTypeId]);
-         i != std::end(BattleMastersCache[TEAM_NEUTRAL][bgTypeId]); ++i)
-    {
-        Bms.insert(Bms.end(), *i);
-    }
+        auto typeIt = teamIt->second.find(bgTypeId);
+        if (typeIt != teamIt->second.end())
+            Bms.insert(Bms.end(), typeIt->second.begin(), typeIt->second.end());
+    };
+
+    addBattleMasters(team);
+    addBattleMasters(TEAM_NEUTRAL);
 
     if (Bms.empty())
         return battleMasterGUID;
@@ -4044,7 +4047,9 @@ ObjectGuid RandomPlayerbotMgr::GetBattleMasterGUID(Player* bot, BattlegroundType
         else if (spawnIt->second)
             data = sObjectMgr->GetCreatureData(spawnIt->second);
 
-        if (!data)
+        // Only this map's battlemasters can be used; skip the others before GetUnit() reads their map's
+        // creature store, which another map thread may be updating.
+        if (!data || data->mapid != bot->GetMapId())
             continue;
 
         Unit* Bm = PlayerbotAI::GetUnit(data);
