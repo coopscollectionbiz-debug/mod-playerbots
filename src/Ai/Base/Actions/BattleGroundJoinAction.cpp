@@ -9,10 +9,16 @@
 #include "ArenaTeamMgr.h"
 #include "BattlegroundMgr.h"
 #include "Event.h"
+#include "GameTime.h"
 #include "GroupMgr.h"
 #include "PlayerbotAI.h"
 #include "Playerbots.h"
 #include "PositionValue.h"
+
+namespace
+{
+    constexpr uint32 BG_JOIN_LOGIN_DELAY_MS = 120 * IN_MILLISECONDS;
+}
 
 bool BGJoinAction::Execute(Event /*event*/)
 {
@@ -322,8 +328,11 @@ bool BGJoinAction::isUseful()
     if (bot->InBattlegroundQueue())
         return false;
 
-    // do not try right after login (currently not working)
-    if ((time(nullptr) - bot->GetInGameTime()) < 120)
+    // do not try right after login
+    // GetInGameTime() is the login time in uptime milliseconds, not epoch seconds; getMSTimeDiff also
+    // handles the uint32 wrap after 49.7 days of uptime.
+    if (getMSTimeDiff(bot->GetInGameTime(), static_cast<uint32>(GameTime::GetGameTimeMS().count())) <
+        BG_JOIN_LOGIN_DELAY_MS)
         return false;
 
     // check level
