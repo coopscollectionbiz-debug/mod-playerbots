@@ -8,6 +8,7 @@
 #define PLAYERBOTS_SSCHELPERS_H
 
 #include "AiObject.h"
+#include "EncounterStateMap.h"
 #include "Position.h"
 #include "Unit.h"
 #include <ctime>
@@ -115,10 +116,10 @@ namespace SerpentShrineCavernHelpers
     // Hydross the Unstable <Duke of Currents>
     extern const Position HYDROSS_FROST_TANK_POSITION;
     extern const Position HYDROSS_NATURE_TANK_POSITION;
-    extern std::unordered_map<uint32, time_t> hydrossFrostDpsWaitTimer;
-    extern std::unordered_map<uint32, time_t> hydrossNatureDpsWaitTimer;
-    extern std::unordered_map<uint32, time_t> hydrossChangeToFrostPhaseTimer;
-    extern std::unordered_map<uint32, time_t> hydrossChangeToNaturePhaseTimer;
+    extern EncounterStateMap<uint32, time_t> hydrossFrostDpsWaitTimer;
+    extern EncounterStateMap<uint32, time_t> hydrossNatureDpsWaitTimer;
+    extern EncounterStateMap<uint32, time_t> hydrossChangeToFrostPhaseTimer;
+    extern EncounterStateMap<uint32, time_t> hydrossChangeToNaturePhaseTimer;
     bool HasMarkOfHydrossAt100Percent(Player* bot);
     bool HasNoMarkOfHydross(Player* bot);
     bool HasMarkOfCorruptionAt100Percent(Player* bot);
@@ -126,14 +127,14 @@ namespace SerpentShrineCavernHelpers
 
     // The Lurker Below
     extern const Position LURKER_MAIN_TANK_POSITION;
-    extern std::unordered_map<uint32, time_t> lurkerSpoutTimer;
-    extern std::unordered_map<ObjectGuid, Position> lurkerRangedPositions;
+    extern EncounterStateMap<uint32, time_t> lurkerSpoutTimer;
+    extern EncounterStateMap<ObjectGuid, Position> lurkerRangedPositions;
     bool IsLurkerCastingSpout(Unit* lurker);
 
     // Leotheras the Blind
-    extern std::unordered_map<uint32, time_t> leotherasHumanFormDpsWaitTimer;
-    extern std::unordered_map<uint32, time_t> leotherasDemonFormDpsWaitTimer;
-    extern std::unordered_map<uint32, time_t> leotherasFinalPhaseDpsWaitTimer;
+    extern EncounterStateMap<uint32, time_t> leotherasHumanFormDpsWaitTimer;
+    extern EncounterStateMap<uint32, time_t> leotherasDemonFormDpsWaitTimer;
+    extern EncounterStateMap<uint32, time_t> leotherasFinalPhaseDpsWaitTimer;
     Unit* GetLeotherasHuman(Player* bot);
     Unit* GetPhase2LeotherasDemon(Player* bot);
     Unit* GetPhase3LeotherasDemon(Player* bot);
@@ -147,25 +148,25 @@ namespace SerpentShrineCavernHelpers
     extern const Position CARIBDIS_TANK_POSITION;
     extern const Position CARIBDIS_HEALER_POSITION;
     extern const Position CARIBDIS_RANGED_DPS_POSITION;
-    extern std::unordered_map<uint32, time_t> karathressDpsWaitTimer;
+    extern EncounterStateMap<uint32, time_t> karathressDpsWaitTimer;
 
     // Morogrim Tidewalker
     extern const Position TIDEWALKER_PHASE_1_TANK_POSITION;
     extern const Position TIDEWALKER_PHASE_TRANSITION_WAYPOINT;
     extern const Position TIDEWALKER_PHASE_2_TANK_POSITION;
     extern const Position TIDEWALKER_PHASE_2_RANGED_POSITION;
-    extern std::unordered_map<ObjectGuid, uint8> tidewalkerTankStep;
-    extern std::unordered_map<ObjectGuid, uint8> tidewalkerRangedStep;
+    extern EncounterStateMap<ObjectGuid, uint8> tidewalkerTankStep;
+    extern EncounterStateMap<ObjectGuid, uint8> tidewalkerRangedStep;
 
     // Lady Vashj <Coilfang Matron>
     constexpr float VASHJ_PLATFORM_CENTER_Z = 42.902f;
     constexpr float VASHJ_PLATFORM_EDGE_Z = 41.097f;
     extern const Position VASHJ_PLATFORM_CENTER_POSITION;
-    extern std::unordered_map<ObjectGuid, bool> hasReachedVashjRangedPosition;
-    extern std::unordered_map<uint32, ObjectGuid> nearestTriggerGuid;
-    extern std::unordered_map<ObjectGuid, Position> intendedLineup;
-    extern std::unordered_map<uint32, time_t> lastImbueAttempt;
-    extern std::unordered_map<ObjectGuid, time_t> lastCoreInInventoryTime;
+    extern EncounterStateMap<ObjectGuid, bool> hasReachedVashjRangedPosition;
+    extern EncounterStateMap<uint32, ObjectGuid> nearestTriggerGuid;
+    extern EncounterStateMap<ObjectGuid, Position> intendedLineup;
+    extern EncounterStateMap<uint32, time_t> lastImbueAttempt;
+    extern EncounterStateMap<ObjectGuid, time_t> lastCoreInInventoryTime;
     bool IsMainTankInSameSubgroup(PlayerbotAI* botAI, Player* bot);
     bool IsLadyVashjInPhase1(PlayerbotAI* botAI);
     bool IsLadyVashjInPhase2(PlayerbotAI* botAI);

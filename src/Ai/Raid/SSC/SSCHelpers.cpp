@@ -18,10 +18,10 @@ namespace SerpentShrineCavernHelpers
 const Position HYDROSS_FROST_TANK_POSITION = { -236.669f, -358.352f, -0.828f };
 const Position HYDROSS_NATURE_TANK_POSITION = { -225.471f, -327.790f, -3.682f };
 
-std::unordered_map<uint32, time_t> hydrossFrostDpsWaitTimer;
-std::unordered_map<uint32, time_t> hydrossNatureDpsWaitTimer;
-std::unordered_map<uint32, time_t> hydrossChangeToFrostPhaseTimer;
-std::unordered_map<uint32, time_t> hydrossChangeToNaturePhaseTimer;
+EncounterStateMap<uint32, time_t> hydrossFrostDpsWaitTimer;
+EncounterStateMap<uint32, time_t> hydrossNatureDpsWaitTimer;
+EncounterStateMap<uint32, time_t> hydrossChangeToFrostPhaseTimer;
+EncounterStateMap<uint32, time_t> hydrossChangeToNaturePhaseTimer;
 
 bool HasMarkOfHydrossAt100Percent(Player* bot)
 {
@@ -61,8 +61,8 @@ bool HasNoMarkOfCorruption(Player* bot)
 
 const Position LURKER_MAIN_TANK_POSITION = { 23.706f, -406.038f, -19.686f };
 
-std::unordered_map<uint32, time_t> lurkerSpoutTimer;
-std::unordered_map<ObjectGuid, Position> lurkerRangedPositions;
+EncounterStateMap<uint32, time_t> lurkerSpoutTimer;
+EncounterStateMap<ObjectGuid, Position> lurkerRangedPositions;
 
 bool IsLurkerCastingSpout(Unit* lurker)
 {
@@ -81,9 +81,9 @@ bool IsLurkerCastingSpout(Unit* lurker)
 
 // Leotheras the Blind
 
-std::unordered_map<uint32, time_t> leotherasHumanFormDpsWaitTimer;
-std::unordered_map<uint32, time_t> leotherasDemonFormDpsWaitTimer;
-std::unordered_map<uint32, time_t> leotherasFinalPhaseDpsWaitTimer;
+EncounterStateMap<uint32, time_t> leotherasHumanFormDpsWaitTimer;
+EncounterStateMap<uint32, time_t> leotherasDemonFormDpsWaitTimer;
+EncounterStateMap<uint32, time_t> leotherasFinalPhaseDpsWaitTimer;
 
 Unit* GetLeotherasHuman(Player* bot)
 {
@@ -158,7 +158,7 @@ const Position CARIBDIS_TANK_POSITION = { 464.462f, -475.820f, -13.158f };
 const Position CARIBDIS_HEALER_POSITION = { 466.203f, -503.201f, -13.158f };
 const Position CARIBDIS_RANGED_DPS_POSITION = { 463.197f, -501.190f, -13.158f };
 
-std::unordered_map<uint32, time_t> karathressDpsWaitTimer;
+EncounterStateMap<uint32, time_t> karathressDpsWaitTimer;
 
 // Morogrim Tidewalker
 
@@ -167,18 +167,18 @@ const Position TIDEWALKER_PHASE_TRANSITION_WAYPOINT = { 407.035f, -759.479f, -7.
 const Position TIDEWALKER_PHASE_2_TANK_POSITION = { 446.571f, -767.155f, -7.144f };
 const Position TIDEWALKER_PHASE_2_RANGED_POSITION = { 432.595f, -766.288f, -7.145f };
 
-std::unordered_map<ObjectGuid, uint8> tidewalkerTankStep;
-std::unordered_map<ObjectGuid, uint8> tidewalkerRangedStep;
+EncounterStateMap<ObjectGuid, uint8> tidewalkerTankStep;
+EncounterStateMap<ObjectGuid, uint8> tidewalkerRangedStep;
 
 // Lady Vashj <Coilfang Matron>
 
 const Position VASHJ_PLATFORM_CENTER_POSITION = { 29.634f, -923.541f, 42.902f };
 
-std::unordered_map<ObjectGuid, bool> hasReachedVashjRangedPosition;
-std::unordered_map<uint32, ObjectGuid> nearestTriggerGuid;
-std::unordered_map<ObjectGuid, Position> intendedLineup;
-std::unordered_map<uint32, time_t> lastImbueAttempt;
-std::unordered_map<ObjectGuid, time_t> lastCoreInInventoryTime;
+EncounterStateMap<ObjectGuid, bool> hasReachedVashjRangedPosition;
+EncounterStateMap<uint32, ObjectGuid> nearestTriggerGuid;
+EncounterStateMap<ObjectGuid, Position> intendedLineup;
+EncounterStateMap<uint32, time_t> lastImbueAttempt;
+EncounterStateMap<ObjectGuid, time_t> lastCoreInInventoryTime;
 
 bool IsMainTankInSameSubgroup(PlayerbotAI* botAI, Player* bot)
 {
