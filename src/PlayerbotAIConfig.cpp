@@ -17,9 +17,11 @@
 #include "RandomPlayerbotMgr.h"
 #include "Talentspec.h"
 #include "TravelMgr.h"
+#include <algorithm>
 #include <cctype>
 #include <iostream>
 #include <sstream>
+#include <utility>
 
 template <class T>
 void LoadList(std::string const value, T& list)
@@ -343,8 +345,27 @@ bool PlayerbotAIConfig::Initialize()
 
     botAutologin = sConfigMgr->GetOption<bool>("AiPlayerbot.BotAutologin", false);
     randomBotAutologin = sConfigMgr->GetOption<bool>("AiPlayerbot.RandomBotAutologin", true);
-    minRandomBots = sConfigMgr->GetOption<int32>("AiPlayerbot.MinRandomBots", 500);
-    maxRandomBots = sConfigMgr->GetOption<int32>("AiPlayerbot.MaxRandomBots", 500);
+    int32 configuredMinRandomBots = sConfigMgr->GetOption<int32>("AiPlayerbot.MinRandomBots", 500);
+    int32 configuredMaxRandomBots = sConfigMgr->GetOption<int32>("AiPlayerbot.MaxRandomBots", 500);
+
+    if (configuredMinRandomBots < 0 || configuredMaxRandomBots < 0)
+    {
+        LOG_ERROR("server.loading",
+                  "AiPlayerbot.MinRandomBots and AiPlayerbot.MaxRandomBots must be non-negative. Using 500/500.");
+        configuredMinRandomBots = 500;
+        configuredMaxRandomBots = 500;
+    }
+
+    if (configuredMinRandomBots > configuredMaxRandomBots)
+    {
+        LOG_ERROR("server.loading",
+                  "AiPlayerbot.MinRandomBots ({}) exceeds AiPlayerbot.MaxRandomBots ({}). Swapping them.",
+                  configuredMinRandomBots, configuredMaxRandomBots);
+        std::swap(configuredMinRandomBots, configuredMaxRandomBots);
+    }
+
+    minRandomBots = static_cast<uint32>(configuredMinRandomBots);
+    maxRandomBots = static_cast<uint32>(configuredMaxRandomBots);
     randomBotUpdateInterval = sConfigMgr->GetOption<int32>("AiPlayerbot.RandomBotUpdateInterval", 20);
     randomBotCountChangeMinInterval =
         sConfigMgr->GetOption<int32>("AiPlayerbot.RandomBotCountChangeMinInterval", 30 * MINUTE);
@@ -774,8 +795,27 @@ bool PlayerbotAIConfig::Initialize()
     autoGearScoreLimit = sConfigMgr->GetOption<int32>("AiPlayerbot.AutoGearScoreLimit", 0);
 
     randomBotXPRate = sConfigMgr->GetOption<float>("AiPlayerbot.RandomBotXPRate", 1.0);
-    randomBotAllianceRatio = sConfigMgr->GetOption<int32>("AiPlayerbot.RandomBotAllianceRatio", 50);
-    randomBotHordeRatio = sConfigMgr->GetOption<int32>("AiPlayerbot.RandomBotHordeRatio", 50);
+    int32 configuredAllianceRatio = sConfigMgr->GetOption<int32>("AiPlayerbot.RandomBotAllianceRatio", 50);
+    int32 configuredHordeRatio = sConfigMgr->GetOption<int32>("AiPlayerbot.RandomBotHordeRatio", 50);
+
+    if (configuredAllianceRatio < 0 || configuredHordeRatio < 0)
+    {
+        LOG_ERROR("server.loading",
+                  "AiPlayerbot faction ratios must be non-negative. Using 50/50.");
+        configuredAllianceRatio = 50;
+        configuredHordeRatio = 50;
+    }
+
+    if (configuredAllianceRatio == 0 && configuredHordeRatio == 0)
+    {
+        LOG_ERROR("server.loading",
+                  "Both AiPlayerbot faction ratios are 0. Using 50/50.");
+        configuredAllianceRatio = 50;
+        configuredHordeRatio = 50;
+    }
+
+    randomBotAllianceRatio = static_cast<uint32>(configuredAllianceRatio);
+    randomBotHordeRatio = static_cast<uint32>(configuredHordeRatio);
     disableDeathKnightLogin = sConfigMgr->GetOption<bool>("AiPlayerbot.DisableDeathKnightLogin", 0);
     limitTalentsExpansion = sConfigMgr->GetOption<bool>("AiPlayerbot.LimitTalentsExpansion", 0);
     botActiveAlone = sConfigMgr->GetOption<int32>("AiPlayerbot.BotActiveAlone", 10);
