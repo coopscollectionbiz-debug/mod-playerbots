@@ -20,7 +20,9 @@ static constexpr uint32 SPELL_HAND_OF_SACRIFICE = 6940;
 static constexpr uint32 SPELL_BLESSING_OF_SANCTUARY = 20911;
 static constexpr uint32 SPELL_GREATER_BLESSING_OF_SANCTUARY = 25899;
 
-inline bool HasHandFromCaster(Unit* target, Player* caster, std::initializer_list<uint32> spellIds)
+static constexpr uint32 HOLY_SHIELD_REFRESH_MS = 2000;
+
+inline bool HasHandFromCaster(Unit* target, Unit* caster, std::initializer_list<uint32> spellIds)
 {
     if (!target || !caster)
         return false;
