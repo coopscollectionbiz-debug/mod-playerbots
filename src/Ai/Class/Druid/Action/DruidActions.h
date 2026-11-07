@@ -381,13 +381,10 @@ protected:
     ObjectGuid Calculate() override;
 };
 
-class CastBlanketHotAction : public CastSpellAction
+class CastBlanketHotAction : public CastHealingSpellAction
 {
 public:
-    CastBlanketHotAction(PlayerbotAI* ai, std::string const& spell) : CastSpellAction(ai, spell)
-    {
-        range = botAI->GetRange("heal");
-    }
+    CastBlanketHotAction(PlayerbotAI* botAI, std::string const& spell) : CastHealingSpellAction(botAI, spell) {}
 
     Unit* GetTarget() override;
     bool isUseful() override;
