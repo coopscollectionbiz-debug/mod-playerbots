@@ -6,12 +6,31 @@
 
 #include "MageTriggers.h"
 #include "DynamicObject.h"
+#include "MageActions.h"
 #include "Player.h"
 #include "Playerbots.h"
 #include "ServerFacade.h"
 #include "Spell.h"
 #include "SpellAuraEffects.h"
 #include "Value.h"
+
+// Firestarter walks a mage to melee for Blast Wave and gives up Frost Nova and Blink Back for it.
+static bool CanFirestarterUseBlastWave(PlayerbotAI* botAI)
+{
+    AiObjectContext* context = botAI->GetAiObjectContext();
+    return !CastKnockbackSpellAction::IsBlocked(botAI->GetBot(), SPELL_GLYPH_OF_BLAST_WAVE) &&
+           AI_VALUE2(uint32, "spell id", "blast wave") && AI_VALUE2(bool, "spell cast useful", "blast wave");
+}
+
+bool BlastWaveOffCdTrigger::IsActive()
+{
+    return CanFirestarterUseBlastWave(botAI) && SpellNoCooldownTrigger::IsActive();
+}
+
+bool NoFirestarterStrategyTrigger::IsActive()
+{
+    return !botAI->HasStrategy("firestarter", BOT_STATE_COMBAT) || !CanFirestarterUseBlastWave(botAI);
+}
 
 bool NoManaGemTrigger::IsActive()
 {
