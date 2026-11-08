@@ -9,6 +9,7 @@
 #include "Event.h"
 #include "ItemVisitors.h"
 #include "Playerbots.h"
+#include "WhoConversation.h"
 
 #ifndef WIN32
 inline int strcmpi(char const* s1, char const* s2)
@@ -29,6 +30,11 @@ bool WhoAction::Execute(Event event)
     std::ostringstream out;
 
     std::string const text = event.getParam();
+    // "who starts this quest?" is a question to the group, not the who
+    // command; decline it so no "playing with ..." whisper is sent.
+    if (WhoConversation::IsConversationalParam(text))
+        return false;
+
     if (!text.empty())
     {
         out << QuerySkill(text);
