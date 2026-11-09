@@ -3532,6 +3532,14 @@ void RandomPlayerbotMgr::OnBotLoginInternal(Player* const bot)
 
     RandomPlayerbotFactory::AssignBotToArenaTeam(bot);
 
+    // Drop racial mounts left over from a race change and grant the own race's ground mount when
+    // eligible. Idempotent: a bot that is already consistent learns or unlearns nothing.
+    if (sPlayerbotAIConfig.mountRacePolicy)
+    {
+        PlayerbotFactory factory(bot, bot->GetLevel());
+        factory.ReconcileRacialMounts();
+    }
+
     if (sPlayerbotAIConfig.randomBotFixedLevel)
     {
         bot->SetPlayerFlag(PLAYER_FLAGS_NO_XP_GAIN);

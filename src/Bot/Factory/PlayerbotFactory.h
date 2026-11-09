@@ -101,6 +101,10 @@ public:
     void InitGlyphs(bool increment = false);
     void InitFood();
     void InitMounts();
+    // Ground-only InitMounts plus foreign racial mount cleanup, for random bot login (MountRacePolicy).
+    void ReconcileRacialMounts();
+    // Unlearns racial vendor mounts of other races (MountRacePolicy, random bot accounts only).
+    uint32 RemoveForeignRacialMounts();
     void InitBags(bool destroyOld = true);
     void ApplyEnchantAndGemsNew(bool destroyOld = true);
     void InitInstanceQuests();
@@ -111,6 +115,8 @@ public:
     void InitGuild();
 
 private:
+    void InitMounts(bool includeFlying);
+    bool UsesMountRacePolicy() const;
     enum class ProfessionSpecializationSpell : uint32
     {
         Weapon = 9787,

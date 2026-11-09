@@ -62,7 +62,8 @@ private:
     bool TryForms(Player* master, int32 masterMountType, int32 masterSpeed) const;
     bool TryPreferredMount(Player* master) const;
     uint32 GetMountType(Player* master) const;
-    bool TryRandomMountFiltered(std::map<int32, std::vector<uint32>> const& spells, int32 masterSpeed) const;
+    bool TryRandomMountFiltered(std::map<int32, std::vector<uint32>> const& spells, int32 masterSpeed,
+                                bool prioritize) const;
 };
 
 #endif

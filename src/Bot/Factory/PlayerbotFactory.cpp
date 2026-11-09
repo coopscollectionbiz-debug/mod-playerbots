@@ -32,6 +32,7 @@
 #include "PlayerbotAI.h"
 #include "PlayerbotAIConfig.h"
 #include "PlayerbotGuildMgr.h"
+#include "PlayerbotMountPolicy.h"
 #include "PlayerbotRepository.h"
 #include "PlayerbotSpellRepository.h"
 #include "Playerbots.h"
@@ -4820,95 +4821,104 @@ void PlayerbotFactory::AutoGear(Player* bot, uint32 itemQuality, uint32 ilvl, bo
     bot->DurabilityRepairAll(false, 1.0f, false);
 }
 
+bool PlayerbotFactory::UsesMountRacePolicy() const
+{
+    return sPlayerbotAIConfig.mountRacePolicy && bot->GetSession() &&
+           sPlayerbotAIConfig.IsInRandomAccountList(bot->GetSession()->GetAccountId());
+}
+
+uint32 PlayerbotFactory::RemoveForeignRacialMounts()
+{
+    if (!UsesMountRacePolicy())
+        return 0;
+
+    uint32 removed = 0;
+    for (uint32 spell : PlayerbotMountPolicy::GetForeignRacialMounts(bot->getRace()))
+    {
+        if (!bot->HasSpell(spell))
+            continue;
+
+        bot->removeSpell(spell, SPEC_MASK_ALL, false);
+        ++removed;
+    }
+
+    if (removed)
+        LOG_INFO("playerbots", "Bot {} (race {}) unlearned {} racial mount(s) of another race",
+                 bot->GetGUID().ToString().c_str(), bot->getRace(), removed);
+    return removed;
+}
+
+// Racial ground mount lists for InitMounts; empty when the race has none (handled by the caller).
+static void GetGroundMounts(Player* bot, uint32 ridingSkill, std::vector<uint32>& slow, std::vector<uint32>& fast)
+{
+    slow.clear();
+    fast.clear();
+    uint8 const race = bot->getRace();
+
+    if (race == RACE_WORGOBLIN_WORGEN)
+    {
+        if (sSpellMgr->GetSpellInfo(SPELL_RUNNING_WILD))
+        {
+            // Empty below Apprentice: mod-worgoblin unlearns Running Wild without Riding.
+            if (ridingSkill >= WORGOBLIN_RIDING_APPRENTICE)
+            {
+                slow = {SPELL_RUNNING_WILD};
+                fast = {SPELL_RUNNING_WILD};
+            }
+            return;
+        }
+    }
+    else
+    {
+        bool const goblinDataMissing = race == RACE_WORGOBLIN_GOBLIN &&
+                                       (!sSpellMgr->GetSpellInfo(SPELL_GOBLIN_TRIKE) ||
+                                        !sSpellMgr->GetSpellInfo(SPELL_GOBLIN_TURBO_TRIKE));
+        PlayerbotMountPolicy::RacialMounts const* mounts = PlayerbotMountPolicy::GetRacialMounts(race);
+        if (mounts && !goblinDataMissing)
+        {
+            slow = mounts->slow;
+            fast = mounts->fast;
+            return;
+        }
+    }
+
+    // Unknown race (or missing custom spell data): the stock team default.
+    if (bot->GetTeamId() == TEAM_HORDE)
+    {  // Orc mounts
+        slow = {6654, 6653, 580};
+        fast = {23250, 23252, 23251};
+    }
+    else  // Human mounts
+    {
+        slow = {470, 6648, 458, 472};
+        fast = {23228, 23227, 23229};
+    }
+}
+
 void PlayerbotFactory::InitMounts()
 {
+    InitMounts(true);
+}
+
+void PlayerbotFactory::InitMounts(bool includeFlying)
+{
+    // Before the level gate, so low-level bots that changed race are cleaned up too.
+    RemoveForeignRacialMounts();
+
     uint32 firstmount = sPlayerbotAIConfig.useGroundMountAtMinLevel;
     uint32 secondmount = sPlayerbotAIConfig.useFastGroundMountAtMinLevel;
     uint32 thirdmount = sPlayerbotAIConfig.useFlyMountAtMinLevel;
     uint32 fourthmount = sPlayerbotAIConfig.useFastFlyMountAtMinLevel;
 
-    if (bot->GetLevel() < firstmount)
+    uint32 const ridingSkill = bot->GetPureSkillValue(SKILL_RIDING);
+
+    // Running Wild follows Riding only (mod-worgoblin teaches it at Apprentice regardless of level).
+    if (bot->GetLevel() < firstmount && !(UsesMountRacePolicy() && bot->getRace() == RACE_WORGOBLIN_WORGEN))
         return;
 
-    uint32 const ridingSkill = bot->GetPureSkillValue(SKILL_RIDING);
-    std::map<uint8, std::map<uint32, std::vector<uint32>>> mounts;
+    std::map<uint32, std::vector<uint32>> mounts;
     std::vector<uint32> slow, fast, fslow, ffast;
-
-    switch (bot->getRace())
-    {
-        case RACE_HUMAN:
-            slow = {470, 6648, 458, 472};
-            fast = {23228, 23227, 23229};
-            break;
-        case RACE_ORC:
-            slow = {6654, 6653, 580};
-            fast = {23250, 23252, 23251};
-            break;
-        case RACE_DWARF:
-            slow = {6899, 6777, 6898};
-            fast = {23238, 23239, 23240};
-            break;
-        case RACE_NIGHTELF:
-            slow = {10789, 8394, 10793};
-            fast = {23219, 23220, 63637};
-            break;
-        case RACE_UNDEAD_PLAYER:
-            slow = {17463, 17464, 17462};
-            fast = {17465, 23246, 66846};
-            break;
-        case RACE_TAUREN:
-            slow = {18990, 18989, 64657};
-            fast = {23249, 23248, 23247};
-            break;
-        case RACE_GNOME:
-            slow = {10969, 17453, 10873, 17454};
-            fast = {23225, 23223, 23222};
-            break;
-        case RACE_TROLL:
-            slow = {10796, 10799, 8395};
-            fast = {23241, 23242, 23243};
-            break;
-        case RACE_DRAENEI:
-            slow = {34406, 35711, 35710};
-            fast = {35713, 35712, 35714};
-            break;
-        case RACE_BLOODELF:
-            slow = {33660, 35020, 35022, 35018};
-            fast = {35025, 35025, 35027};
-            break;
-        case RACE_WORGOBLIN_GOBLIN:
-            if (sSpellMgr->GetSpellInfo(SPELL_GOBLIN_TRIKE) && sSpellMgr->GetSpellInfo(SPELL_GOBLIN_TURBO_TRIKE))
-            {
-                slow = {SPELL_GOBLIN_TRIKE};
-                fast = {SPELL_GOBLIN_TURBO_TRIKE};
-                break;
-            }
-            [[fallthrough]];
-        case RACE_WORGOBLIN_WORGEN:
-            // Running Wild covers both ground tiers; mod-worgoblin scales its speed with Riding.
-            if (bot->getRace() == RACE_WORGOBLIN_WORGEN && sSpellMgr->GetSpellInfo(SPELL_RUNNING_WILD))
-            {
-                // Empty below Apprentice: mod-worgoblin unlearns Running Wild without Riding.
-                if (ridingSkill >= WORGOBLIN_RIDING_APPRENTICE)
-                {
-                    slow = {SPELL_RUNNING_WILD};
-                    fast = {SPELL_RUNNING_WILD};
-                }
-                break;
-            }
-            [[fallthrough]];
-        default:
-            if (bot->GetTeamId() == TEAM_HORDE)
-            { // Orc mounts
-                slow = {6654, 6653, 580};
-                fast = {23250, 23252, 23251};
-            }
-            else // Human mounts
-            {
-                slow = {470, 6648, 458, 472};
-                fast = {23228, 23227, 23229};
-            }
-    }
+    GetGroundMounts(bot, ridingSkill, slow, fast);
 
     switch (bot->GetTeamId())
     {
@@ -4924,15 +4934,18 @@ void PlayerbotFactory::InitMounts()
             break;
     }
 
-    mounts[bot->getRace()][0] = slow;
-    mounts[bot->getRace()][1] = fast;
-    mounts[bot->getRace()][2] = fslow;
-    mounts[bot->getRace()][3] = ffast;
+    mounts[0] = slow;
+    mounts[1] = fast;
+    if (includeFlying)
+    {
+        mounts[2] = fslow;
+        mounts[3] = ffast;
+    }
 
     for (uint32 type = 0; type < 4; type++)
     {
         bool hasMount = false;
-        for (uint32& spell : mounts[bot->getRace()][type])
+        for (uint32& spell : mounts[type])
         {
             if (bot->HasSpell(spell))
             {
@@ -4940,10 +4953,20 @@ void PlayerbotFactory::InitMounts()
                 break;
             }
         }
+        // A usable fast racial mount makes a slow one pointless (the fastest bucket is always picked).
+        if (!hasMount && type == 0 && ridingSkill >= WORGOBLIN_RIDING_JOURNEYMAN)
+            for (uint32 spell : mounts[1])
+                if (bot->HasSpell(spell))
+                    hasMount = true;
         if (hasMount)
             continue;
 
-        if (bot->GetLevel() < secondmount && type == 1)
+        bool const runningWild = mounts[type].size() == 1 && mounts[type][0] == SPELL_RUNNING_WILD;
+
+        if (bot->GetLevel() < firstmount && !runningWild)
+            continue;
+
+        if (bot->GetLevel() < secondmount && type == 1 && !runningWild)
             continue;
 
         if (bot->GetLevel() < thirdmount && type == 2)
@@ -4952,22 +4975,31 @@ void PlayerbotFactory::InitMounts()
         if (bot->GetLevel() < fourthmount && type == 3)
             continue;
 
-        if (mounts[bot->getRace()][type].empty())
+        if (mounts[type].empty())
             continue;
 
-        uint32 index = urand(0, mounts[bot->getRace()][type].size() - 1);
-        uint32 spell = mounts[bot->getRace()][type][index];
+        uint32 index = urand(0, mounts[type].size() - 1);
+        uint32 spell = mounts[type][index];
         SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(spell);
-        if (spellInfo && PlayerbotSpellRepository::Instance().GetRequiredRidingSkill(spellInfo) > ridingSkill)
+        if (!spellInfo)
             continue;
 
-        if (spell)
-        {
-            bot->learnSpell(spell);
-            LOG_DEBUG("playerbots", "Bot {} ({}) learned {} mount {}", bot->GetGUID().ToString().c_str(),
-                      bot->GetLevel(), type == 0 ? "slow" : (type == 1 ? "fast" : "flying"), spell);
-        }
+        if (PlayerbotSpellRepository::Instance().GetRequiredRidingSkill(spellInfo) > ridingSkill)
+            continue;
+
+        bot->learnSpell(spell);
+        LOG_DEBUG("playerbots", "Bot {} ({}) learned {} mount {}", bot->GetGUID().ToString().c_str(),
+                  bot->GetLevel(), type == 0 ? "slow" : (type == 1 ? "fast" : "flying"), spell);
     }
+}
+
+void PlayerbotFactory::ReconcileRacialMounts()
+{
+    if (!UsesMountRacePolicy())
+        return;
+
+    // Ground tiers only: login must not hand out flying mounts ahead of the normal randomize flow.
+    InitMounts(false);
 }
 
 void PlayerbotFactory::UnbindInstance()

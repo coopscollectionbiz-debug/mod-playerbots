@@ -477,6 +477,7 @@ public:
     uint32 useFastGroundMountAtMinLevel;
     uint32 useFlyMountAtMinLevel;
     uint32 useFastFlyMountAtMinLevel;
+    bool mountRacePolicy;
 
     // stagger flightpath takeoff
     uint32 botTaxiDelayMin;

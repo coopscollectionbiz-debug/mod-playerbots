@@ -14,6 +14,7 @@
 #include "Event.h"
 #include "PlayerbotAI.h"
 #include "PlayerbotAIConfig.h"
+#include "PlayerbotMountPolicy.h"
 #include "PlayerbotSpellRepository.h"
 #include "Playerbots.h"
 #include "PlayerbotsDatabase.h"
@@ -43,7 +44,14 @@ static int32 GetMountSpeed(SpellInfo const* spellInfo, uint32 ridingSkill)
 // Preferred mounts per bot, loaded once at startup by LoadPreferredMounts()
 std::unordered_map<uint32, PreferredMountCache> CheckMountStateAction::mountCache;
 
-MountData CollectMountData(Player const* bot)
+// MountRacePolicy applies to random bot accounts only; a real player's own bots keep every mount.
+static bool UsesMountRacePolicy(Player const* bot)
+{
+    return sPlayerbotAIConfig.mountRacePolicy && bot->GetSession() &&
+           sPlayerbotAIConfig.IsInRandomAccountList(bot->GetSession()->GetAccountId());
+}
+
+static MountData CollectMountData(Player const* bot, bool racePolicy)
 {
     MountData data;
     uint32 const ridingSkill = bot->GetPureSkillValue(SKILL_RIDING);
@@ -55,6 +63,10 @@ MountData CollectMountData(Player const* bot)
             continue;
 
         if (entry.second->State == PLAYERSPELL_REMOVED || !entry.second->Active || spellInfo->IsPassive())
+            continue;
+
+        // Another race's vendor mount (left over from a race change) is never ridden.
+        if (racePolicy && PlayerbotMountPolicy::IsForeignRacialMount(bot->getRace(), spellId))
             continue;
 
         // The core casts a known mount without checking Riding.
@@ -242,7 +254,8 @@ bool CheckMountStateAction::Mount()
         return true;
 
     // Get bot mount data
-    MountData mountData = CollectMountData(bot);
+    bool const racePolicy = UsesMountRacePolicy(bot);
+    MountData mountData = CollectMountData(bot, racePolicy);
     int32 masterMountType = GetMountType(master);
     int32 masterSpeed = CalculateMasterMountSpeed(master);
 
@@ -255,7 +268,8 @@ bool CheckMountStateAction::Mount()
     if (spellsIt != mountData.allSpells.end())
     {
         auto& spells = spellsIt->second;
-        if (TryRandomMountFiltered(spells, masterSpeed))
+        // Class/racial priority applies to ground mounts; flying keeps the plain random pick.
+        if (TryRandomMountFiltered(spells, masterSpeed, racePolicy && masterMountType == 0))
             return true;
     }
 
@@ -445,7 +459,8 @@ bool CheckMountStateAction::TryPreferredMount(Player* master) const
     return false;
 }
 
-bool CheckMountStateAction::TryRandomMountFiltered(std::map<int32, std::vector<uint32>> const& spells, int32 masterSpeed) const
+bool CheckMountStateAction::TryRandomMountFiltered(std::map<int32, std::vector<uint32>> const& spells,
+                                                   int32 masterSpeed, bool prioritize) const
 {
     for (auto it = spells.rbegin(); it != spells.rend(); ++it)
     {
@@ -461,6 +476,24 @@ bool CheckMountStateAction::TryRandomMountFiltered(std::map<int32, std::vector<u
             // Required here as otherwise bots won't mount in BGs due to them constant moving
             if (bot->isMoving())
                 bot->StopMoving();
+
+            if (prioritize)
+            {
+                // Fastest usable bucket first (outer loop); inside it class mounts, then own racial
+                // mounts, then the rest. The first castable spell wins, so a preferred mount that cannot
+                // be cast right now never blocks mounting.
+                std::vector<uint32> const ranked =
+                    PlayerbotMountPolicy::RankGroundMounts(bot->getRace(), bot->getClass(), ids, urand(0, 99));
+                for (uint32 spellId : ranked)
+                {
+                    if (botAI->CanCastSpell(spellId, bot))
+                    {
+                        botAI->CastSpell(spellId, bot);
+                        return true;
+                    }
+                }
+                continue;
+            }
 
             uint32 index = urand(0, ids.size() - 1);
 

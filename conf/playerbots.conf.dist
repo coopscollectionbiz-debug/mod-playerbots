@@ -266,6 +266,18 @@ AiPlayerbot.UseFlyMountAtMinLevel = 60
 # Default: 70
 AiPlayerbot.UseFastFlyMountAtMinLevel = 70
 
+# Race-aware ground mounts for random bots (accounts in the random bot account list only).
+# When enabled:
+#   - Racial vendor mounts that belong to another race (left over from a race change) are removed
+#     at login and whenever InitMounts runs, and are never selected for riding. Class, flying,
+#     quest, reward and achievement mounts are never removed.
+#   - A bot missing its own race's ground mount gets it at login when InitMounts would grant it.
+#   - Ground mount choice prefers class mounts (Paladin, Warlock, Death Knight), then the bot's own
+#     racial mounts (Running Wild, Goblin Trikes, ...), then anything else, within the fastest
+#     usable speed. Worgen Paladins keep Running Wild as an alternative (30%).
+# Default: 0 (disabled)
+AiPlayerbot.MountRacePolicy = 0
+
 #
 #
 ####################################################################################################
