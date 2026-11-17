@@ -51,6 +51,9 @@ constexpr float PLAGUED_CHAMPION_SHOCK_DISTANCE = 26.0f;
 constexpr float THANE_METEOR_STACK_DISTANCE = 6.0f;
 constexpr float NAXX_ADD_SEARCH_DISTANCE = 60.0f;
 
+// The raid uses the 25-player layouts: 25-man Naxxramas, or mod-individual-progression's 40-player
+// Naxxramas, which runs on map 533 as 10-player heroic.
+bool IsLargeNaxx(Player const* bot);
 bool Is25Player(Player const* bot);
 Unit* GetNearestNpc(PlayerbotAI* botAI, uint32 entry, float maxDistance);
 bool IsFaerlinaFrenzied(Unit const* faerlina);

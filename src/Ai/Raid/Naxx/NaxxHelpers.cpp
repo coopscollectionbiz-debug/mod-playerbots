@@ -21,9 +21,19 @@ using namespace EncounterHelpers;
 
 namespace NaxxHelpers
 {
+bool IsLargeNaxx(Player const* bot)
+{
+    Map const* map = bot->GetMap();
+    if (!map)
+        return false;
+    // mod-individual-progression puts its 40-player Naxxramas on 10-player heroic.
+    constexpr uint32 MAP_NAXXRAMAS = 533;
+    return map->Is25ManRaid() || (map->GetId() == MAP_NAXXRAMAS && map->GetDifficulty() == RAID_DIFFICULTY_10MAN_HEROIC);
+}
+
 bool Is25Player(Player const* bot)
 {
-    return bot->GetMap()->Is25ManRaid();
+    return IsLargeNaxx(bot);
 }
 
 Unit* GetNearestNpc(PlayerbotAI* botAI, uint32 entry, float maxDistance)

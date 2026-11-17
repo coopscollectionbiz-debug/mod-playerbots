@@ -5,6 +5,7 @@
  */
 
 #include "NaxxActions.h"
+#include "NaxxHelpers.h"
 #include "PlayerbotAIConfig.h"
 #include "Playerbots.h"
 #include "SharedDefines.h"
@@ -91,7 +92,7 @@ bool GluthPositionAction::Execute(Event /*event*/)
     if (!helper.UpdateBossAI())
         return false;
 
-    bool raid25 = bot->GetRaidDifficulty() == RAID_DIFFICULTY_25MAN_NORMAL;
+    bool raid25 = NaxxHelpers::IsLargeNaxx(bot);
     if (botAI->IsMainTank(bot) || botAI->IsAssistTankOfIndex(bot, 0))
     {
         if (AI_VALUE2(bool, "has aggro", "boss target"))
@@ -164,7 +165,7 @@ bool GluthSlowdownAction::Execute(Event /*event*/)
     if (!helper.UpdateBossAI())
         return false;
 
-    bool raid25 = bot->GetRaidDifficulty() == RAID_DIFFICULTY_25MAN_NORMAL;
+    bool raid25 = NaxxHelpers::IsLargeNaxx(bot);
     if (!raid25)
         return false;
 
