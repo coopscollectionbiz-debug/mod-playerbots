@@ -157,19 +157,35 @@ class RearFlankAction : public MovementAction
     // tail swipes. Some dragons or mobs may have different danger zone angles, override if needed.
 public:
     RearFlankAction(PlayerbotAI* botAI, float distance = 0.0f, float minAngle = ANGLE_90_DEG,
-                    float maxAngle = ANGLE_120_DEG)
-        : MovementAction(botAI, "rear flank")
+                    float maxAngle = ANGLE_120_DEG, std::string const& name = "rear flank")
+        : MovementAction(botAI, name)
     {
         this->distance = distance;
         this->minAngle = minAngle;
         this->maxAngle = maxAngle;
     }
 
+    std::string const GetTargetName() override { return "current target"; };
     bool Execute(Event event) override;
     bool isUseful() override;
 
 protected:
     float distance, minAngle, maxAngle;
+};
+
+// Backported from upstream mod-playerbots: rear-flanks a named boss instead of the current target.
+class BossRearFlankAction : public RearFlankAction
+{
+public:
+    BossRearFlankAction(PlayerbotAI* botAI, std::string bossName, float distance = 0.0f, float minAngle = ANGLE_90_DEG,
+                        float maxAngle = ANGLE_120_DEG)
+        : RearFlankAction(botAI, distance, minAngle, maxAngle, bossName + " rear flank"),
+          bossName(std::move(bossName)) {}
+
+    Unit* GetTarget() override;
+
+protected:
+    const std::string bossName;
 };
 
 class DisperseSetAction : public Action
