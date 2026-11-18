@@ -52,6 +52,19 @@ public:
 
         creators["loatheb position"] = &RaidNaxxActionContext::loatheb_position;
         creators["loatheb choose target"] = &RaidNaxxActionContext::loatheb_choose_target;
+        creators["naxx kill order mark"] = &RaidNaxxActionContext::naxx_kill_order_mark;
+        creators["naxx faerlina mind control"] = &RaidNaxxActionContext::naxx_faerlina_mind_control;
+        creators["naxx faerlina embrace"] = &RaidNaxxActionContext::naxx_faerlina_embrace;
+        creators["naxx faerlina bring worshipper"] = &RaidNaxxActionContext::naxx_faerlina_bring_worshipper;
+        creators["naxx attack web wrap"] = &RaidNaxxActionContext::naxx_attack_web_wrap;
+        creators["naxx noth taunt"] = &RaidNaxxActionContext::naxx_noth_taunt;
+        creators["naxx move from plagued champion"] = &RaidNaxxActionContext::naxx_move_from_plagued_champion;
+        creators["naxx gothik go to side"] = &RaidNaxxActionContext::naxx_gothik_go_to_side;
+        creators["naxx gothik taunt"] = &RaidNaxxActionContext::naxx_gothik_taunt;
+        creators["naxx patchwerk soak"] = &RaidNaxxActionContext::naxx_patchwerk_soak;
+        creators["naxx thane stack"] = &RaidNaxxActionContext::naxx_thane_stack;
+        creators["naxx detonate mana spread"] = &RaidNaxxActionContext::naxx_detonate_mana_spread;
+        creators["naxx chains mark"] = &RaidNaxxActionContext::naxx_chains_mark;
     }
 
 private:
@@ -71,23 +84,48 @@ private:
     {
         return new RazuviousUseObedienceCrystalAction(ai);
     }
-    static Action* four_horsemen_attract_alternatively(PlayerbotAI* ai) { return new FourHorsemenAttractAlternativelyAction(ai); }
-    static Action* four_horsemen_attack_in_order(PlayerbotAI* ai) { return new FourHorsemenAttackInOrderAction(ai); }
-    // static Action* sapphiron_ground_main_tank_position(PlayerbotAI* ai) { return new
-    // SapphironGroundMainTankPositionAction(ai); }
-    static Action* sapphiron_ground_position(PlayerbotAI* ai) { return new SapphironGroundPositionAction(ai); }
-    static Action* sapphiron_flight_position(PlayerbotAI* ai) { return new SapphironFlightPositionAction(ai); }
-    // static Action* sapphiron_avoid_chill(PlayerbotAI* ai) { return new SapphironAvoidChillAction(ai); }
-    static Action* kelthuzad_choose_target(PlayerbotAI* ai) { return new KelthuzadChooseTargetAction(ai); }
-    static Action* kelthuzad_position(PlayerbotAI* ai) { return new KelthuzadPositionAction(ai); }
-    static Action* anubrekhan_choose_target(PlayerbotAI* ai) { return new AnubrekhanChooseTargetAction(ai); }
-    static Action* anubrekhan_position(PlayerbotAI* ai) { return new AnubrekhanPositionAction(ai); }
-    static Action* gluth_choose_target(PlayerbotAI* ai) { return new GluthChooseTargetAction(ai); }
-    static Action* gluth_position(PlayerbotAI* ai) { return new GluthPositionAction(ai); }
-    static Action* gluth_slowdown(PlayerbotAI* ai) { return new GluthSlowdownAction(ai); }
-    //static Action* patchwerk_ranged_position(PlayerbotAI* ai) { return new PatchwerkRangedPositionAction(ai); }
-    static Action* loatheb_position(PlayerbotAI* ai) { return new LoathebPositionAction(ai); }
-    static Action* loatheb_choose_target(PlayerbotAI* ai) { return new LoathebChooseTargetAction(ai); }
+    static Action* four_horsemen_attract_alternatively(PlayerbotAI* botAI) { return new FourHorsemenAttractAlternativelyAction(botAI); }
+    static Action* four_horsemen_attack_in_order(PlayerbotAI* botAI) { return new FourHorsemenAttackInOrderAction(botAI); }
+    // static Action* sapphiron_ground_main_tank_position(PlayerbotAI* botAI) { return new
+    // SapphironGroundMainTankPositionAction(botAI); }
+    static Action* sapphiron_ground_position(PlayerbotAI* botAI) { return new SapphironGroundPositionAction(botAI); }
+    static Action* sapphiron_flight_position(PlayerbotAI* botAI) { return new SapphironFlightPositionAction(botAI); }
+    // static Action* sapphiron_avoid_chill(PlayerbotAI* botAI) { return new SapphironAvoidChillAction(botAI); }
+    static Action* kelthuzad_choose_target(PlayerbotAI* botAI) { return new KelthuzadChooseTargetAction(botAI); }
+    static Action* kelthuzad_position(PlayerbotAI* botAI) { return new KelthuzadPositionAction(botAI); }
+    static Action* anubrekhan_choose_target(PlayerbotAI* botAI) { return new AnubrekhanChooseTargetAction(botAI); }
+    static Action* anubrekhan_position(PlayerbotAI* botAI) { return new AnubrekhanPositionAction(botAI); }
+    static Action* gluth_choose_target(PlayerbotAI* botAI) { return new GluthChooseTargetAction(botAI); }
+    static Action* gluth_position(PlayerbotAI* botAI) { return new GluthPositionAction(botAI); }
+    static Action* gluth_slowdown(PlayerbotAI* botAI) { return new GluthSlowdownAction(botAI); }
+    //static Action* patchwerk_ranged_position(PlayerbotAI* botAI) { return new PatchwerkRangedPositionAction(botAI); }
+    static Action* loatheb_position(PlayerbotAI* botAI) { return new LoathebPositionAction(botAI); }
+    static Action* loatheb_choose_target(PlayerbotAI* botAI) { return new LoathebChooseTargetAction(botAI); }
+    static Action* naxx_kill_order_mark(PlayerbotAI* botAI) { return new NaxxKillOrderMarkAction(botAI); }
+    static Action* naxx_faerlina_mind_control(PlayerbotAI* botAI) { return new NaxxFaerlinaMindControlAction(botAI); }
+    static Action* naxx_faerlina_embrace(PlayerbotAI* botAI) { return new NaxxFaerlinaEmbraceAction(botAI); }
+    static Action* naxx_faerlina_bring_worshipper(PlayerbotAI* botAI)
+    {
+        return new NaxxFaerlinaBringWorshipperAction(botAI);
+    }
+    static Action* naxx_attack_web_wrap(PlayerbotAI* botAI) { return new NaxxAttackWebWrapAction(botAI); }
+    static Action* naxx_noth_taunt(PlayerbotAI* botAI)
+    {
+        return new NaxxTauntBossAction(botAI, "naxx noth taunt", "noth the plaguebringer");
+    }
+    static Action* naxx_move_from_plagued_champion(PlayerbotAI* botAI)
+    {
+        return new NaxxMoveFromPlaguedChampionAction(botAI);
+    }
+    static Action* naxx_gothik_go_to_side(PlayerbotAI* botAI) { return new NaxxGothikGoToSideAction(botAI); }
+    static Action* naxx_gothik_taunt(PlayerbotAI* botAI)
+    {
+        return new NaxxTauntBossAction(botAI, "naxx gothik taunt", "gothik the harvester");
+    }
+    static Action* naxx_patchwerk_soak(PlayerbotAI* botAI) { return new NaxxPatchwerkSoakAction(botAI); }
+    static Action* naxx_thane_stack(PlayerbotAI* botAI) { return new NaxxThaneStackAction(botAI); }
+    static Action* naxx_detonate_mana_spread(PlayerbotAI* botAI) { return new NaxxDetonateManaSpreadAction(botAI); }
+    static Action* naxx_chains_mark(PlayerbotAI* botAI) { return new NaxxChainsMarkAction(botAI); }
 };
 
 #endif

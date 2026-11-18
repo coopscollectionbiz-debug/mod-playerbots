@@ -9,18 +9,22 @@
 #include "DKActions.h"
 #include "DruidActions.h"
 #include "DruidBearActions.h"
+#include "EncounterHelpers.h"
 #include "FollowActions.h"
 #include "GenericSpellActions.h"
+#include "Group.h"
 #include "HunterActions.h"
 #include "MageActions.h"
 #include "MovementActions.h"
 #include "NaxxActions.h"
+#include "NaxxHelpers.h"
 #include "NaxxSpellIds.h"
 #include "PaladinActions.h"
 #include "PetsAction.h"
 #include "PriestActions.h"
 #include "ReachTargetActions.h"
 #include "RogueActions.h"
+#include "RtiTargetValue.h"
 #include "ScriptedCreature.h"
 #include "ShamanActions.h"
 #include "Spell.h"
@@ -311,5 +315,60 @@ float GluthGenericMultiplier::GetValue(Action* action)
         if (helper.IsZombieChow(target))
             return 0.0f;
     }
+    return 1.0f;
+}
+
+static bool IsCrowdControlSpell(std::string const& spell)
+{
+    return spell == "polymorph" || spell == "cyclone" || spell == "hex" || spell == "freezing arrow" ||
+           spell == "freezing trap" || spell == "repentance" || spell == "hibernate";
+}
+
+float NaxxRaidMechanicsMultiplier::GetValue(Action* action)
+{
+    using namespace NaxxHelpers;
+    if (bot->GetMapId() != MAP_NAXXRAMAS)
+        return 1.0f;
+
+    // A priest holding a Worshipper keeps the Mind Control channel and only steers the Worshipper.
+    if (GetCharmedWorshipper(bot))
+        return dynamic_cast<NaxxFaerlinaEmbraceAction*>(action) ? 1.0f : 0.0f;
+
+    // Gothik: bots hold their side of the room until the gate opens.
+    if (dynamic_cast<FollowAction*>(action) && IsInGothikRoom(bot))
+    {
+        constexpr float GOTHIK_SEARCH_DISTANCE = 150.0f;
+        Creature* gothik = bot->FindNearestCreature(NPC_GOTHIK, GOTHIK_SEARCH_DISTANCE);
+        if (gothik && !(gothik->IsInCombat() && IsGothikGateOpen(bot)))
+            return 0.0f;
+    }
+
+    // Hateful Strike soakers stay on Patchwerk and leave his threat to the main tank.
+    if ((EncounterHelpers::IsTauntAction(bot, action) || dynamic_cast<TankAssistAction*>(action)) &&
+        IsHatefulStrikeSoaker(bot) && AI_VALUE2(Unit*, "find target", "patchwerk"))
+        return 0.0f;
+
+    Unit* target = nullptr;
+    auto* spellAction = dynamic_cast<CastSpellAction*>(action);
+    if (spellAction)
+        target = action->GetTarget();
+    else if (dynamic_cast<AttackAction*>(action))
+        target = AI_VALUE(Unit*, "current target");
+    if (!target)
+        return 1.0f;
+
+    // Worshippers are kept alive for Widow's Embrace; they die only when put on skull for it.
+    if (target->GetEntry() == NPC_NAXXRAMAS_WORSHIPPER && !PlayerbotAI::IsTank(bot))
+    {
+        Group* group = bot->GetGroup();
+        bool const isSkull = group && group->GetTargetIcon(RtiTargetValue::skullIndex) == target->GetGUID();
+        if (!isSkull && (!spellAction || spellAction->getThreatType() != Action::ActionThreatType::None))
+            return 0.0f;
+    }
+
+    // Raiders under Chains of Kel'Thuzad are crowd-controlled, not killed.
+    if (target->IsPlayer() && target->HasAura(SPELL_CHAINS_OF_KELTHUZAD))
+        return spellAction && IsCrowdControlSpell(spellAction->getSpell()) ? 1.0f : 0.0f;
+
     return 1.0f;
 }

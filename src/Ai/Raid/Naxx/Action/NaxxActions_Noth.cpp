@@ -4,4 +4,16 @@
  * or (at your option) any later version.
  */
 
-// Reserved for Noth-specific actions.
+#include "NaxxActions.h"
+#include "NaxxHelpers.h"
+#include "Playerbots.h"
+
+bool NaxxMoveFromPlaguedChampionAction::Execute(Event /*event*/)
+{
+    using namespace NaxxHelpers;
+    Unit* champion = GetNearestNpc(botAI, NPC_PLAGUED_CHAMPION, PLAGUED_CHAMPION_SHOCK_DISTANCE);
+    if (!champion)
+        return false;
+
+    return MoveAway(champion, PLAGUED_CHAMPION_SHOCK_DISTANCE - bot->GetExactDist2d(champion));
+}

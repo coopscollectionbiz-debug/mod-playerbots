@@ -120,4 +120,13 @@ private:
     GluthBossHelper helper;
 };
 
+// Mechanics added from the WotLK 10/25-player guides: Faerlina's Worshippers, Gothik's side split,
+// Patchwerk's Hateful Strike soakers and Chains of Kel'Thuzad.
+class NaxxRaidMechanicsMultiplier : public Multiplier
+{
+public:
+    NaxxRaidMechanicsMultiplier(PlayerbotAI* botAI) : Multiplier(botAI, "naxx raid mechanics") {}
+    float GetValue(Action* action) override;
+};
+
 #endif

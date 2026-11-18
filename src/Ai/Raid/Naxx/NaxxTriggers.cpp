@@ -5,6 +5,8 @@
  */
 
 #include "NaxxTriggers.h"
+#include "EncounterHelpers.h"
+#include "NaxxHelpers.h"
 #include "NaxxSpellIds.h"
 #include "Playerbots.h"
 #include "Timer.h"
@@ -249,4 +251,170 @@ bool ThaddiusPhaseThaddiusTrigger::IsActive()
         return false;
 
     return helper.IsPhaseThaddius();
+}
+
+using namespace NaxxHelpers;
+
+static bool IsTankPlayer(Unit* unit)
+{
+    Player* player = unit ? unit->ToPlayer() : nullptr;
+    return player && PlayerbotAI::IsTank(player);
+}
+
+bool NaxxKillOrderMarkTrigger::IsActive()
+{
+    return bot->IsInCombat() && EncounterHelpers::IsMechanicTrackerBot(bot, MAP_NAXXRAMAS) &&
+           GetKillOrderMarkTarget(botAI);
+}
+
+bool NaxxFaerlinaMindControlTrigger::IsActive()
+{
+    // 25-player only: there a dying Worshipper doesn't cast Widow's Embrace, so a priest's Worshipper must.
+    if (!Is25Player(bot) || GetFaerlinaPriest(bot) != bot || GetCharmedWorshipper(bot) ||
+        bot->GetCurrentSpell(CURRENT_CHANNELED_SPELL))
+        return false;
+
+    Unit* faerlina = GetNearestNpc(botAI, NPC_GRAND_WIDOW_FAERLINA, NAXX_ADD_SEARCH_DISTANCE);
+    return IsFaerlinaFrenzied(faerlina) && GetNearestNpc(botAI, NPC_NAXXRAMAS_WORSHIPPER, NAXX_ADD_SEARCH_DISTANCE);
+}
+
+bool NaxxFaerlinaEmbraceTrigger::IsActive()
+{
+    return GetCharmedWorshipper(bot) != nullptr;
+}
+
+bool NaxxFaerlinaBringWorshipperTrigger::IsActive()
+{
+    // 10-player: the tank holding the Worshippers drags one beside a frenzied Faerlina for the kill.
+    if (Is25Player(bot) || !PlayerbotAI::IsTank(bot))
+        return false;
+
+    Unit* faerlina = GetNearestNpc(botAI, NPC_GRAND_WIDOW_FAERLINA, NAXX_ADD_SEARCH_DISTANCE);
+    if (!IsFaerlinaFrenzied(faerlina) || faerlina->GetVictim() == bot)
+        return false;
+
+    for (ObjectGuid const guid : AI_VALUE(GuidVector, "attackers"))
+    {
+        Unit* unit = botAI->GetUnit(guid);
+        if (unit && unit->IsAlive() && unit->GetEntry() == NPC_NAXXRAMAS_WORSHIPPER && unit->GetVictim() == bot &&
+            unit->GetExactDist2d(faerlina) >= GetWidowsEmbraceRadius(unit))
+            return true;
+    }
+    return false;
+}
+
+bool NaxxMaexxnaWebWrapTrigger::IsActive()
+{
+    // Ranged DPS free the cocooned players.
+    if (!PlayerbotAI::IsRangedDps(bot) || !AI_VALUE2(Unit*, "find target", "maexxna"))
+        return false;
+
+    Unit* victim = bot->GetVictim();
+    if (victim && victim->IsAlive() && victim->GetEntry() == NPC_WEB_WRAP)
+        return false;
+
+    return GetNearestNpc(botAI, NPC_WEB_WRAP, NAXX_ADD_SEARCH_DISTANCE) != nullptr;
+}
+
+bool NaxxNothNotTankedTrigger::IsActive()
+{
+    // Blink wipes his threat, so whoever he turns to is rarely a tank; the main tank takes him back.
+    if (!PlayerbotAI::IsTank(bot))
+        return false;
+
+    Unit* noth = AI_VALUE2(Unit*, "find target", "noth the plaguebringer");
+    Unit* victim = noth ? noth->GetVictim() : nullptr;
+    if (!victim || IsTankPlayer(victim))
+        return false;
+
+    return EncounterHelpers::GetTakeoverTank(bot, victim) == bot;
+}
+
+bool NaxxPlaguedChampionRangeTrigger::IsActive()
+{
+    if (!PlayerbotAI::IsRanged(bot) || PlayerbotAI::IsTank(bot))
+        return false;
+
+    return GetNearestNpc(botAI, NPC_PLAGUED_CHAMPION, PLAGUED_CHAMPION_SHOCK_DISTANCE) != nullptr;
+}
+
+bool NaxxGothikSideTrigger::IsActive()
+{
+    // Before the pull: the gate closes once the fight starts, so each bot gets to its side first.
+    if (bot->IsInCombat() || !IsInGothikRoom(bot))
+        return false;
+
+    constexpr float GOTHIK_SEARCH_DISTANCE = 150.0f;
+    Creature* gothik = bot->FindNearestCreature(NPC_GOTHIK, GOTHIK_SEARCH_DISTANCE);
+    if (!gothik || gothik->IsInCombat())
+        return false;
+
+    return IsOnGothikDeadSide(bot) != IsGothikDeadSideMember(bot);
+}
+
+bool NaxxGothikNotTankedTrigger::IsActive()
+{
+    // His teleports reset threat; the tank on the side he lands on takes him.
+    if (!PlayerbotAI::IsTank(bot))
+        return false;
+
+    Unit* gothik = AI_VALUE2(Unit*, "find target", "gothik the harvester");
+    Unit* victim = gothik ? gothik->GetVictim() : nullptr;
+    if (!victim || IsTankPlayer(victim))
+        return false;
+
+    bool const gateOpen = IsGothikGateOpen(bot);
+    bool const gothikDeadSide = IsOnGothikDeadSide(gothik);
+    return EncounterHelpers::GetTakeoverTank(bot, victim, [gateOpen, gothikDeadSide](Player const* tank)
+        { return !gateOpen && IsOnGothikDeadSide(tank) != gothikDeadSide; }) == bot;
+}
+
+bool NaxxPatchwerkSoakerTrigger::IsActive()
+{
+    if (!IsHatefulStrikeSoaker(bot))
+        return false;
+
+    Unit* patchwerk = AI_VALUE2(Unit*, "find target", "patchwerk");
+    return patchwerk && (bot->GetVictim() != patchwerk || !bot->IsWithinMeleeRange(patchwerk));
+}
+
+bool NaxxPatchwerkMeleeTrigger::IsActive()
+{
+    // Melee DPS stand behind him, out of his parries.
+    if (!PlayerbotAI::IsMelee(bot) || PlayerbotAI::IsTank(bot))
+        return false;
+
+    Unit* patchwerk = AI_VALUE2(Unit*, "find target", "patchwerk");
+    return patchwerk && bot->GetVictim() == patchwerk;
+}
+
+bool NaxxThaneMeteorStackTrigger::IsActive()
+{
+    // Meteor splits between everyone within 8y of its target, so his attackers stand together.
+    if (PlayerbotAI::IsTank(bot) || helper.IsAttracter(bot))
+        return false;
+
+    Unit* thane = AI_VALUE2(Unit*, "find target", "thane korth'azz");
+    if (!thane || !thane->IsAlive())
+        return false;
+
+    // Only those attacking him; healers stay where they reach both front tanks.
+    return AI_VALUE(Unit*, "current target") == thane &&
+           bot->GetExactDist2d(thane) > thane->GetCombatReach() + THANE_METEOR_STACK_DISTANCE;
+}
+
+bool NaxxDetonateManaTrigger::IsActive()
+{
+    return bot->HasAura(SPELL_DETONATE_MANA) &&
+           EncounterHelpers::GetNearestPlayerInRadius(bot, GetManaDetonationRadius()) != nullptr;
+}
+
+bool NaxxChainsMarkTrigger::IsActive()
+{
+    // 25-player: Kel'Thuzad mind-controls three raiders; guides crowd-control them instead of killing them.
+    if (!bot->IsInCombat() || !EncounterHelpers::IsMechanicTrackerBot(bot, MAP_NAXXRAMAS) ||
+        !AI_VALUE2(Unit*, "find target", "kel'thuzad"))
+        return false;
+
+    return GetChainsCcTarget(botAI) != nullptr;
 }

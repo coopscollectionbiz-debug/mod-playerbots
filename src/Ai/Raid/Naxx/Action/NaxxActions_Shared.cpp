@@ -5,6 +5,9 @@
  */
 
 #include "NaxxActions.h"
+#include "EncounterHelpers.h"
+#include "NaxxHelpers.h"
+#include "Playerbots.h"
 
 uint32 RotateAroundTheCenterPointAction::FindNearestWaypoint()
 {
@@ -21,4 +24,21 @@ uint32 RotateAroundTheCenterPointAction::FindNearestWaypoint()
         }
     }
     return ret;
+}
+
+bool NaxxKillOrderMarkAction::Execute(Event /*event*/)
+{
+    return EncounterHelpers::MarkTargetWithSkull(bot, NaxxHelpers::GetKillOrderMarkTarget(botAI));
+}
+
+bool NaxxTauntBossAction::Execute(Event event)
+{
+    Unit* boss = AI_VALUE2(Unit*, "find target", bossName);
+    if (!boss)
+        return false;
+
+    if (bot->GetVictim() != boss)
+        return Attack(boss);
+
+    return boss->GetVictim() != bot && botAI->DoSpecificAction("taunt spell", event, true);
 }

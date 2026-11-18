@@ -4,4 +4,12 @@
  * or (at your option) any later version.
  */
 
-// Reserved for Maexxna-specific actions.
+#include "NaxxActions.h"
+#include "NaxxHelpers.h"
+#include "Playerbots.h"
+
+bool NaxxAttackWebWrapAction::Execute(Event /*event*/)
+{
+    Unit* cocoon = NaxxHelpers::GetNearestNpc(botAI, NaxxHelpers::NPC_WEB_WRAP, NaxxHelpers::NAXX_ADD_SEARCH_DISTANCE);
+    return cocoon && Attack(cocoon);
+}

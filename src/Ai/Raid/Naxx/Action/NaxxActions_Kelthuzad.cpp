@@ -5,6 +5,8 @@
  */
 
 #include "NaxxActions.h"
+#include "EncounterHelpers.h"
+#include "NaxxHelpers.h"
 #include "PlayerbotAIConfig.h"
 #include "Playerbots.h"
 
@@ -179,4 +181,15 @@ bool KelthuzadPositionAction::Execute(Event /*event*/)
         }
     }
     return false;
+}
+
+bool NaxxDetonateManaSpreadAction::Execute(Event /*event*/)
+{
+    constexpr float DETONATION_MARGIN = 2.0f;
+    return MoveFromGroup(NaxxHelpers::GetManaDetonationRadius() + DETONATION_MARGIN);
+}
+
+bool NaxxChainsMarkAction::Execute(Event /*event*/)
+{
+    return EncounterHelpers::MarkTargetWithMoon(bot, NaxxHelpers::GetChainsCcTarget(botAI));
 }
