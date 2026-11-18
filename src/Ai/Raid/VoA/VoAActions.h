@@ -8,6 +8,7 @@
 #define PLAYERBOTS_VOAACTIONS_H
 
 #include "Action.h"
+#include "AttackAction.h"
 #include "Event.h"
 #include "MovementActions.h"
 #include "PlayerbotAI.h"
@@ -46,6 +47,32 @@ public:
     EmalonFallFromFloorAction(PlayerbotAI* botAI) : Action(botAI, "emalon fall from floor action") {}
     bool Execute(Event event) override;
     bool isUseful() override;
+};
+
+// Attacks the named boss and taunts it off whoever has it.
+class VoaTauntBossAction : public AttackAction
+{
+public:
+    VoaTauntBossAction(PlayerbotAI* botAI, std::string const& name, std::string bossName)
+        : AttackAction(botAI, name), bossName(std::move(bossName)) {}
+    bool Execute(Event event) override;
+
+private:
+    std::string const bossName;
+};
+
+class ArchavonRockShardsAction : public MovementAction
+{
+public:
+    ArchavonRockShardsAction(PlayerbotAI* botAI) : MovementAction(botAI, "archavon rock shards action") {}
+    bool Execute(Event event) override;
+};
+
+class ToravonAttackFrozenOrbAction : public AttackAction
+{
+public:
+    ToravonAttackFrozenOrbAction(PlayerbotAI* botAI) : AttackAction(botAI, "toravon attack frozen orb action") {}
+    bool Execute(Event event) override;
 };
 
 #endif

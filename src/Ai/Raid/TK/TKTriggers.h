@@ -217,6 +217,39 @@ protected:
     bool IsActiveInEncounter() override;
 };
 
+class HighAstromancerSolarianPriestCastsGreaterHealTrigger : public TempestKeepEncounterTrigger
+{
+public:
+    HighAstromancerSolarianPriestCastsGreaterHealTrigger(PlayerbotAI* botAI)
+        : TempestKeepEncounterTrigger(
+            botAI, "high astromancer solarian priest casts greater heal") {}
+
+protected:
+    bool IsActiveInEncounter() override;
+};
+
+class HighAstromancerSolarianVoidwalkerNeedsTremorTotemTrigger : public TempestKeepEncounterTrigger
+{
+public:
+    HighAstromancerSolarianVoidwalkerNeedsTremorTotemTrigger(PlayerbotAI* botAI)
+        : TempestKeepEncounterTrigger(
+            botAI, "high astromancer solarian voidwalker needs tremor totem") {}
+
+protected:
+    bool IsActiveInEncounter() override;
+};
+
+class HighAstromancerSolarianMainTankNeedsFearWardTrigger : public TempestKeepEncounterTrigger
+{
+public:
+    HighAstromancerSolarianMainTankNeedsFearWardTrigger(PlayerbotAI* botAI)
+        : TempestKeepEncounterTrigger(
+            botAI, "high astromancer solarian main tank needs fear ward") {}
+
+protected:
+    bool IsActiveInEncounter() override;
+};
+
 // Kael'thas Sunstrider <Lord of the Blood Elves>
 
 class KaelthasSunstriderChasedByThaladredTrigger : public TempestKeepEncounterTrigger

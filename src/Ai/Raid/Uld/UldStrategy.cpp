@@ -5,6 +5,7 @@
  */
 
 #include "UldStrategy.h"
+#include "UldExtraMultipliers.h"
 
 void RaidUlduarStrategy::InitTriggers(std::vector<TriggerNode*>& triggers)
 {
@@ -319,4 +320,59 @@ void RaidUlduarStrategy::InitTriggers(std::vector<TriggerNode*>& triggers)
     triggers.push_back(new TriggerNode(
         "yogg-saron phase 3 positioning trigger",
         { NextAction("yogg-saron phase 3 positioning action", ACTION_RAID) }));
+
+    // Ignis, XT-002, Auriaya and Algalon (from the WotLK guides)
+    triggers.push_back(new TriggerNode("uld kill order mark", { NextAction("uld kill order mark", ACTION_RAID) }));
+    triggers.push_back(new TriggerNode("uld off-tank add", { NextAction("uld tank off-tank add", ACTION_RAID) }));
+    triggers.push_back(new TriggerNode("uld ignis construct",
+        { NextAction("uld ignis drag construct", ACTION_RAID + 1) }));
+    triggers.push_back(new TriggerNode("uld kologarn crunch armor",
+        { NextAction("uld kologarn taunt", ACTION_RAID + 1) }));
+    triggers.push_back(new TriggerNode("uld yogg ominous cloud",
+        { NextAction("uld yogg avoid cloud", ACTION_MOVE + 5) }));
+    triggers.push_back(new TriggerNode("uld mimiron proximity mine",
+        { NextAction("uld mimiron avoid mine", ACTION_MOVE + 5) }));
+    triggers.push_back(new TriggerNode("uld freya iron roots",
+        { NextAction("uld freya break roots", ACTION_RAID + 1) }));
+    triggers.push_back(new TriggerNode("uld freya nature's fury",
+        { NextAction("uld freya nature's fury", ACTION_MOVE + 5) }));
+    triggers.push_back(new TriggerNode("uld freya sun beam",
+        { NextAction("uld freya avoid sun beam", ACTION_MOVE + 5) }));
+    triggers.push_back(new TriggerNode("uld hodir toasty fire",
+        { NextAction("uld hodir toasty fire", ACTION_RAID + 1) }));
+    triggers.push_back(new TriggerNode("uld hodir biting cold",
+        { NextAction("uld hodir shed biting cold", ACTION_RAID) }));
+    triggers.push_back(new TriggerNode("uld hodir ice block", { NextAction("uld hodir break ice", ACTION_RAID) }));
+    triggers.push_back(new TriggerNode("uld thorim unbalancing strike",
+        { NextAction("uld thorim taunt", ACTION_RAID + 1) }));
+    triggers.push_back(new TriggerNode("uld hodir frozen blows", { NextAction("uld hodir taunt", ACTION_RAID + 1) }));
+    triggers.push_back(new TriggerNode("uld razorscale melee", { NextAction("rear flank", ACTION_MOVE + 4) }));
+    triggers.push_back(new TriggerNode("uld ignis melee", { NextAction("rear flank", ACTION_MOVE + 4) }));
+    triggers.push_back(new TriggerNode("uld xt debuff", { NextAction("uld xt spread", ACTION_RAID + 2) }));
+    triggers.push_back(new TriggerNode("uld xt bot add", { NextAction("uld xt attack bot add", ACTION_RAID) }));
+    triggers.push_back(new TriggerNode("uld xt void zone",
+        { NextAction("uld xt avoid void zone", ACTION_MOVE + 5) }));
+    triggers.push_back(new TriggerNode("uld thorim sif frost nova",
+        { NextAction("uld thorim avoid sif frost nova", ACTION_MOVE + 5) }));
+    triggers.push_back(new TriggerNode("uld thorim sif blizzard",
+        { NextAction("uld thorim avoid sif blizzard", ACTION_MOVE + 5) }));
+    triggers.push_back(new TriggerNode("uld mimiron frost bomb",
+        { NextAction("uld mimiron avoid frost bomb", ACTION_MOVE + 6) }));
+    triggers.push_back(new TriggerNode("uld mimiron flames",
+        { NextAction("uld mimiron avoid flames", ACTION_MOVE + 5) }));
+    triggers.push_back(new TriggerNode("uld vezax saronite vapors",
+        { NextAction("uld vezax kill vapors", ACTION_RAID) }));
+    triggers.push_back(new TriggerNode("uld auriaya stack", { NextAction("uld auriaya stack", ACTION_MOVE + 4) }));
+    triggers.push_back(new TriggerNode("uld interrupt", { NextAction("uld interrupt", ACTION_RAID + 2) }));
+    triggers.push_back(new TriggerNode("uld council tank", { NextAction("uld council tank", ACTION_RAID + 1) }));
+    triggers.push_back(new TriggerNode("uld algalon phase punch",
+        { NextAction("uld algalon taunt", ACTION_RAID + 1) }));
+    triggers.push_back(new TriggerNode("uld algalon big bang",
+        { NextAction("uld algalon enter black hole", ACTION_RAID + 3) }));
+    triggers.push_back(new TriggerNode("uld algalon star", { NextAction("uld algalon attack star", ACTION_RAID) }));
+}
+
+void RaidUlduarStrategy::InitMultipliers(std::vector<Multiplier*>& multipliers)
+{
+    multipliers.push_back(new UlduarExtraMultiplier(botAI));
 }

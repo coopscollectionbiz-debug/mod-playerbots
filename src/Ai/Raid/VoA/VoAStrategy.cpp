@@ -8,6 +8,7 @@
 #include "Action.h"
 #include "Strategy.h"
 #include "Trigger.h"
+#include "VoAMultipliers.h"
 #include "vector"
 
 void RaidVoAStrategy::InitTriggers(std::vector<TriggerNode*>& triggers)
@@ -42,4 +43,31 @@ void RaidVoAStrategy::InitTriggers(std::vector<TriggerNode*>& triggers)
     triggers.push_back(new TriggerNode(
         "koralon fire resistance trigger",
         { NextAction("koralon fire resistance action", ACTION_RAID) }));
+
+    //
+    // Archavon the Stone Watcher
+    //
+    triggers.push_back(new TriggerNode(
+        "archavon not tanked trigger",
+        { NextAction("archavon taunt action", ACTION_RAID) }));
+
+    triggers.push_back(new TriggerNode(
+        "archavon rock shards trigger",
+        { NextAction("archavon rock shards action", ACTION_RAID + 1) }));
+
+    //
+    // Toravon the Ice Watcher
+    //
+    triggers.push_back(new TriggerNode(
+        "toravon frostbite swap trigger",
+        { NextAction("toravon taunt action", ACTION_RAID) }));
+
+    triggers.push_back(new TriggerNode(
+        "toravon frozen orb trigger",
+        { NextAction("toravon attack frozen orb action", ACTION_RAID) }));
+}
+
+void RaidVoAStrategy::InitMultipliers(std::vector<Multiplier*>& multipliers)
+{
+    multipliers.push_back(new ToravonFrostbiteMultiplier(botAI));
 }

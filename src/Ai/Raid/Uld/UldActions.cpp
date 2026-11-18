@@ -23,6 +23,7 @@
 #include "ServerFacade.h"
 #include "TankAssistStrategy.h"
 #include "UldBossHelper.h"
+#include "UldExtraHelpers.h"
 #include "UldScripts.h"
 #include "Unit.h"
 #include "Vehicle.h"
@@ -76,12 +77,19 @@ bool FlameLeviathanVehicleAction::Execute(Event /*event*/)
         if (!target || bot->GetExactDist(target) > bot->GetExactDist(unit))
             target = unit;
     }
+    uint32 entry = vehicleBase_->GetEntry();
+    bool const isDriver = entry == NPC_SALVAGED_DEMOLISHER || entry == NPC_SALVAGED_SIEGE_ENGINE ||
+                          entry == NPC_VEHICLE_CHOPPER;
+
+    // Towers left up: drivers steer clear of the beams before they strike.
+    if (isDriver && MoveAwayFromTowerHazard())
+        return true;
+
     // Flame Leviathan is chasing me
     if (flame && flame->GetVictim() == vehicleBase_)
         if (MoveAvoidChasing(flame))
             return true;
 
-    uint32 entry = vehicleBase_->GetEntry();
     switch (entry)
     {
         case NPC_SALVAGED_DEMOLISHER:
@@ -98,6 +106,20 @@ bool FlameLeviathanVehicleAction::Execute(Event /*event*/)
             break;
     }
     return false;
+}
+
+bool FlameLeviathanVehicleAction::MoveAwayFromTowerHazard()
+{
+    float safeDistance = 0.0f;
+    Unit* hazard = UlduarExtraHelpers::GetLeviathanTowerHazard(botAI, vehicleBase_, safeDistance);
+    if (!hazard)
+        return false;
+
+    float const angle = hazard->GetAngle(vehicleBase_);
+    float const x = hazard->GetPositionX() + safeDistance * std::cos(angle);
+    float const y = hazard->GetPositionY() + safeDistance * std::sin(angle);
+    return MoveTo(bot->GetMapId(), x, y, vehicleBase_->GetPositionZ(), false, false, false, false,
+                  MovementPriority::MOVEMENT_COMBAT);
 }
 
 bool FlameLeviathanVehicleAction::MoveAvoidChasing(Unit* target)
@@ -813,9 +835,10 @@ bool RazorscaleGroundedAction::isUseful()
 
     if (botAI->IsRanged(bot))
     {
-        constexpr float landingX = 588.0f;
-        constexpr float landingY = -166.0f;
-        constexpr float landingZ = 391.1f;
+        // The core's RazorGroundPos, where she lands facing north (+Y) after the harpoons.
+        constexpr float landingX = 585.401f;
+        constexpr float landingY = -173.543f;
+        constexpr float landingZ = 391.642f;
 
         float bossX = boss->GetPositionX();
         float bossY = boss->GetPositionY();
@@ -899,9 +922,9 @@ bool RazorscaleGroundedAction::Execute(Event /*event*/)
 
     if (botAI->IsRanged(bot))
     {
-        constexpr float landingX = 588.0f;
-        constexpr float landingY = -166.0f;
-        constexpr float landingZ = 391.1f;
+        constexpr float landingX = 585.401f;
+        constexpr float landingY = -173.543f;
+        constexpr float landingZ = 391.642f;
 
         float bossX = boss->GetPositionX();
         float bossY = boss->GetPositionY();
@@ -1323,6 +1346,9 @@ bool KologarnRubbleSlowdownAction::Execute(Event /*event*/)
 
 bool KologarnEyebeamAction::Execute(Event /*event*/)
 {
+    if (!botAI->HasCheat(BotCheatMask::raid))
+        return KiteEyebeam();
+
     float distanceToLeftPoint = bot->GetExactDist(ULDUAR_KOLOGARN_EYEBEAM_LEFT_POSITION);
     float distanceToRightPoint = bot->GetExactDist(ULDUAR_KOLOGARN_EYEBEAM_RIGHT_POSITION);
 
@@ -1360,10 +1386,42 @@ bool KologarnEyebeamAction::Execute(Event /*event*/)
 bool KologarnEyebeamAction::isUseful()
 {
     KologarnEyebeamTrigger kologarnEyebeamTrigger(botAI);
-    if (!kologarnEyebeamTrigger.IsActive())
+    return kologarnEyebeamTrigger.IsActive();
+}
+
+bool KologarnEyebeamAction::KiteEyebeam()
+{
+    Unit* eyebeam = nullptr;
+    float nearestDistance = std::numeric_limits<float>::max();
+    for (ObjectGuid const guid : AI_VALUE(GuidVector, "possible triggers"))
+    {
+        Unit* unit = botAI->GetUnit(guid);
+        if (!unit || unit->GetNameForLocaleIdx(sWorld->GetDefaultDbcLocale()).rfind("Focused Eyebeam", 0) != 0)
+            continue;
+
+        float const distance = bot->GetDistance2d(unit);
+        if (distance < nearestDistance)
+        {
+            nearestDistance = distance;
+            eyebeam = unit;
+        }
+    }
+
+    if (!eyebeam)
         return false;
 
-    return botAI->HasCheat(BotCheatMask::raid);
+    // Guides: everyone else steps out of the beam's path.
+    if (eyebeam->GetVictim() != bot)
+        return MoveAway(eyebeam, ULDUAR_KOLOGARN_EYEBEAM_RADIUS + 3.0f);
+
+    // The beam chases its target slower than a running player, so the target runs between the two eyebeam spots,
+    // which are known safe ground, to the one farther from the beam.
+    Position const& destination = eyebeam->GetExactDist2d(ULDUAR_KOLOGARN_EYEBEAM_LEFT_POSITION) >
+                                          eyebeam->GetExactDist2d(ULDUAR_KOLOGARN_EYEBEAM_RIGHT_POSITION)
+                                      ? ULDUAR_KOLOGARN_EYEBEAM_LEFT_POSITION
+                                      : ULDUAR_KOLOGARN_EYEBEAM_RIGHT_POSITION;
+    return MoveTo(bot->GetMapId(), destination.GetPositionX(), destination.GetPositionY(), destination.GetPositionZ(),
+                  false, false, false, true, MovementPriority::MOVEMENT_COMBAT, true, false);
 }
 
 bool KologarnRtiTargetAction::isUseful()
@@ -1396,6 +1454,7 @@ bool KologarnCrunchArmorAction::isUseful()
 bool KologarnCrunchArmorAction::Execute(Event /*event*/)
 {
     bot->RemoveAura(SPELL_CRUNCH_ARMOR);
+    bot->RemoveAura(SPELL_CRUNCH_ARMOR_10);
     return true;
 }
 
@@ -1428,7 +1487,7 @@ bool HodirMoveSnowpackedIcicleAction::isUseful()
         return false;
 
     // Find the nearest Snowpacked Icicle Target
-    Creature* target = bot->FindNearestCreature(NPC_SNOWPACKED_ICICLE, 100.0f);
+    Creature* target = FindSnowpackedIcicle(bot);
     if (!target)
         return false;
 
@@ -1441,7 +1500,7 @@ bool HodirMoveSnowpackedIcicleAction::isUseful()
 
 bool HodirMoveSnowpackedIcicleAction::Execute(Event /*event*/)
 {
-    Creature* target = bot->FindNearestCreature(NPC_SNOWPACKED_ICICLE, 100.0f);
+    Creature* target = FindSnowpackedIcicle(bot);
     if (!target)
         return false;
 

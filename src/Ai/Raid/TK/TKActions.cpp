@@ -825,6 +825,37 @@ Unit* HighAstromancerSolarianTargetSolariumPriestsAction::AssignSolariumPriestsT
     return priestsPair.second;
 }
 
+bool HighAstromancerSolarianInterruptGreaterHealAction::Execute(Event /*event*/)
+{
+    static constexpr std::array interruptSpells = {
+        "kick", "pummel", "shield bash", "wind shear", "earth shock", "counterspell", "silencing shot", };
+
+    Unit* priest = GetSolariumPriestCastingGreaterHeal(botAI);
+    if (!priest)
+        return false;
+
+    for (char const* name : interruptSpells)
+    {
+        if (botAI->CanCastSpell(name, priest) && botAI->CastSpell(name, priest))
+            return true;
+    }
+
+    return false;
+}
+
+bool HighAstromancerSolarianSetTremorTotemAction::Execute(Event /*event*/)
+{
+    return botAI->CanCastSpell(Id(TkSpells::SPELL_TREMOR_TOTEM), bot) &&
+        botAI->CastSpell(Id(TkSpells::SPELL_TREMOR_TOTEM), bot);
+}
+
+bool HighAstromancerSolarianFearWardMainTankAction::Execute(Event /*event*/)
+{
+    Player* mainTank = GetGroupMainTank(bot);
+    return mainTank && botAI->CanCastSpell(Id(TkSpells::SPELL_FEAR_WARD), mainTank) &&
+        botAI->CastSpell(Id(TkSpells::SPELL_FEAR_WARD), mainTank);
+}
+
 // Kael'thas Sunstrider <Lord of the Blood Elves>
 
 bool KaelthasSunstriderKiteThaladredAction::Execute(Event /*event*/)

@@ -106,6 +106,16 @@ protected:
     float GetValueInEncounter(Action* action) override;
 };
 
+class HighAstromancerSolarianKeepTremorTotemMultiplier : public TempestKeepEncounterMultiplier
+{
+public:
+    HighAstromancerSolarianKeepTremorTotemMultiplier(PlayerbotAI* botAI)
+        : TempestKeepEncounterMultiplier(botAI, "high astromancer solarian keep tremor totem") {}
+
+protected:
+    float GetValueInEncounter(Action* action) override;
+};
+
 class HighAstromancerSolarianWrathStayAwayMultiplier : public TempestKeepEncounterMultiplier
 {
 public:

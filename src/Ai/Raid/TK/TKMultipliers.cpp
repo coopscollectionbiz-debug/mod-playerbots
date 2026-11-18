@@ -175,6 +175,23 @@ float VoidReaverMaintainPositionsMultiplier::GetValueInEncounter(Action* action)
 
 // High Astromancer Solarian
 
+float HighAstromancerSolarianKeepTremorTotemMultiplier::GetValueInEncounter(Action* action)
+{
+    if (bot->getClass() != CLASS_SHAMAN)
+        return 1.0f;
+
+    if (!dynamic_cast<CastStrengthOfEarthTotemAction*>(action) &&
+        !dynamic_cast<CastStoneskinTotemAction*>(action) &&
+        !dynamic_cast<CastStoneclawTotemAction*>(action) &&
+        !dynamic_cast<CastEarthbindTotemAction*>(action))
+    {
+        return 1.0f;
+    }
+
+    Unit* astromancer = AI_VALUE2(Unit*, "find target", "high astromancer solarian");
+    return IsSolarianInVoidwalkerPhase(astromancer) ? 0.0f : 1.0f;
+}
+
 float HighAstromancerSolarianWrathStayAwayMultiplier::GetValueInEncounter(Action* action)
 {
     if (!dynamic_cast<MovementAction*>(action) &&

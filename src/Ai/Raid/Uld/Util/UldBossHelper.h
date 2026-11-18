@@ -36,6 +36,7 @@ enum UlduarIDs
     NPC_RIGHT_ARM = 32934,
     NPC_RUBBLE = 33768,
     SPELL_CRUNCH_ARMOR = 64002,
+    SPELL_CRUNCH_ARMOR_10 = 63355,
 
     SPELL_FOCUSED_EYEBEAM_10_2 = 63346,
     SPELL_FOCUSED_EYEBEAM_10 = 63347,
@@ -44,6 +45,7 @@ enum UlduarIDs
 
     // Hodir
     NPC_SNOWPACKED_ICICLE = 33174,
+    NPC_SNOWPACKED_ICICLE_FALLING = 33173,
     NPC_TOASTY_FIRE = 33342,
     SPELL_FLASH_FREEZE = 61968,
     SPELL_BITING_COLD_PLAYER_AURA = 62039,
@@ -150,6 +152,8 @@ enum UlduarIDs
 
 constexpr float ULDUAR_KOLOGARN_AXIS_Z_PATHING_ISSUE_DETECT = 420.0f;
 constexpr float ULDUAR_KOLOGARN_EYEBEAM_RADIUS = 3.0f;
+// The beam's target keeps running while the beam is within this range; ours.
+constexpr float ULDUAR_KOLOGARN_EYEBEAM_KITE_DISTANCE = 10.0f;
 constexpr float ULDUAR_THORIM_AXIS_Z_FLOOR_THRESHOLD = 429.6094f;
 constexpr float ULDUAR_THORIM_AXIS_Z_PATHING_ISSUE_DETECT = 410.0f;
 constexpr float ULDUAR_AURIAYA_AXIS_Z_PATHING_ISSUE_DETECT = 410.0f;
@@ -227,7 +231,8 @@ public:
         SPELL_CHAIN_4           = 49684,
         SPELL_SENTINEL_WHIRLWIND = 63806,
         SPELL_STUN_AURA         = 62794,
-        SPELL_FUSEARMOR         = 64771
+        // The core's current Fuse Armor; it stacks to 5, then turns into the Fused Armor stun.
+        SPELL_FUSEARMOR         = 64821
     };
 
     static constexpr uint32 FUSEARMOR_THRESHOLD = 2;
@@ -342,5 +347,15 @@ private:
 //     EventMap* _event_map = nullptr;
 //     uint32 _timer = 0;
 // };
+
+// The Flash Freeze snowdrift lands where the Snowpacked Icicle falls; look for its target marker
+// first, then the icicle itself, so either spawn layout works.
+inline Creature* FindSnowpackedIcicle(Player* bot)
+{
+    constexpr float ICICLE_SEARCH_DISTANCE = 100.0f;
+    if (Creature* target = bot->FindNearestCreature(NPC_SNOWPACKED_ICICLE, ICICLE_SEARCH_DISTANCE))
+        return target;
+    return bot->FindNearestCreature(NPC_SNOWPACKED_ICICLE_FALLING, ICICLE_SEARCH_DISTANCE);
+}
 
 #endif

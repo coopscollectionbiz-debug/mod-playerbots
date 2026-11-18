@@ -443,11 +443,17 @@ bool KologarnEyebeamTrigger::IsActive()
             {
                 std::string triggerName = unit->GetNameForLocaleIdx(sWorld->GetDefaultDbcLocale());
 
-                if (triggerName.rfind("Focused Eyebeam", 0) == 0 &&
-                    bot->GetDistance2d(unit) < ULDUAR_KOLOGARN_EYEBEAM_RADIUS + 1.0f)
-                {
+                if (triggerName.rfind("Focused Eyebeam", 0) != 0)
+                    continue;
+
+                float const distance = bot->GetDistance2d(unit);
+                if (distance < ULDUAR_KOLOGARN_EYEBEAM_RADIUS + 1.0f)
                     return true;
-                }
+
+                // Without the cheat, the beam's target keeps kiting it while it is close behind.
+                if (!botAI->HasCheat(BotCheatMask::raid) && unit->GetVictim() == bot &&
+                    distance < ULDUAR_KOLOGARN_EYEBEAM_KITE_DISTANCE)
+                    return true;
             }
         }
     }
@@ -510,7 +516,7 @@ bool KologarnCrunchArmorTrigger::IsActive()
     if (!boss || !boss->IsAlive())
         return false;
 
-    return bot->HasAura(SPELL_CRUNCH_ARMOR);
+    return bot->HasAura(SPELL_CRUNCH_ARMOR) || bot->HasAura(SPELL_CRUNCH_ARMOR_10);
 }
 
 bool AuriayaFallFromFloorTrigger::IsActive()
@@ -559,7 +565,7 @@ bool HodirNearSnowpackedIcicleTrigger::IsActive()
     }
 
     // Find the nearest Snowpacked Icicle Target
-    Creature* target = bot->FindNearestCreature(NPC_SNOWPACKED_ICICLE, 100.0f);
+    Creature* target = FindSnowpackedIcicle(bot);
     if (!target)
         return false;
 

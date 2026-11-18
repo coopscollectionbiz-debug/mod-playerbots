@@ -49,6 +49,9 @@ enum class TkSpells : uint32
     // High Astromancer Solarian
     SPELL_SOLARIAN_TRANSFORM        = 39117,
     SPELL_WRATH_OF_THE_ASTROMANCER  = 42783,
+    SPELL_SOLARIUM_GREATER_HEAL     = 33387,
+    SPELL_TREMOR_TOTEM              = 8143,
+    SPELL_FEAR_WARD                 = 6346,
 
     // Kael'thas Sunstrider
     SPELL_PERMANENT_FEIGN_DEATH     = 29266,
@@ -223,6 +226,10 @@ bool IsNearActiveArcaneOrb(Player* bot, float radius);
 // High Astromancer Solarian
 
 bool HasWrathOfTheAstromancer(Player* bot);
+// Below 20% Solarian becomes a Voidwalker that casts Psychic Scream.
+bool IsSolarianInVoidwalkerPhase(Unit* astromancer);
+// A Solarium Priest casting Greater Heal on Solarian.
+Unit* GetSolariumPriestCastingGreaterHeal(PlayerbotAI* botAI);
 
 // Kael'thas Sunstrider <Lord of the Blood Elves>
 
