@@ -9,6 +9,7 @@
 
 #include "Common.h"
 #include "Position.h"
+#include <functional>
 #include <string>
 #include <vector>
 
@@ -49,6 +50,11 @@ Player* GetGroupMainTank(Player* bot);
 Player* GetGroupAssistTank(Player* bot, uint8 index);
 Unit* GetFirstAliveUnitByEntry(PlayerbotAI* botAI, uint32 entry); // DO NOT USE, WILL BE REMOVED
 Player* GetNearestPlayerInRadius(Player* bot, float radius);
+// The one tank that takes a boss over: the first of the main tank and the first two assist tanks
+// that is not `current` and not ruled out by `skip`. Several tanks taunting at once only steal
+// the boss from each other.
+Player* GetTakeoverTank(Player* bot, Unit const* current, std::function<bool(Player const*)> const& skip = {});
+uint32 GetAuraStackAmount(Unit const* unit, uint32 spellId);
 std::vector<Position> GetDynamicObjectPositions(Player* bot, float searchRadius, uint32 spellId);
 uint32 GetSelfImmunitySpell(Player* bot);
 bool IsDpsCooldownAction(Player* bot, Action* action);

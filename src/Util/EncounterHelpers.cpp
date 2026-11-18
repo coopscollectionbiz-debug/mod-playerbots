@@ -21,6 +21,7 @@
 #include "RogueActions.h"
 #include "RtiTargetValue.h"
 #include "ShamanActions.h"
+#include "SpellAuras.h"
 #include "WarlockActions.h"
 #include "WarriorActions.h"
 #include <algorithm>
@@ -337,6 +338,23 @@ Unit* GetFirstAliveUnitByEntry(PlayerbotAI* botAI, uint32 entry)
     }
 
     return nullptr;
+}
+
+Player* GetTakeoverTank(Player* bot, Unit const* current, std::function<bool(Player const*)> const& skip)
+{
+    for (Player* tank : { GetGroupMainTank(bot), GetGroupAssistTank(bot, 0), GetGroupAssistTank(bot, 1) })
+    {
+        if (!tank || tank == current || (skip && skip(tank)))
+            continue;
+        return tank;
+    }
+    return nullptr;
+}
+
+uint32 GetAuraStackAmount(Unit const* unit, uint32 spellId)
+{
+    Aura const* aura = unit ? unit->GetAura(spellId) : nullptr;
+    return aura ? aura->GetStackAmount() : 0;
 }
 
 // Return the nearest alive player (human or bot) within the specified radius. Distance is

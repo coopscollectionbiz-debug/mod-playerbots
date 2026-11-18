@@ -298,4 +298,110 @@ private:
 //    bool Execute(Event event) override;
 //};
 
+// Shared
+
+class NaxxKillOrderMarkAction : public Action
+{
+public:
+    NaxxKillOrderMarkAction(PlayerbotAI* botAI) : Action(botAI, "naxx kill order mark") {}
+    bool Execute(Event event) override;
+};
+
+// Attacks the named boss and taunts it off whoever has it.
+class NaxxTauntBossAction : public AttackAction
+{
+public:
+    NaxxTauntBossAction(PlayerbotAI* botAI, std::string const& name, std::string bossName)
+        : AttackAction(botAI, name), bossName(std::move(bossName)) {}
+    bool Execute(Event event) override;
+
+private:
+    std::string const bossName;
+};
+
+// Grand Widow Faerlina
+
+class NaxxFaerlinaMindControlAction : public MovementAction
+{
+public:
+    NaxxFaerlinaMindControlAction(PlayerbotAI* botAI) : MovementAction(botAI, "naxx faerlina mind control") {}
+    bool Execute(Event event) override;
+};
+
+class NaxxFaerlinaEmbraceAction : public Action
+{
+public:
+    NaxxFaerlinaEmbraceAction(PlayerbotAI* botAI) : Action(botAI, "naxx faerlina embrace") {}
+    bool Execute(Event event) override;
+};
+
+class NaxxFaerlinaBringWorshipperAction : public MovementAction
+{
+public:
+    NaxxFaerlinaBringWorshipperAction(PlayerbotAI* botAI) : MovementAction(botAI, "naxx faerlina bring worshipper") {}
+    bool Execute(Event event) override;
+};
+
+// Maexxna
+
+class NaxxAttackWebWrapAction : public AttackAction
+{
+public:
+    NaxxAttackWebWrapAction(PlayerbotAI* botAI) : AttackAction(botAI, "naxx attack web wrap") {}
+    bool Execute(Event event) override;
+};
+
+// Noth the Plaguebringer
+
+class NaxxMoveFromPlaguedChampionAction : public MovementAction
+{
+public:
+    NaxxMoveFromPlaguedChampionAction(PlayerbotAI* botAI)
+        : MovementAction(botAI, "naxx move from plagued champion") {}
+    bool Execute(Event event) override;
+};
+
+// Gothik the Harvester
+
+class NaxxGothikGoToSideAction : public MovementAction
+{
+public:
+    NaxxGothikGoToSideAction(PlayerbotAI* botAI) : MovementAction(botAI, "naxx gothik go to side") {}
+    bool Execute(Event event) override;
+};
+
+// Patchwerk
+
+class NaxxPatchwerkSoakAction : public AttackAction
+{
+public:
+    NaxxPatchwerkSoakAction(PlayerbotAI* botAI) : AttackAction(botAI, "naxx patchwerk soak") {}
+    bool Execute(Event event) override;
+};
+
+// The Four Horsemen
+
+class NaxxThaneStackAction : public MovementAction
+{
+public:
+    NaxxThaneStackAction(PlayerbotAI* botAI) : MovementAction(botAI, "naxx thane stack") {}
+    bool Execute(Event event) override;
+};
+
+// Kel'Thuzad
+
+class NaxxDetonateManaSpreadAction : public MovementAction
+{
+public:
+    NaxxDetonateManaSpreadAction(PlayerbotAI* botAI) : MovementAction(botAI, "naxx detonate mana spread") {}
+    bool Execute(Event event) override;
+};
+
+class NaxxChainsMarkAction : public Action
+{
+public:
+    NaxxChainsMarkAction(PlayerbotAI* botAI) : Action(botAI, "naxx chains mark") {}
+    bool Execute(Event event) override;
+};
+
 #endif

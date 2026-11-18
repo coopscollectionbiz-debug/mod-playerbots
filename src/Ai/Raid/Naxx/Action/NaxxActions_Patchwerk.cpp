@@ -5,6 +5,8 @@
  */
 
 #include "NaxxActions.h"
+#include "NaxxHelpers.h"
+#include "Playerbots.h"
 #include <algorithm>
 #include <cmath>
 
@@ -34,3 +36,16 @@
 //    return MoveTo(boss->GetMapId(), x, y, z, false, false, false, false, MovementPriority::MOVEMENT_COMBAT, true,
 //                  false);
 //}
+
+bool NaxxPatchwerkSoakAction::Execute(Event /*event*/)
+{
+    // Hateful Strike soakers hold the boss's second and third threat in melee.
+    Unit* patchwerk = AI_VALUE2(Unit*, "find target", "patchwerk");
+    if (!patchwerk)
+        return false;
+
+    if (bot->GetVictim() != patchwerk)
+        return Attack(patchwerk);
+
+    return MoveTo(patchwerk, patchwerk->GetCombatReach(), MovementPriority::MOVEMENT_COMBAT);
+}

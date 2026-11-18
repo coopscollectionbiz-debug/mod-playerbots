@@ -267,4 +267,121 @@ private:
     LoathebBossHelper helper;
 };
 
+// Skull for Faerlina's adds and Widow's Embrace
+
+class NaxxKillOrderMarkTrigger : public Trigger
+{
+public:
+    NaxxKillOrderMarkTrigger(PlayerbotAI* botAI) : Trigger(botAI, "naxx kill order mark") {}
+    bool IsActive() override;
+};
+
+// Grand Widow Faerlina
+
+class NaxxFaerlinaMindControlTrigger : public Trigger
+{
+public:
+    NaxxFaerlinaMindControlTrigger(PlayerbotAI* botAI) : Trigger(botAI, "naxx faerlina mind control") {}
+    bool IsActive() override;
+};
+
+class NaxxFaerlinaEmbraceTrigger : public Trigger
+{
+public:
+    NaxxFaerlinaEmbraceTrigger(PlayerbotAI* botAI) : Trigger(botAI, "naxx faerlina embrace") {}
+    bool IsActive() override;
+};
+
+class NaxxFaerlinaBringWorshipperTrigger : public Trigger
+{
+public:
+    NaxxFaerlinaBringWorshipperTrigger(PlayerbotAI* botAI) : Trigger(botAI, "naxx faerlina bring worshipper") {}
+    bool IsActive() override;
+};
+
+// Maexxna
+
+class NaxxMaexxnaWebWrapTrigger : public Trigger
+{
+public:
+    NaxxMaexxnaWebWrapTrigger(PlayerbotAI* botAI) : Trigger(botAI, "naxx maexxna web wrap") {}
+    bool IsActive() override;
+};
+
+// Noth the Plaguebringer
+
+class NaxxNothNotTankedTrigger : public Trigger
+{
+public:
+    NaxxNothNotTankedTrigger(PlayerbotAI* botAI) : Trigger(botAI, "naxx noth not tanked") {}
+    bool IsActive() override;
+};
+
+class NaxxPlaguedChampionRangeTrigger : public Trigger
+{
+public:
+    NaxxPlaguedChampionRangeTrigger(PlayerbotAI* botAI) : Trigger(botAI, "naxx plagued champion range") {}
+    bool IsActive() override;
+};
+
+// Gothik the Harvester
+
+class NaxxGothikSideTrigger : public Trigger
+{
+public:
+    NaxxGothikSideTrigger(PlayerbotAI* botAI) : Trigger(botAI, "naxx gothik side") {}
+    bool IsActive() override;
+};
+
+class NaxxGothikNotTankedTrigger : public Trigger
+{
+public:
+    NaxxGothikNotTankedTrigger(PlayerbotAI* botAI) : Trigger(botAI, "naxx gothik not tanked") {}
+    bool IsActive() override;
+};
+
+// Patchwerk
+
+class NaxxPatchwerkSoakerTrigger : public Trigger
+{
+public:
+    NaxxPatchwerkSoakerTrigger(PlayerbotAI* botAI) : Trigger(botAI, "naxx patchwerk soaker") {}
+    bool IsActive() override;
+};
+
+class NaxxPatchwerkMeleeTrigger : public Trigger
+{
+public:
+    NaxxPatchwerkMeleeTrigger(PlayerbotAI* botAI) : Trigger(botAI, "naxx patchwerk melee") {}
+    bool IsActive() override;
+};
+
+// The Four Horsemen
+
+class NaxxThaneMeteorStackTrigger : public Trigger
+{
+public:
+    NaxxThaneMeteorStackTrigger(PlayerbotAI* botAI) : Trigger(botAI, "naxx thane meteor stack"), helper(botAI) {}
+    bool IsActive() override;
+
+private:
+    FourHorsemenBossHelper helper;
+};
+
+// Kel'Thuzad
+
+class NaxxDetonateManaTrigger : public Trigger
+{
+public:
+    NaxxDetonateManaTrigger(PlayerbotAI* botAI) : Trigger(botAI, "naxx detonate mana") {}
+    bool IsActive() override;
+};
+
+class NaxxChainsMarkTrigger : public Trigger
+{
+public:
+    NaxxChainsMarkTrigger(PlayerbotAI* botAI) : Trigger(botAI, "naxx chains mark") {}
+    bool IsActive() override;
+};
+
 #endif

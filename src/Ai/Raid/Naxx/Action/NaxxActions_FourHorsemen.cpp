@@ -5,6 +5,7 @@
  */
 
 #include "NaxxActions.h"
+#include "NaxxHelpers.h"
 #include "Playerbots.h"
 
 bool FourHorsemenAttractAlternativelyAction::Execute(Event /*event*/)
@@ -61,4 +62,14 @@ bool FourHorsemenAttackInOrderAction::Execute(Event /*event*/)
         return Attack(target);
     }
     return false;
+}
+
+bool NaxxThaneStackAction::Execute(Event /*event*/)
+{
+    Unit* thane = AI_VALUE2(Unit*, "find target", "thane korth'azz");
+    if (!thane)
+        return false;
+
+    return MoveTo(thane, thane->GetCombatReach() + NaxxHelpers::THANE_METEOR_STACK_DISTANCE - 1.0f,
+                  MovementPriority::MOVEMENT_COMBAT);
 }

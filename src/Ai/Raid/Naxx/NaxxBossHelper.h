@@ -11,6 +11,7 @@
 #include "EventMap.h"
 #include "Log.h"
 #include "NamedObjectContext.h"
+#include "NaxxHelpers.h"
 #include "NaxxSpellIds.h"
 #include "ObjectGuid.h"
 #include "Player.h"
@@ -495,8 +496,7 @@ public:
     }
     bool IsAttracter(Player* bot)
     {
-        Difficulty diff = bot->GetRaidDifficulty();
-        if (diff == RAID_DIFFICULTY_25MAN_NORMAL)
+        if (NaxxHelpers::IsLargeNaxx(bot))
         {
             return botAI->IsAssistRangedDpsOfIndex(bot, 0) || botAI->IsAssistHealOfIndex(bot, 0) ||
                    botAI->IsAssistHealOfIndex(bot, 1) || botAI->IsAssistHealOfIndex(bot, 2);
@@ -505,7 +505,7 @@ public:
     }
     void CalculatePosToGo(Player* bot)
     {
-        bool raid25 = bot->GetRaidDifficulty() == RAID_DIFFICULTY_25MAN_NORMAL;
+        bool raid25 = NaxxHelpers::IsLargeNaxx(bot);
         Unit* lady = _lady;
         if (!lady)
             posToGo = 0;
@@ -520,7 +520,7 @@ public:
     }
     std::pair<float, float> CurrentAttractPos()
     {
-        bool raid25 = bot->GetRaidDifficulty() == RAID_DIFFICULTY_25MAN_NORMAL;
+        bool raid25 = NaxxHelpers::IsLargeNaxx(bot);
         float posX = attractPos[posToGo].first, posY = attractPos[posToGo].second;
         if (posToGo == 1)
         {

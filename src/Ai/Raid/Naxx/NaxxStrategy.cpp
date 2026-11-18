@@ -46,7 +46,10 @@ void RaidNaxxStrategy::InitTriggers(std::vector<TriggerNode*>& triggers)
 
     // Anub'Rekhan
     triggers.push_back(new TriggerNode("anub'rekhan",
-        { NextAction("anub'rekhan position", ACTION_RAID + 1) }
+        {
+            NextAction("anub'rekhan position", ACTION_RAID + 1),
+            NextAction("anub'rekhan choose target", ACTION_RAID)
+        }
     ));
 
      // Grand Widow Faerlina
@@ -143,6 +146,28 @@ void RaidNaxxStrategy::InitTriggers(std::vector<TriggerNode*>& triggers)
         })
     );
 
+    // Added from the WotLK 10/25-player guides
+    triggers.push_back(new TriggerNode("naxx kill order mark", { NextAction("naxx kill order mark", ACTION_RAID) }));
+    triggers.push_back(new TriggerNode("naxx faerlina mind control",
+        { NextAction("naxx faerlina mind control", ACTION_RAID + 1) }));
+    triggers.push_back(new TriggerNode("naxx faerlina embrace",
+        { NextAction("naxx faerlina embrace", ACTION_RAID + 2) }));
+    triggers.push_back(new TriggerNode("naxx faerlina bring worshipper",
+        { NextAction("naxx faerlina bring worshipper", ACTION_RAID + 1) }));
+    triggers.push_back(new TriggerNode("naxx maexxna web wrap",
+        { NextAction("naxx attack web wrap", ACTION_RAID + 1) }));
+    triggers.push_back(new TriggerNode("naxx noth not tanked", { NextAction("naxx noth taunt", ACTION_RAID + 1) }));
+    triggers.push_back(new TriggerNode("naxx plagued champion range",
+        { NextAction("naxx move from plagued champion", ACTION_RAID) }));
+    triggers.push_back(new TriggerNode("naxx gothik side", { NextAction("naxx gothik go to side", ACTION_RAID + 1) }));
+    triggers.push_back(new TriggerNode("naxx gothik not tanked", { NextAction("naxx gothik taunt", ACTION_RAID + 1) }));
+    triggers.push_back(new TriggerNode("naxx patchwerk soaker",
+        { NextAction("naxx patchwerk soak", ACTION_RAID + 1) }));
+    triggers.push_back(new TriggerNode("naxx patchwerk melee", { NextAction("rear flank", ACTION_MOVE + 4) }));
+    triggers.push_back(new TriggerNode("naxx thane meteor stack", { NextAction("naxx thane stack", ACTION_RAID) }));
+    triggers.push_back(new TriggerNode("naxx detonate mana",
+        { NextAction("naxx detonate mana spread", ACTION_RAID + 2) }));
+    triggers.push_back(new TriggerNode("naxx chains mark", { NextAction("naxx chains mark", ACTION_RAID) }));
 }
 
 void RaidNaxxStrategy::InitMultipliers(std::vector<Multiplier*>& multipliers)
@@ -158,4 +183,5 @@ void RaidNaxxStrategy::InitMultipliers(std::vector<Multiplier*>& multipliers)
     multipliers.push_back(new FourHorsemenGenericMultiplier(botAI));
     // multipliers.push_back(new GothikGenericMultiplier(botAI));
     multipliers.push_back(new GluthGenericMultiplier(botAI));
+    multipliers.push_back(new NaxxRaidMechanicsMultiplier(botAI));
 }

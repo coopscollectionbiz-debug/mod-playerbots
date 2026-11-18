@@ -4,4 +4,15 @@
  * or (at your option) any later version.
  */
 
-// Reserved for Gothik-specific actions.
+#include "NaxxActions.h"
+#include "NaxxHelpers.h"
+#include "Playerbots.h"
+
+bool NaxxGothikGoToSideAction::Execute(Event /*event*/)
+{
+    using namespace NaxxHelpers;
+    Position const spot = GetGothikSideSpot(IsGothikDeadSideMember(bot));
+    float const z = bot->GetMapWaterOrGroundLevel(spot.GetPositionX(), spot.GetPositionY(), bot->GetPositionZ());
+    return MoveTo(bot->GetMapId(), spot.GetPositionX(), spot.GetPositionY(), z, false, false, false, false,
+                  MovementPriority::MOVEMENT_NORMAL, true, false);
+}
