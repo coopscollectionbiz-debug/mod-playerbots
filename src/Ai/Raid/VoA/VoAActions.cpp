@@ -191,3 +191,26 @@ bool EmalonFallFromFloorAction::isUseful()
     EmalonFallFromFloorTrigger emalonFallFromFloorTrigger(botAI);
     return emalonFallFromFloorTrigger.IsActive();
 }
+
+bool VoaTauntBossAction::Execute(Event event)
+{
+    Unit* boss = AI_VALUE2(Unit*, "find target", bossName);
+    if (!boss)
+        return false;
+
+    if (bot->GetVictim() != boss)
+        return Attack(boss);
+
+    return botAI->DoSpecificAction("taunt spell", event, true);
+}
+
+bool ArchavonRockShardsAction::Execute(Event /*event*/)
+{
+    return MoveFromGroup(ARCHAVON_ROCK_SHARDS_SPREAD);
+}
+
+bool ToravonAttackFrozenOrbAction::Execute(Event /*event*/)
+{
+    Unit* orb = GetNearestToravonOrb(botAI, botAI->GetRange("spell"));
+    return orb && Attack(orb);
+}

@@ -320,6 +320,27 @@ bool HasWrathOfTheAstromancer(Player* bot)
     return bot->HasAura(Id(TkSpells::SPELL_WRATH_OF_THE_ASTROMANCER));
 }
 
+bool IsSolarianInVoidwalkerPhase(Unit* astromancer)
+{
+    return astromancer && astromancer->HasAura(Id(TkSpells::SPELL_SOLARIAN_TRANSFORM));
+}
+
+Unit* GetSolariumPriestCastingGreaterHeal(PlayerbotAI* botAI)
+{
+    AiObjectContext* context = botAI->GetAiObjectContext();
+    for (ObjectGuid const guid : AI_VALUE(GuidVector, "possible targets"))
+    {
+        Unit* unit = botAI->GetUnit(guid);
+        if (unit && unit->IsAlive() && unit->GetEntry() == Id(TkNpcs::NPC_SOLARIUM_PRIEST) &&
+            unit->FindCurrentSpellBySpellId(Id(TkSpells::SPELL_SOLARIUM_GREATER_HEAL)))
+        {
+            return unit;
+        }
+    }
+
+    return nullptr;
+}
+
 // Kael'thas Sunstrider <Lord of the Blood Elves>
 
 namespace

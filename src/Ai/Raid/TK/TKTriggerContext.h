@@ -72,6 +72,15 @@ public:
         creators["high astromancer solarian solarium priests spawned"] =
             &RaidTempestKeepTriggerContext::high_astromancer_solarian_solarium_priests_spawned;
 
+        creators["high astromancer solarian priest casts greater heal"] =
+            &RaidTempestKeepTriggerContext::high_astromancer_solarian_priest_casts_greater_heal;
+
+        creators["high astromancer solarian voidwalker needs tremor totem"] =
+            &RaidTempestKeepTriggerContext::high_astromancer_solarian_voidwalker_needs_tremor_totem;
+
+        creators["high astromancer solarian main tank needs fear ward"] =
+            &RaidTempestKeepTriggerContext::high_astromancer_solarian_main_tank_needs_fear_ward;
+
         // Kael'thas Sunstrider <Lord of the Blood Elves>
         creators["kael'thas sunstrider chased by thaladred"] =
             &RaidTempestKeepTriggerContext::kaelthas_sunstrider_chased_by_thaladred;
@@ -190,6 +199,21 @@ private:
     }
     static Trigger* high_astromancer_solarian_solarium_priests_spawned(PlayerbotAI* botAI) {
         return new HighAstromancerSolarianSolariumPriestsSpawnedTrigger(botAI);
+    }
+
+    static Trigger* high_astromancer_solarian_priest_casts_greater_heal(PlayerbotAI* botAI)
+    {
+        return new HighAstromancerSolarianPriestCastsGreaterHealTrigger(botAI);
+    }
+
+    static Trigger* high_astromancer_solarian_voidwalker_needs_tremor_totem(PlayerbotAI* botAI)
+    {
+        return new HighAstromancerSolarianVoidwalkerNeedsTremorTotemTrigger(botAI);
+    }
+
+    static Trigger* high_astromancer_solarian_main_tank_needs_fear_ward(PlayerbotAI* botAI)
+    {
+        return new HighAstromancerSolarianMainTankNeedsFearWardTrigger(botAI);
     }
 
     // Kael'thas Sunstrider <Lord of the Blood Elves>

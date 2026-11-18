@@ -1803,8 +1803,8 @@ void PlayerbotAI::ApplyInstanceStrategies(uint32 mapId, bool tellMaster)
     static const std::vector<std::string> allInstanceStrategies =
     {
         "aq20", "blacktemple", "bwl", "gruulslair", "hyjal", "icc", "karazhan", "magtheridon",
-        "moltencore", "naxx", "onyxia", "rs", "ssc", "tbc-ac", "tbc-mech", "tbc-mgt", "tbc-ramp",
-        "tbc-seth", "tbc-ub", "tempestkeep", "ulduar", "voa", "wotlk-an", "wotlk-cos", "wotlk-dtk",
+        "moltencore", "naxx", "onyxia", "rs", "ssc", "sunwell", "tbc-ac", "tbc-mech", "tbc-mgt", "tbc-ramp",
+        "tbc-seth", "tbc-ub", "tempestkeep", "totc", "ulduar", "voa", "wotlk-an", "wotlk-cos", "wotlk-dtk",
         "wotlk-eoe", "wotlk-fos", "wotlk-gd", "wotlk-hol", "wotlk-hos", "wotlk-nex", "wotlk-occ",
         "wotlk-ok", "wotlk-os", "wotlk-pos", "wotlk-toc", "wotlk-uk", "wotlk-up", "wotlk-vh",
         "zulaman"
@@ -1885,6 +1885,9 @@ void PlayerbotAI::ApplyInstanceStrategies(uint32 mapId, bool tellMaster)
         case 578:
             strategyName = "wotlk-occ";  // The Oculus
             break;
+        case 580:
+            strategyName = "sunwell";  // Sunwell Plateau
+            break;
         case 585:
             strategyName = "tbc-mgt";  // Magisters' Terrace
             break;
@@ -1929,6 +1932,9 @@ void PlayerbotAI::ApplyInstanceStrategies(uint32 mapId, bool tellMaster)
             break;
         case 632:
             strategyName = "wotlk-fos";  // The Forge of Souls
+            break;
+        case 649:
+            strategyName = "totc";  // Trial of the Crusader
             break;
         case 650:
             strategyName = "wotlk-toc";  // Trial of the Champion

@@ -212,6 +212,30 @@ public:
     bool Execute(Event event) override;
 };
 
+class HighAstromancerSolarianInterruptGreaterHealAction : public Action
+{
+public:
+    HighAstromancerSolarianInterruptGreaterHealAction(PlayerbotAI* botAI)
+        : Action(botAI, "high astromancer solarian interrupt greater heal") {}
+    bool Execute(Event event) override;
+};
+
+class HighAstromancerSolarianSetTremorTotemAction : public Action
+{
+public:
+    HighAstromancerSolarianSetTremorTotemAction(PlayerbotAI* botAI)
+        : Action(botAI, "high astromancer solarian set tremor totem") {}
+    bool Execute(Event event) override;
+};
+
+class HighAstromancerSolarianFearWardMainTankAction : public Action
+{
+public:
+    HighAstromancerSolarianFearWardMainTankAction(PlayerbotAI* botAI)
+        : Action(botAI, "high astromancer solarian fear ward main tank") {}
+    bool Execute(Event event) override;
+};
+
 class HighAstromancerSolarianTargetSolariumPriestsAction : public AttackAction
 {
 public:

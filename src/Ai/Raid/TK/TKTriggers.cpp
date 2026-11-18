@@ -184,6 +184,45 @@ bool HighAstromancerSolarianSolariumPriestsSpawnedTrigger::IsActiveInEncounter()
     return AI_VALUE2(Unit*, "find target", "solarium priest");
 }
 
+bool HighAstromancerSolarianPriestCastsGreaterHealTrigger::IsActiveInEncounter()
+{
+    switch (bot->getClass())
+    {
+        case CLASS_WARRIOR:
+        case CLASS_ROGUE:
+        case CLASS_SHAMAN:
+        case CLASS_MAGE:
+        case CLASS_HUNTER:
+            break;
+        default:
+            return false;
+    }
+
+    return GetSolariumPriestCastingGreaterHeal(botAI) != nullptr;
+}
+
+bool HighAstromancerSolarianVoidwalkerNeedsTremorTotemTrigger::IsActiveInEncounter()
+{
+    // Guides counter the Voidwalker's Psychic Scream with Tremor Totem and Fear Ward.
+    if (bot->getClass() != CLASS_SHAMAN || AI_VALUE2(bool, "has totem", "tremor totem"))
+        return false;
+
+    return IsSolarianInVoidwalkerPhase(AI_VALUE2(Unit*, "find target", "high astromancer solarian"));
+}
+
+bool HighAstromancerSolarianMainTankNeedsFearWardTrigger::IsActiveInEncounter()
+{
+    if (bot->getClass() != CLASS_PRIEST)
+        return false;
+
+    if (!IsSolarianInVoidwalkerPhase(AI_VALUE2(Unit*, "find target", "high astromancer solarian")))
+        return false;
+
+    Player* mainTank = GetGroupMainTank(bot);
+    return mainTank && mainTank->IsAlive() && !mainTank->HasAura(Id(TkSpells::SPELL_FEAR_WARD)) &&
+        botAI->CanCastSpell(Id(TkSpells::SPELL_FEAR_WARD), mainTank);
+}
+
 // Kael'thas Sunstrider <Lord of the Blood Elves>
 
 bool KaelthasSunstriderChasedByThaladredTrigger::IsActiveInEncounter()

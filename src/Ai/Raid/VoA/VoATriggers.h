@@ -18,6 +18,13 @@ enum VoAIDs
     NPC_TEMPEST_MINION = 33998,
     SPELL_LIGHTNING_NOVA_10_MAN = 64216,
     SPELL_LIGHTNING_NOVA_25_MAN = 65279,
+
+    // Archavon the Stone Watcher
+    SPELL_ARCHAVON_ROCK_SHARDS = 58678,
+
+    // Toravon the Ice Watcher
+    NPC_TORAVON_FROZEN_ORB = 38456,
+    SPELL_TORAVON_FROSTBITE = 72004,
 };
 
 //
@@ -50,5 +57,45 @@ public:
     EmalonFallFromFloorTrigger(PlayerbotAI* ai) : Trigger(ai, "emalon fall from floor trigger") {}
     bool IsActive() override;
 };
+
+//
+// Archavon the Stone Watcher
+//
+constexpr float ARCHAVON_ROCK_SHARDS_SPREAD = 10.0f;
+
+class ArchavonNotTankedTrigger : public Trigger
+{
+public:
+    ArchavonNotTankedTrigger(PlayerbotAI* botAI) : Trigger(botAI, "archavon not tanked trigger") {}
+    bool IsActive() override;
+};
+
+class ArchavonRockShardsTrigger : public Trigger
+{
+public:
+    ArchavonRockShardsTrigger(PlayerbotAI* botAI) : Trigger(botAI, "archavon rock shards trigger") {}
+    bool IsActive() override;
+};
+
+//
+// Toravon the Ice Watcher
+//
+constexpr uint32 TORAVON_FROSTBITE_SWAP_STACKS = 4;
+
+class ToravonFrostbiteSwapTrigger : public Trigger
+{
+public:
+    ToravonFrostbiteSwapTrigger(PlayerbotAI* botAI) : Trigger(botAI, "toravon frostbite swap trigger") {}
+    bool IsActive() override;
+};
+
+class ToravonFrozenOrbTrigger : public Trigger
+{
+public:
+    ToravonFrozenOrbTrigger(PlayerbotAI* botAI) : Trigger(botAI, "toravon frozen orb trigger") {}
+    bool IsActive() override;
+};
+
+Unit* GetNearestToravonOrb(PlayerbotAI* botAI, float maxDistance);
 
 #endif

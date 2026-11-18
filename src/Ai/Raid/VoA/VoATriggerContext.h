@@ -22,15 +22,23 @@ public:
         creators["emalon fall from floor trigger"] = &RaidVoATriggerContext::emalon_fall_from_floor_trigger;
         creators["emalon nature resistance trigger"] = &RaidVoATriggerContext::emalon_nature_resistance_trigger;
         creators["koralon fire resistance trigger"] = &RaidVoATriggerContext::koralon_fire_resistance_trigger;
+        creators["archavon not tanked trigger"] = &RaidVoATriggerContext::archavon_not_tanked;
+        creators["archavon rock shards trigger"] = &RaidVoATriggerContext::archavon_rock_shards;
+        creators["toravon frostbite swap trigger"] = &RaidVoATriggerContext::toravon_frostbite_swap;
+        creators["toravon frozen orb trigger"] = &RaidVoATriggerContext::toravon_frozen_orb;
     }
 
 private:
-    static Trigger* emalon_mark_boss_trigger(PlayerbotAI* ai) { return new EmalonMarkBossTrigger(ai); }
-    static Trigger* emalon_lighting_nova_trigger(PlayerbotAI* ai) { return new EmalonLightingNovaTrigger(ai); }
-    static Trigger* emalon_overcharge_trigger(PlayerbotAI* ai) { return new EmalonOverchargeTrigger(ai); }
-    static Trigger* emalon_fall_from_floor_trigger(PlayerbotAI* ai) { return new EmalonFallFromFloorTrigger(ai); }
-    static Trigger* emalon_nature_resistance_trigger(PlayerbotAI* ai) { return new BossNatureResistanceTrigger(ai, "emalon the storm watcher"); }
-    static Trigger* koralon_fire_resistance_trigger(PlayerbotAI* ai) { return new BossFireResistanceTrigger(ai, "koralon the flame watcher"); }
+    static Trigger* archavon_not_tanked(PlayerbotAI* botAI) { return new ArchavonNotTankedTrigger(botAI); }
+    static Trigger* archavon_rock_shards(PlayerbotAI* botAI) { return new ArchavonRockShardsTrigger(botAI); }
+    static Trigger* toravon_frostbite_swap(PlayerbotAI* botAI) { return new ToravonFrostbiteSwapTrigger(botAI); }
+    static Trigger* toravon_frozen_orb(PlayerbotAI* botAI) { return new ToravonFrozenOrbTrigger(botAI); }
+    static Trigger* emalon_mark_boss_trigger(PlayerbotAI* botAI) { return new EmalonMarkBossTrigger(botAI); }
+    static Trigger* emalon_lighting_nova_trigger(PlayerbotAI* botAI) { return new EmalonLightingNovaTrigger(botAI); }
+    static Trigger* emalon_overcharge_trigger(PlayerbotAI* botAI) { return new EmalonOverchargeTrigger(botAI); }
+    static Trigger* emalon_fall_from_floor_trigger(PlayerbotAI* botAI) { return new EmalonFallFromFloorTrigger(botAI); }
+    static Trigger* emalon_nature_resistance_trigger(PlayerbotAI* botAI) { return new BossNatureResistanceTrigger(botAI, "emalon the storm watcher"); }
+    static Trigger* koralon_fire_resistance_trigger(PlayerbotAI* botAI) { return new BossFireResistanceTrigger(botAI, "koralon the flame watcher"); }
 };
 
 #endif

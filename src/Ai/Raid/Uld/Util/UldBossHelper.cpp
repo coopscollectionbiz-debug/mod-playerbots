@@ -110,7 +110,7 @@ bool RazorscaleBossHelper::IsHarpoonReady(GameObject* harpoonGO)
             return false;
     }
 
-    return harpoonGO->GetGoState() == GO_STATE_READY;
+    return harpoonGO->GetGoState() == GO_STATE_READY && !harpoonGO->HasGameObjectFlag(GO_FLAG_NOT_SELECTABLE);
 }
 
 void RazorscaleBossHelper::SetHarpoonOnCooldown(GameObject* harpoonGO)
