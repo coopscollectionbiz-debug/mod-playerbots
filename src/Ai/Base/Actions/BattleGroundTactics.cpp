@@ -5,6 +5,7 @@
  */
 
 #include "BattleGroundTactics.h"
+#include "ArenaCoordValues.h"
 #include "ArenaTeam.h"
 #include "ArenaTeamMgr.h"
 #include "BattleGroundJoinAction.h"
@@ -4292,28 +4293,77 @@ bool ArenaTactics::Execute(Event /*event*/)
     if (botAI->HasStrategy("buff", BOT_STATE_NON_COMBAT))
         botAI->ChangeStrategy("-buff", BOT_STATE_NON_COMBAT);
 
-    Unit* target = bot->GetVictim();
-    if (target)
+    // === Arena coordination (patch 0005) ===
+    // (Replaces the old LoS-reposition block: retargeting goes through the focus/centroid flow
+    // below and the combat engine handles the chase — do not "restore" the LoS block in a
+    // future patch regen.)
+    Unit* kill = AI_VALUE(Unit*, "arena kill target");
+    uint8 arenaType = bg->GetArenaType();
+    uint8 sharp = ArenaKillTargetValue::SharpnessFor(bot, arenaType);
+
+    // Sharpness degradation: tunnel chance, re-rolled per Execute — i.e. a GEOMETRIC DECAY on
+    // target swaps, not a one-shot probability: at 60 a lagging bot follows the team's swap
+    // after ~2.5 evaluations on average; higher = slower swaps. Task 11's reaction delay
+    // (ArenaCoord.ReactMs, trinket timing) is a SEPARATE mechanism and does not stack on this.
+    // Latched at first use (ParseBands) — restart to apply conf edits.
+    static std::vector<uint32> const tunnelPcts =
+        ArenaKillTargetValue::ParseBands("ArenaCoord.TunnelPct", {60, 30, 10, 0});
+    uint32 tunnelPct = tunnelPcts[std::min<size_t>(sharp >= 1 ? sharp - 1 : 0, tunnelPcts.size() - 1)];
+    if (kill && bot->GetVictim() && bot->GetVictim() != kill && urand(0, 99) < tunnelPct)
+        kill = bot->GetVictim();
+
+    // Human master's target outranks the function (partner bots follow the player).
+    if (botAI->GetMaster() && !GET_PLAYERBOT_AI(botAI->GetMaster()))
+        if (Unit* mTarget = botAI->GetMaster()->GetVictim())
+            if (mTarget->IsAlive() && mTarget->IsPlayer() &&
+                mTarget->ToPlayer()->GetBgTeamId() != bot->GetBgTeamId())
+                kill = mTarget;
+
+    if (kill && !ArenaKillTargetValue::IsHealerSpec(bot))  // healer bots keep healing, don't retarget
     {
-        bool losBlocked = !bot->IsWithinLOSInMap(target) || fabs(bot->GetPositionZ() - target->GetPositionZ()) > 5.0f;
-
-        if (losBlocked)
+        if (bot->GetVictim() != kill)
         {
-            PathGenerator path(bot);
-            path.CalculatePath(target->GetPositionX(), target->GetPositionY(), target->GetPositionZ(), false);
-
-            if (path.GetPathType() != PATHFIND_NOPATH)
-            {
-                bot->CastStop();
-
-                float x, y, z;
-                target->GetPosition(x, y, z);
-                botAI->TellMasterNoFacing("Repositioning to exit the LoS target!");
-                return MoveTo(target->GetMapId(), x + frand(-1, +1), y + frand(-1, +1), z, false, true);
-            }
+            // Mirror AttackAction::Attack's essentials: select, share via "current target",
+            // switch to the combat engine and open the auto-attack.
+            bot->SetSelection(kill->GetGUID());
+            context->GetValue<Unit*>("current target")->Set(kill);
+            botAI->ChangeEngine(BOT_STATE_COMBAT);
+            bot->Attack(kill, bot->IsWithinMeleeRange(kill) || !PlayerbotAI::IsRanged(bot));
+            LOG_DEBUG("playerbots", "[ArenaCoord] {} focuses {} ({}) sharp={} tunnel={}", bot->GetName(),
+                      kill->GetName(), kill->GetGUID().ToString(), sharp, tunnelPct);
         }
+
+        // Anti-tunnel leash: don't chase further than 30y from the team centroid.
+        float cx = 0.f, cy = 0.f, cz = 0.f;
+        uint32 mates = 0;
+        for (auto const& itr : bg->GetPlayers())
+        {
+            Player* mate = itr.second;
+            if (!mate || !mate->IsAlive() || mate->GetBgTeamId() != bot->GetBgTeamId())
+                continue;
+
+            cx += mate->GetPositionX();
+            cy += mate->GetPositionY();
+            cz += mate->GetPositionZ();
+            ++mates;
+        }
+        if (mates)
+        {
+            cx /= mates;
+            cy /= mates;
+            cz /= mates;
+            if (bot->GetDistance2d(cx, cy) > 30.0f && !bot->IsWithinMeleeRange(kill))
+                return MoveTo(bg->GetMapId(), cx, cy, cz, false, true);
+        }
+
+        if (!bot->IsInCombat())
+            bot->Attack(kill, bot->IsWithinMeleeRange(kill) || !PlayerbotAI::IsRanged(bot));
+
+        return true;
     }
 
+    // No kill target yet (opener) or healer bot (retargeting is DPS-only): take the per-class
+    // center position; the combat engine picks up from there once a fight starts.
     if (!bot->IsInCombat())
         return moveToCenter(bg);
 

@@ -12,6 +12,7 @@
 #include "AlwaysLootListValue.h"
 #include "AoeHealValues.h"
 #include "AoeValues.h"
+#include "ArenaCoordValues.h"
 #include "AttackerCountValues.h"
 #include "AttackerWithoutAuraTargetValue.h"
 #include "AttackersValue.h"
@@ -263,6 +264,7 @@ public:
         creators["bg type"] = &ValueContext::bg_type;
         creators["rpg bg type"] = &ValueContext::rpg_bg_type;
         creators["arena type"] = &ValueContext::arena_type;
+        creators["arena kill target"] = &ValueContext::arena_kill_target;
         creators["bg role"] = &ValueContext::bg_role;
         creators["bg master"] = &ValueContext::bg_master;
         creators["enemy flag carrier"] = &ValueContext::enemy_fc;
@@ -532,6 +534,7 @@ private:
     static UntypedValue* bg_master(PlayerbotAI* botAI) { return new BgMasterValue(botAI); }
     static UntypedValue* bg_role(PlayerbotAI* botAI) { return new BgRoleValue(botAI); }
     static UntypedValue* arena_type(PlayerbotAI* botAI) { return new ArenaTypeValue(botAI); }
+    static UntypedValue* arena_kill_target(PlayerbotAI* botAI) { return new ArenaKillTargetValue(botAI); }
     static UntypedValue* bg_type(PlayerbotAI* botAI) { return new BgTypeValue(botAI); }
     static UntypedValue* rpg_bg_type(PlayerbotAI* botAI) { return new RpgBgTypeValue(botAI); }
     static UntypedValue* team_fc(PlayerbotAI* botAI) { return new FlagCarrierValue(botAI, true, true); }

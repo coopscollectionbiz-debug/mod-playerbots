@@ -84,4 +84,17 @@ void ArenaStrategy::InitTriggers(std::vector<TriggerNode*>& triggers)
 {
     triggers.push_back(
         new TriggerNode("no possible targets", { NextAction("arena tactics", ACTION_BG)}));
+    // Periodic cadence for the patch-0005 coordination flow: "no possible targets" alone goes
+    // quiet once the bot has a victim, so mid-fight focus swaps need this "often" re-run
+    // (relevance mirrors BattlegroundStrategy's "bg check objective" ACTION_BG + 1).
+    triggers.push_back(new TriggerNode("often", { NextAction("arena tactics", ACTION_BG + 1)}));
+    // Trinket-out-of-CC (Task 11): isUseful gates on InArena + CC'd + medallion equipped;
+    // ACTION_EMERGENCY + 1 so a CC break preempts everything else the tick it fires. "timer"
+    // (1/s), NOT "often": the action's ReactMs probabilistic-hold math assumes ~1s evaluation
+    // cadence, and "often" is a sparse RandomTrigger (~10s expected) that would leave even a
+    // full-sharp bot sitting in CC.
+    // No healer-dispel node: the base contexts ship no generic dispel/cure trigger+action pair
+    // (class AIs dispel via their own "cure" strategies) — documented skip, don't invent one.
+    // No defensives node either: class AIs already carry low-HP defensives (Task 10/11 scope).
+    triggers.push_back(new TriggerNode("timer", { NextAction("arena pvp trinket", ACTION_EMERGENCY + 1)}));
 }
