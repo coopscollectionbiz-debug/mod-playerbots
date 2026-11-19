@@ -14,6 +14,7 @@
 #include <thread>
 
 #include "AiFactory.h"
+#include "Aq40Helpers.h"
 #include "BudgetValues.h"
 #include "ChannelMgr.h"
 #include "CharacterPackets.h"
@@ -1814,7 +1815,7 @@ void PlayerbotAI::ApplyInstanceStrategies(uint32 mapId, bool tellMaster)
 {
     static const std::vector<std::string> allInstanceStrategies =
     {
-        "aq20", "blacktemple", "bwl", "gruulslair", "hyjal", "icc", "karazhan", "magtheridon",
+        "aq20", "aq40", "blacktemple", "bwl", "gruulslair", "hyjal", "icc", "karazhan", "magtheridon",
         "moltencore", "naxx", "onyxia", "rs", "ssc", "tbc-ac", "tbc-mech", "tbc-mgt", "tbc-ramp",
         "tbc-seth", "tbc-ub", "tempestkeep", "ulduar", "voa", "wotlk-an", "wotlk-cos", "wotlk-dtk",
         "wotlk-eoe", "wotlk-fos", "wotlk-gd", "wotlk-hol", "wotlk-hos", "wotlk-nex", "wotlk-occ",
@@ -1845,6 +1846,9 @@ void PlayerbotAI::ApplyInstanceStrategies(uint32 mapId, bool tellMaster)
             break;
         case 509:
             strategyName = "aq20";  // Ruins of Ahn'Qiraj
+            break;
+        case 531:
+            strategyName = "aq40";  // Temple of Ahn'Qiraj
             break;
         case 532:
             strategyName = "karazhan";  // Karazhan
@@ -4545,6 +4549,11 @@ bool PlayerbotAI::HasAuraToDispel(Unit* target, uint32 dispelType)
 
         SpellInfo const* spellInfo = aura->GetSpellInfo();
         if (!spellInfo)
+            continue;
+
+        // AQ40 Huhuran (overlay patch 0016, spec §4.4): never strip Wyvern Sting off a non-tank.
+        if (spellInfo->Id == TempleOfAhnQirajHelpers::SPELL_HUHURAN_WYVERN_STING &&
+            TempleOfAhnQirajHelpers::HuhuranKeepWyvernSting(bot, target))
             continue;
 
         bool isPositiveSpell = spellInfo->IsPositive();
