@@ -95,7 +95,7 @@ bool LootRollAction::Execute(Event /*event*/)
                     {
                         if (!RollUniqueCheck(proto, bot))
                             vote = NEED;
-                        else if (sPlayerbotAIConfig.LootRollDisenchant && CanBotDisenchant(proto, bot))
+                        else if (sPlayerbotAIConfig.lootRollDisenchant && CanBotDisenchant(proto, bot))
                             vote = DISENCHANT;
                         else
                             vote = GREED;
@@ -119,7 +119,7 @@ bool LootRollAction::Execute(Event /*event*/)
         }
         if (vote == NEED)
         {
-            if (sPlayerbotAIConfig.LootNeedRollLevel == 0)
+            if (sPlayerbotAIConfig.lootNeedRollLevel == 0)
                 vote = PASS;
             else if (sPlayerbotAIConfig.lootNeedRollLevel == 1 || realPlayerNeeded)
                 vote = GREED;

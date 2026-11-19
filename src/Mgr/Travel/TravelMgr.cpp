@@ -5224,8 +5224,8 @@ void TravelMgr::PrepareDestinationCache()
 
             // A real spawn, not the grid key * 50, which can be up to 25 yd in the air or underground.
             WorldLocation const loc = WorldPosition(spawns, WP_MEAN_CENTROID);
-            for (int32 l = (int32)level - (int32)sPlayerbotAIConfig.RandomBotTeleLowerLevel;
-                 l <= (int32)level + (int32)sPlayerbotAIConfig.RandomBotTeleHigherLevel; l++)
+            for (int32 l = (int32)level - (int32)sPlayerbotAIConfig.randomBotTeleLowerLevel;
+                 l <= (int32)level + (int32)sPlayerbotAIConfig.randomBotTeleHigherLevel; l++)
             {
                 if (l < 1 || l > int32(maxLevel))
                     continue;

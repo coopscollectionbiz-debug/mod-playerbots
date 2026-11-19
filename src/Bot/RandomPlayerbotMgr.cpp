@@ -306,7 +306,7 @@ void RandomPlayerbotMgr::UpdateAIInternal(uint32 /*elapsed*/, bool /*minimal*/)
     if (!sPlayerbotAIConfig.randomBotAutologin || !sPlayerbotAIConfig.enabled)
         return;
 
-    if (sPlayerbotAIConfig.RandomBotConcentrateInPlayerZone)
+    if (sPlayerbotAIConfig.randomBotConcentrateInPlayerZone)
         UpdatePlayerZones();
 
     /*if (sPlayerbotAIConfig.enablePrototypePerformanceDiff)

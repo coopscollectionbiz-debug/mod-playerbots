@@ -527,7 +527,7 @@ void PlayerbotHolder::OnBotLogin(Player* const bot)
 
     // The loaded strategies were saved at the bot's last strategy change and can include another
     // instance's strategy, so apply the current map's again.
-    if (sPlayerbotAIConfig.ApplyInstanceStrategies)
+    if (sPlayerbotAIConfig.applyInstanceStrategies)
         botAI->ApplyInstanceStrategies(bot->GetMapId());
 
     if (master && !master->HasUnitState(UNIT_STATE_IN_FLIGHT))

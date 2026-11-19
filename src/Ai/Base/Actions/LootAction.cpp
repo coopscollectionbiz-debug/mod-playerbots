@@ -501,7 +501,7 @@ bool StoreLootAction::Execute(Event event)
         *packet << itemindex;
         bot->GetSession()->QueuePacket(packet);
         // bot->GetSession()->HandleAutostoreLootItemOpcode(packet);
-        botAI->SetNextCheckDelay(sPlayerbotAIConfig.LootDelay);
+        botAI->SetNextCheckDelay(sPlayerbotAIConfig.lootDelay);
         ++autostored;
 
         if (proto->Quality > ITEM_QUALITY_NORMAL && !urand(0, 50) && botAI->HasStrategy("emote", BOT_STATE_NON_COMBAT) && sPlayerbotAIConfig.randomBotEmote)
