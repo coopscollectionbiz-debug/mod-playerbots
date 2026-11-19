@@ -7,6 +7,7 @@
 #include "AiFactory.h"
 #include "AiObjectContext.h"
 #include "GenericBuffUtils.h"
+#include "Group.h"
 #include "PaladinBlessingHelper.h"
 #include "Pet.h"
 #include "PlayerbotAI.h"
@@ -17,6 +18,7 @@
 #include <algorithm>
 #include <array>
 #include <cstddef>
+#include <ctime>
 #include <optional>
 #include <unordered_map>
 #include <vector>
@@ -436,7 +438,52 @@ PendingBlessing PaladinBlessingPlanner::SelectSingle(
 
 Unit* CastBlessingAction::GetTarget()
 {
+    if (!_driveByTarget.IsEmpty())
+        return botAI->GetUnit(_driveByTarget);
+
     return botAI->GetUnit(_pending.target);
+}
+
+Player* CastBlessingAction::FindDriveByTarget(char const*& spellName)
+{
+    spellName = nullptr;
+
+    ObjectGuid const guid = AI_VALUE(ObjectGuid, "drive by party target");
+    if (guid.IsEmpty())
+        return nullptr;
+
+    time_t const until = AI_VALUE(time_t, "drive by party target until");
+    if (!until || time(nullptr) >= until)
+        return nullptr;
+
+    Player* player = botAI->GetPlayer(guid);
+    if (!player || player == bot || !player->IsInWorld() || !player->IsAlive() || player->IsGameMaster() ||
+        GET_PLAYERBOT_AI(player) || !player->IsFriendlyTo(bot) || player->GetMap() != bot->GetMap())
+        return nullptr;
+
+    if (Group* group = bot->GetGroup(); group && group->IsMember(player->GetGUID()))
+        return nullptr;
+
+    if (bot->GetDistance(player) > sPlayerbotAIConfig.spellDistance || !bot->IsWithinLOSInMap(player))
+        return nullptr;
+
+    // One blessing per drive-by: anything already on them (ours or anyone's) is left alone.
+    if (botAI->HasAnyAuraOf(player, "blessing of kings", "greater blessing of kings", "blessing of might",
+                            "greater blessing of might", "blessing of wisdom", "greater blessing of wisdom",
+                            "blessing of sanctuary", "greater blessing of sanctuary", nullptr))
+        return nullptr;
+
+    bool const usesMana = player->getPowerType() == POWER_MANA;
+    for (char const* name : { "blessing of kings", usesMana ? "blessing of wisdom" : "blessing of might" })
+    {
+        if (botAI->CanCastSpell(name, player))
+        {
+            spellName = name;
+            return player;
+        }
+    }
+
+    return nullptr;
 }
 
 bool CastBlessingAction::isUseful()
@@ -444,14 +491,40 @@ bool CastBlessingAction::isUseful()
     if (botAI->IsInVehicle() && !botAI->IsInVehicle(false, false, true))
         return false;
 
+    _driveByTarget.Clear();
+    _driveBySpell = nullptr;
+
     _pending = PaladinBlessingPlanner(botAI).Plan();
-    return _pending.spellId && GetTarget();
+    if (_pending.spellId && botAI->GetUnit(_pending.target))
+        return true;
+
+    // The group needs nothing: bless a nearby human the drive-by action picked, if any.
+    if (Player* driveBy = FindDriveByTarget(_driveBySpell))
+    {
+        _driveByTarget = driveBy->GetGUID();
+        return true;
+    }
+
+    return false;
 }
 
 bool CastBlessingAction::isPossible() { return true; }
 
 bool CastBlessingAction::Execute(Event /*event*/)
 {
+    if (!_driveByTarget.IsEmpty())
+    {
+        Unit* driveBy = botAI->GetUnit(_driveByTarget);
+        char const* spellName = _driveBySpell;
+        _driveByTarget.Clear();
+        _driveBySpell = nullptr;
+        if (!driveBy || !spellName)
+            return false;
+
+        botAI->forceRebuff.NoteBuffWork();
+        return botAI->CastSpell(spellName, driveBy);
+    }
+
     PendingBlessing const planned = _pending;
     if (!planned.spellId)
         return false;

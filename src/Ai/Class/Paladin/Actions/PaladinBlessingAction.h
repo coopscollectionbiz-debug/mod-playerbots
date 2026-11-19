@@ -83,7 +83,13 @@ public:
     bool Execute(Event event) override;
 
 private:
+    // A nearby human outside the group, opened by the "drive by buff" action, gets one blessing once
+    // the group itself needs nothing (this fork's city-life drive-by buffs).
+    Player* FindDriveByTarget(char const*& spellName);
+
     ai::blessing::PendingBlessing _pending;
+    ObjectGuid _driveByTarget;
+    char const* _driveBySpell = nullptr;
 };
 
 #endif
