@@ -35,11 +35,6 @@ ItemUsage ItemUsageValue::Calculate()
     {
         if (IsItemUsefulForSkill(proto) || IsItemNeededForSkill(proto))
             return ITEM_USAGE_SKILL;
-
-        if ((proto->Class == ITEM_CLASS_TRADE_GOODS || proto->Class == ITEM_CLASS_MISC ||
-             proto->Class == ITEM_CLASS_REAGENT) &&
-            IsItemNeededForClassSpell(proto))
-            return ITEM_USAGE_KEEP;
     }
     else
     {
@@ -68,8 +63,8 @@ ItemUsage ItemUsageValue::Calculate()
             float stacks = CurrentStacks(proto);
             if (stacks < 1)
                 return ITEM_USAGE_SKILL;  // Buy more.
-            if (stacks <= 2)
-                return ITEM_USAGE_KEEP;
+            if (stacks < 2)
+                return ITEM_USAGE_KEEP;  // Keep current amount.
         }
     }
 
@@ -153,47 +148,6 @@ ItemUsage ItemUsageValue::Calculate()
         if (ammoUsage != ITEM_USAGE_NONE)
             return ammoUsage;
     }
-
-    // Keep only the best stone/oil per weapon and the best poison per family; obsolete or
-    // mismatched enhancements fall through to VENDOR/AH.
-    if (proto->Class == ITEM_CLASS_CONSUMABLE && IsTemporaryWeaponEnchantment(proto) &&
-        bot->CanUseItem(proto) == EQUIP_ERR_OK)
-    {
-        // Rogue poisons only: stones/oils share consumable subclass 8 but use family-less spells,
-        // so they take the weapon branch below instead of being sold as obsolete poisons.
-        if (IsRoguePoison(proto))
-        {
-            if (IsBestPoison(proto))
-                return ITEM_USAGE_KEEP;
-        }
-        else
-        {
-            Item* mainHand = bot->GetItemByPos(INVENTORY_SLOT_BAG_0, EQUIPMENT_SLOT_MAINHAND);
-            Item* offHand = bot->GetItemByPos(INVENTORY_SLOT_BAG_0, EQUIPMENT_SLOT_OFFHAND);
-
-            bool isBest = false;
-            if (mainHand)
-            {
-                if (Item* stone = botAI->FindStoneFor(mainHand))
-                    isBest = stone->GetEntry() == proto->ItemId;
-                if (!isBest)
-                    if (Item* oil = botAI->FindOilFor(mainHand))
-                        isBest = oil->GetEntry() == proto->ItemId;
-            }
-            if (!isBest && offHand)
-            {
-                if (Item* stone = botAI->FindStoneFor(offHand))
-                    isBest = stone->GetEntry() == proto->ItemId;
-                if (!isBest)
-                    if (Item* oil = botAI->FindOilFor(offHand))
-                        isBest = oil->GetEntry() == proto->ItemId;
-            }
-
-            if (isBest)
-                return CurrentStacks(proto) < 1 ? ITEM_USAGE_USE : ITEM_USAGE_KEEP;
-        }
-    }
-
     // Need to add something like free bagspace or item value.
     if (proto->SellPrice > 0)
     {
@@ -785,85 +739,6 @@ bool ItemUsageValue::IsItemNeededForUsefullSpell(ItemTemplate const* proto, bool
     }
 
     return false;
-}
-
-bool ItemUsageValue::IsItemNeededForClassSpell(ItemTemplate const* proto)
-{
-    for (uint32 spellId : SpellsUsingItem(proto->ItemId, bot))
-    {
-        SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(spellId);
-        if (spellInfo && spellInfo->SpellFamilyName != SPELLFAMILY_GENERIC)
-            return true;
-    }
-
-    return false;
-}
-
-static SpellInfo const* GetTemporaryEnchantSpell(ItemTemplate const* proto)
-{
-    for (uint8 i = 0; i < MAX_ITEM_PROTO_SPELLS; ++i)
-    {
-        uint32 spellId = proto->Spells[i].SpellId;
-        if (!spellId)
-            continue;
-
-        SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(spellId);
-        if (!spellInfo)
-            continue;
-
-        for (uint8 j = 0; j < MAX_SPELL_EFFECTS; ++j)
-            if (spellInfo->Effects[j].Effect == SPELL_EFFECT_ENCHANT_ITEM_TEMPORARY)
-                return spellInfo;
-    }
-
-    return nullptr;
-}
-
-// True for rogue poisons: their temporary enchant spell is the rogue family and carries a
-// per-poison family flag (stones/oils share the subclass but use family-less spells).
-static bool IsRoguePoison(ItemTemplate const* proto)
-{
-    if (proto->SubClass != ITEM_SUBCLASS_CONSUMABLE_OTHER)
-        return false;
-
-    SpellInfo const* useSpell = GetTemporaryEnchantSpell(proto);
-    return useSpell && useSpell->SpellFamilyName == SPELLFAMILY_ROGUE && !useSpell->SpellFamilyFlags.IsEqual(0, 0, 0);
-}
-
-bool ItemUsageValue::IsTemporaryWeaponEnchantment(ItemTemplate const* proto)
-{
-    return GetTemporaryEnchantSpell(proto) != nullptr;
-}
-
-bool ItemUsageValue::IsBestPoison(ItemTemplate const* proto)
-{
-    // Family comes from the use spell's SpellFamilyFlags (per poison type), not item ids.
-    if (!IsRoguePoison(proto))
-        return false;
-
-    SpellInfo const* useSpell = GetTemporaryEnchantSpell(proto);
-
-    // Keep only the highest-item-level poison per family (one family per weapon); lower ranks
-    // fall through to VENDOR/AH.
-    for (Item* item : botAI->GetInventoryItems())
-    {
-        ItemTemplate const* other = item->GetTemplate();
-        if (!other || other->ItemId == proto->ItemId)
-            continue;
-        if (!IsRoguePoison(other))
-            continue;
-
-        // Unusable higher ranks (level or class restriction) must not block a usable lower rank.
-        if (bot->CanUseItem(other) != EQUIP_ERR_OK)
-            continue;
-
-        SpellInfo const* otherUseSpell = GetTemporaryEnchantSpell(other);
-        if (otherUseSpell && otherUseSpell->SpellFamilyFlags == useSpell->SpellFamilyFlags &&
-            other->ItemLevel > proto->ItemLevel)
-            return false;
-    }
-
-    return true;
 }
 
 bool ItemUsageValue::HasItemsNeededForSpell(uint32 spellId, ItemTemplate const* proto)

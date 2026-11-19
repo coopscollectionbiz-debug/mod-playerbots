@@ -1001,9 +1001,6 @@ void PlayerbotAI::HandleCommandOnOwnerThread(uint32 type, std::string const text
     PlayerbotSecurityLevel const requiredLevel =
         allowedCommand ? PLAYERBOT_SECURITY_INVITE : PLAYERBOT_SECURITY_ALLOW_ALL;
 
-    PlayerbotSecurityLevel const requiredLevel =
-        allowedCommand ? PLAYERBOT_SECURITY_INVITE : PLAYERBOT_SECURITY_ALLOW_ALL;
-
     if (type == CHAT_MSG_RAID_WARNING && filtered.find(bot->GetName()) != std::string::npos &&
         filtered.find("award") == std::string::npos)
     {

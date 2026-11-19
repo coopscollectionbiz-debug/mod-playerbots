@@ -608,6 +608,8 @@ bool CastBlessingOfKingsOnPartyAction::Execute(Event /*event*/)
     }
 
     return botAI->CastSpell("blessing of kings", target);
+}
+
 CastHolyShieldAction::CastHolyShieldAction(PlayerbotAI* botAI)
     : CastBuffSpellAction(botAI, "holy shield", false, ai::paladin::HOLY_SHIELD_REFRESH_MS)
 {
