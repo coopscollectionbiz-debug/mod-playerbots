@@ -12,6 +12,7 @@
 #include "AcceptInvitationAction.h"
 #include "AcceptQuestAction.h"
 #include "AcceptResurrectAction.h"
+#include "AcceptWintergraspInvitationAction.h"
 #include "AreaTriggerAction.h"
 #include "ArenaTeamActions.h"
 #include "BattleGroundJoinAction.h"
@@ -116,6 +117,8 @@ public:
         creators["lfg teleport retry"] = &WorldPacketActionContext::lfg_teleport_retry;
         creators["see spell"] = &WorldPacketActionContext::see_spell;
         creators["arena team accept"] = &WorldPacketActionContext::arena_team_accept;
+        creators["accept wg war"] = &WorldPacketActionContext::accept_wg_war;
+        creators["accept wg queue"] = &WorldPacketActionContext::accept_wg_queue;
     }
 
 private:
@@ -185,6 +188,8 @@ private:
     static Action* lfg_join(PlayerbotAI* botAI) { return new LfgJoinAction(botAI); }
     static Action* see_spell(PlayerbotAI* botAI) { return new SeeSpellAction(botAI); }
     static Action* arena_team_accept(PlayerbotAI* botAI) { return new ArenaTeamAcceptAction(botAI); }
+    static Action* accept_wg_war(PlayerbotAI* botAI) { return new AcceptWintergraspWarAction(botAI); }
+    static Action* accept_wg_queue(PlayerbotAI* botAI) { return new AcceptWintergraspQueueAction(botAI); }
 };
 
 #endif

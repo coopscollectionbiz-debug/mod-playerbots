@@ -15,6 +15,8 @@
 
 #include "AiFactory.h"
 #include "Aq40Helpers.h"
+#include "Battlefield.h"
+#include "BattlefieldMgr.h"
 #include "BudgetValues.h"
 #include "ChannelMgr.h"
 #include "CharacterPackets.h"
@@ -284,6 +286,8 @@ PlayerbotAI::PlayerbotAI(Player* bot)
     botOutgoingPacketHandlers.AddHandler(SMSG_DUEL_REQUESTED, "duel requested");
     botOutgoingPacketHandlers.AddHandler(SMSG_INVENTORY_CHANGE_FAILURE, "inventory change failure");
     botOutgoingPacketHandlers.AddHandler(SMSG_BATTLEFIELD_STATUS, "bg status");
+    botOutgoingPacketHandlers.AddHandler(SMSG_BATTLEFIELD_MGR_ENTRY_INVITE, "accept wg war");
+    botOutgoingPacketHandlers.AddHandler(SMSG_BATTLEFIELD_MGR_QUEUE_INVITE, "accept wg queue");
     botOutgoingPacketHandlers.AddHandler(SMSG_LFG_ROLE_CHECK_UPDATE, "lfg role check");
     botOutgoingPacketHandlers.AddHandler(SMSG_LFG_PROPOSAL_UPDATE, "lfg proposal");
     botOutgoingPacketHandlers.AddHandler(SMSG_TEXT_EMOTE, "receive text emote");
@@ -4830,6 +4834,17 @@ bool PlayerbotAI::AllowActive(ActivityType activityType)
     // bot is waiting in a BG queue — stay active to speed up join
     if (bot->InBattlegroundQueue())
         return true;
+
+    // bot is a Wintergrasp combatant — stay fully active for the whole battle. WG is on the
+    // overworld (so isOverworld() above doesn't catch it) and is not a Battleground, so without
+    // this a WG bot goes inactive when no real player is near -> gets flagged AFK -> the WG
+    // battlefield kicks it (KickAfkPlayers) -> the director re-teleports it (the churn).
+    if (bot->GetZoneId() == 4197 /*Wintergrasp*/)
+    {
+        Battlefield* bf = sBattlefieldMgr->GetBattlefieldToZoneId(4197);
+        if (bf && bf->IsWarTime())
+            return true;
+    }
 
     // bot is in a guild that contains a real player
     if (sPlayerbotAIConfig.BotActiveAloneForceWhenInGuild)

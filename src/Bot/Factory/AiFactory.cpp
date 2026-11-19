@@ -5,6 +5,9 @@
  */
 
 #include "AiFactory.h"
+
+#include "Battlefield.h"
+#include "BattlefieldMgr.h"
 #include "BattlegroundMgr.h"
 #include "DKAiObjectContext.h"
 #include "DruidAiObjectContext.h"
@@ -719,6 +722,22 @@ void AiFactory::AddDefaultNonCombatStrategies(Player* player, PlayerbotAI* const
         {
             nonCombatEngine->addStrategy("arena", false);
             nonCombatEngine->removeStrategy("mount", false);
+        }
+    }
+
+    // Wintergrasp: WG is overworld and not a Battleground, so the BG switch above misses it.
+    // Give combatants the same PvP loadout and drop the wander strategies (travel/rpg/grind) so
+    // they fight the enemy faction instead of grinding/pathing out of the zone.
+    if (player->GetZoneId() == 4197 /*Wintergrasp*/)
+    {
+        Battlefield* bf = sBattlefieldMgr->GetBattlefieldToZoneId(4197);
+        if (bf && bf->IsWarTime())
+        {
+            nonCombatEngine->addStrategiesNoInit("pvp", "dps assist", "attack tagged", nullptr);
+            nonCombatEngine->removeStrategy("custom::say", false);
+            nonCombatEngine->removeStrategy("travel", false);
+            nonCombatEngine->removeStrategy("rpg", false);
+            nonCombatEngine->removeStrategy("grind", false);
         }
     }
 }

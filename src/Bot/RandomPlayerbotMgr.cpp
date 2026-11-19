@@ -8,6 +8,8 @@
 #include "CityLifeMgr.h"
 #include "PlayerbotsDatabase.h"
 #include "AiFactory.h"
+#include "Battlefield.h"
+#include "BattlefieldMgr.h"
 #include "Battleground.h"
 #include "BattlegroundMgr.h"
 #include "Cell.h"
@@ -50,6 +52,20 @@
 #include <random>
 #include <set>
 #include <utility>
+
+namespace
+{
+    // True while the bot is a Wintergrasp combatant. WG is a Battlefield, not a Battleground,
+    // so InBattleground() is false there and the random-bot manager would otherwise relocate
+    // WG bots out of the fight (the "churn"). Used to exempt them, exactly like InBattleground().
+    bool IsInWintergraspWar(Player* bot)
+    {
+        if (!bot || bot->GetZoneId() != 4197 /*Wintergrasp*/)
+            return false;
+        Battlefield* bf = sBattlefieldMgr->GetBattlefieldToZoneId(4197);
+        return bf && bf->IsWarTime();
+    }
+}
 
 struct GuidClassRaceInfo
 {
@@ -1885,6 +1901,9 @@ bool RandomPlayerbotMgr::ProcessBot(Player* bot)
     if (bot->InBattlegroundQueue())
         return false;
 
+    if (IsInWintergraspWar(bot))
+        return false;
+
      uint32 botId = bot->GetGUID().GetCounter();
 
     // if death revive
@@ -2016,6 +2035,10 @@ void RandomPlayerbotMgr::RandomTeleport(Player* bot, std::vector<WorldLocation>&
 
     // ignore when in battle grounds or arena.
     if (bot->InBattleground() || bot->InArena())
+        return;
+
+    // ignore Wintergrasp combatants (Battlefield, not a Battleground — see above).
+    if (IsInWintergraspWar(bot))
         return;
 
     // ignore when in group (e.g. world, dungeons, raids) and leader is not a player.

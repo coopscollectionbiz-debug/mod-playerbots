@@ -52,6 +52,8 @@ void WorldPacketHandlerStrategy::InitTriggers(std::vector<TriggerNode*>& trigger
     triggers.push_back(new TriggerNode("arena team invite", { NextAction("arena team accept", relevance) }));
     //triggers.push_back(new TriggerNode("no non bot players around", { NextAction("delay", relevance) }));
     triggers.push_back(new TriggerNode("bg status", { NextAction("bg status", relevance) }));
+    triggers.push_back(new TriggerNode("accept wg war", { NextAction("accept wg war", relevance) }));
+    triggers.push_back(new TriggerNode("accept wg queue", { NextAction("accept wg queue", relevance) }));
     triggers.push_back(new TriggerNode("xpgain", { NextAction("xp gain", relevance) }));
     triggers.push_back(
         new TriggerNode("levelup", { NextAction("auto maintenance on levelup", relevance + 3) }));

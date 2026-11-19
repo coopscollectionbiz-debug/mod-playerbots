@@ -66,6 +66,8 @@ public:
         creators["lfg teleport"] = &WorldPacketTriggerContext::lfg_teleport;
         creators["inventory change failure"] = &WorldPacketTriggerContext::inventory_change_failure;
         creators["bg status"] = &WorldPacketTriggerContext::bg_status;
+        creators["accept wg war"] = &WorldPacketTriggerContext::accept_wg_war;
+        creators["accept wg queue"] = &WorldPacketTriggerContext::accept_wg_queue;
         creators["levelup"] = &WorldPacketTriggerContext::levelup;
         creators["xpgain"] = &WorldPacketTriggerContext::xpgain;
         creators["see spell"] = &WorldPacketTriggerContext::seespell;
@@ -127,6 +129,8 @@ private:
     static Trigger* loot_roll(PlayerbotAI* botAI) { return new WorldPacketTrigger(botAI, "loot roll"); }
     static Trigger* taxi(PlayerbotAI* botAI) { return new WorldPacketTrigger(botAI, "activate taxi"); }
     static Trigger* bg_status(PlayerbotAI* botAI) { return new WorldPacketTrigger(botAI, "bg status"); }
+    static Trigger* accept_wg_war(PlayerbotAI* botAI) { return new WorldPacketTrigger(botAI, "accept wg war"); }
+    static Trigger* accept_wg_queue(PlayerbotAI* botAI) { return new WorldPacketTrigger(botAI, "accept wg queue"); }
     static Trigger* levelup(PlayerbotAI* botAI) { return new WorldPacketTrigger(botAI, "levelup"); }
     static Trigger* xpgain(PlayerbotAI* botAI) { return new WorldPacketTrigger(botAI, "xpgain"); }
     static Trigger* petition_offer(PlayerbotAI* botAI) { return new WorldPacketTrigger(botAI, "petition offer"); }
