@@ -12,6 +12,7 @@
 #include "Log.h"
 #include "NamedObjectContext.h"
 #include "NaxxHelpers.h"
+#include "Naxx40HorsemenRules.h"
 #include "NaxxSpellIds.h"
 #include "ObjectGuid.h"
 #include "Player.h"
@@ -27,6 +28,9 @@
 class Aura;
 
 const uint32 NAXX_MAP_ID = 533;
+// Individual Progression's Naxx40 Sir Zeliek: gates the WotLK Four Horsemen helper/multiplier off Naxx40.
+constexpr uint32 NAXX40_ZELIEK_ENTRY =
+    Naxx40HorsemenRules::ENTRY[Naxx40HorsemenRules::Idx(Naxx40HorsemenRules::Horse::Zeliek)];
 
 template <class BossAiType>
 class GenericBossHelper : public AiObject
@@ -484,6 +488,10 @@ public:
             if (!_sir)
                 return false;
         }
+        // Naxx40 (Individual Progression) shares map 533 and the horsemen's names; its own strategy
+        // (Naxx40Horsemen) owns that fight, so the WotLK one stays inert there.
+        if (_sir->GetEntry() == NAXX40_ZELIEK_ENTRY)
+            return false;
         _lady = AI_VALUE2(Unit*, "find target", "lady blaumeux");
         return true;
     }

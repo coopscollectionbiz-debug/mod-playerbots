@@ -217,6 +217,144 @@ private:
     FourHorsemenBossHelper helper;
 };
 
+// Naxx40 Four Horsemen (overlay patch 0022): the bot holds a slot in a live horseman's tank pair, or is a spare tank.
+class Naxx40HorsemenTankTrigger : public Trigger
+{
+public:
+    Naxx40HorsemenTankTrigger(PlayerbotAI* ai) : Trigger(ai, "naxx40 horsemen tank") {}
+    bool IsActive() override;
+};
+
+// Naxx40 Four Horsemen (overlay patch 0022): the bot is a latched DPS (a half) or healer (a group) in the view.
+class Naxx40HorsemenRaidTrigger : public Trigger
+{
+public:
+    Naxx40HorsemenRaidTrigger(PlayerbotAI* ai) : Trigger(ai, "naxx40 horsemen raid") {}
+    bool IsActive() override;
+};
+
+// Naxx40 Four Horsemen (overlay patch 0022): a latched healer can heal its horseman's active tank now
+// (Naxx40Horsemen::TankHealTarget).
+class Naxx40HorsemenTankHealTrigger : public Trigger
+{
+public:
+    Naxx40HorsemenTankHealTrigger(PlayerbotAI* ai) : Trigger(ai, "naxx40 horsemen tank heal") {}
+    bool IsActive() override;
+};
+
+// Naxx40 Four Horsemen (overlay patch 0022): a latched DPS still attacking a horseman has passed THREAT_HOLD of his
+// active tank's threat (Naxx40HorsemenRules::ThreatStop, plain ratio). The `bwl threat hold` shape.
+class Naxx40HorsemenThreatHoldTrigger : public Trigger
+{
+public:
+    Naxx40HorsemenThreatHoldTrigger(PlayerbotAI* ai) : Trigger(ai, "naxx40 horsemen threat hold") {}
+    bool IsActive() override;
+};
+
+// Naxx40 Loatheb (overlay patch 0022; spec 2026-10-30 §4.1): a consumable is due (Naxx40LoathebAi::ConsumableFor), or
+// the bot is channelling its bandage.
+class Naxx40LoathebConsumableTrigger : public Trigger
+{
+public:
+    Naxx40LoathebConsumableTrigger(PlayerbotAI* ai) : Trigger(ai, "naxx40 loatheb consumable") {}
+    bool IsActive() override;
+};
+
+// Naxx40 Loatheb (spec 2026-10-30 §4.3): the main tank is low enough for a castable defensive cooldown.
+class Naxx40LoathebTankCooldownTrigger : public Trigger
+{
+public:
+    Naxx40LoathebTankCooldownTrigger(PlayerbotAI* ai) : Trigger(ai, "naxx40 loatheb tank cooldown") {}
+    bool IsActive() override;
+};
+
+// Naxx40 Loatheb (spec 2026-10-30 §4.2): the bot's rotation slot is up, or the main tank needs an emergency heal.
+class Naxx40LoathebTankHealTrigger : public Trigger
+{
+public:
+    Naxx40LoathebTankHealTrigger(PlayerbotAI* ai) : Trigger(ai, "naxx40 loatheb tank heal") {}
+    bool IsActive() override;
+};
+
+// Naxx40 Loatheb (spec 2026-10-30 §4.7 item 4): a raid healer's saved heal is due right after a Doom.
+class Naxx40LoathebGroupHealTrigger : public Trigger
+{
+public:
+    Naxx40LoathebGroupHealTrigger(PlayerbotAI* ai) : Trigger(ai, "naxx40 loatheb group heal") {}
+    bool IsActive() override;
+};
+
+// Naxx40 Loatheb (spec 2026-10-30 §4.8 item 3): a DPS bot has a spore to attack (within SPORE_ENGAGE, clear of
+// Loatheb's victim) that it is not on yet, or is still on a spore that is dead or out of that rule.
+class Naxx40LoathebSporeTrigger : public Trigger
+{
+public:
+    Naxx40LoathebSporeTrigger(PlayerbotAI* ai) : Trigger(ai, "naxx40 loatheb spore") {}
+    bool IsActive() override;
+};
+
+// Naxx40 Loatheb (spec 2026-10-30 §4.2 / §4.8 item 4): a locked-out healer has a damage spell it can cast at Loatheb now,
+// or a healer's mana refill is pending.
+class Naxx40LoathebHealerDpsTrigger : public Trigger
+{
+public:
+    Naxx40LoathebHealerDpsTrigger(PlayerbotAI* ai) : Trigger(ai, "naxx40 loatheb healer dps") {}
+    bool IsActive() override;
+};
+
+// Naxx40 Anub'Rekhan (overlay patch 0022; spec 2026-10-30-playerbot-naxx40-anubrekhan §3): the bot has a spot this tick
+// (Naxx40Anub::SpotFor) and is off it by more than its tolerance.
+class Naxx40AnubSpreadTrigger : public Trigger
+{
+public:
+    Naxx40AnubSpreadTrigger(PlayerbotAI* ai) : Trigger(ai, "naxx40 anub spread") {}
+    bool IsActive() override;
+};
+
+// Naxx40 Patchwerk (overlay patch 0022; spec 2026-11-01 §3.3): a soaker healer has a strike-pair member to heal
+// (Naxx40PatchwerkAi::HealTarget).
+class Naxx40PatchwerkSoakerHealTrigger : public Trigger
+{
+public:
+    Naxx40PatchwerkSoakerHealTrigger(PlayerbotAI* ai) : Trigger(ai, "naxx40 patchwerk soaker heal") {}
+    bool IsActive() override;
+};
+
+// Naxx40 Patchwerk (spec 2026-11-01 §3.3): an MT healer and the MT is alive.
+class Naxx40PatchwerkMtHealTrigger : public Trigger
+{
+public:
+    Naxx40PatchwerkMtHealTrigger(PlayerbotAI* ai) : Trigger(ai, "naxx40 patchwerk mt heal") {}
+    bool IsActive() override;
+};
+
+// Naxx40 Patchwerk (spec 2026-11-01 §3.2): a capped bot auto-attacking him passed its stop ratio
+// (Naxx40PatchwerkAi::ThreatHoldDue).
+class Naxx40PatchwerkThreatHoldTrigger : public Trigger
+{
+public:
+    Naxx40PatchwerkThreatHoldTrigger(PlayerbotAI* ai) : Trigger(ai, "naxx40 patchwerk threat hold") {}
+    bool IsActive() override;
+};
+
+// Naxx40 Patchwerk (pull 1): a latched soaker / spare bot is owed a threat boost under the `raid` cheat
+// (Naxx40PatchwerkAi::ThreatBoostDue).
+class Naxx40PatchwerkThreatBoostTrigger : public Trigger
+{
+public:
+    Naxx40PatchwerkThreatBoostTrigger(PlayerbotAI* ai) : Trigger(ai, "naxx40 patchwerk threat boost") {}
+    bool IsActive() override;
+};
+
+// Naxx40 Patchwerk (spec 2026-11-01 §3.3): a role healer bot's one mana refill is due
+// (Naxx40PatchwerkAi::ManaRefillDue).
+class Naxx40PatchwerkManaRefillTrigger : public Trigger
+{
+public:
+    Naxx40PatchwerkManaRefillTrigger(PlayerbotAI* ai) : Trigger(ai, "naxx40 patchwerk mana refill") {}
+    bool IsActive() override;
+};
+
 class SapphironGroundTrigger : public Trigger
 {
 public:

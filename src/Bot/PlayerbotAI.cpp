@@ -5,6 +5,7 @@
  */
 
 #include "PlayerbotAI.h"
+#include "Naxx40Patchwerk.h"
 
 #include <cmath>
 #include <mutex>
@@ -437,7 +438,18 @@ void PlayerbotAI::UpdateAI(uint32 elapsed, bool minimal)
                 }
 
                 // Interrupt if target ally has full health (heal by other member)
-                if (isHeal && isSingleTarget && spellTarget && spellTarget->IsFullHealth())
+                // Naxx40 Patchwerk (lathcf overlay patch 0022): soaker healers pre-cast on the strike pair.
+                if (isHeal && isSingleTarget && spellTarget && spellTarget->IsFullHealth() &&
+                    !Naxx40Patchwerk::KeepPrecastHeal(bot, spellTarget))
+                {
+                    bot->InterruptSpell(currentSpell->GetCurrentContainer());
+                    YieldThread(bot, GetReactDelay());
+                    return;
+                }
+
+                // Naxx40 Patchwerk (lathcf overlay patch 0022): soaker healers cancel a pre-cast that would overheal.
+                if (isHeal && isSingleTarget && spellTarget &&
+                    Naxx40Patchwerk::CancelPrecastHeal(bot, currentSpell, spellTarget))
                 {
                     bot->InterruptSpell(currentSpell->GetCurrentContainer());
                     YieldThread(bot, GetReactDelay());

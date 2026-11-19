@@ -32,6 +32,16 @@ public:
 
         creators["four horsemen attractors"] = &RaidNaxxTriggerContext::four_horsemen_attractors;
         creators["four horsemen except attractors"] = &RaidNaxxTriggerContext::four_horsemen_except_attractors;
+        creators["naxx40 horsemen tank"] = &RaidNaxxTriggerContext::naxx40_horsemen_tank;
+        creators["naxx40 horsemen raid"] = &RaidNaxxTriggerContext::naxx40_horsemen_raid;
+        creators["naxx40 horsemen tank heal"] = &RaidNaxxTriggerContext::naxx40_horsemen_tank_heal;
+        creators["naxx40 horsemen threat hold"] = &RaidNaxxTriggerContext::naxx40_horsemen_threat_hold;
+        creators["naxx40 loatheb consumable"] = &RaidNaxxTriggerContext::naxx40_loatheb_consumable;
+        creators["naxx40 loatheb tank cooldown"] = &RaidNaxxTriggerContext::naxx40_loatheb_tank_cooldown;
+        creators["naxx40 loatheb tank heal"] = &RaidNaxxTriggerContext::naxx40_loatheb_tank_heal;
+        creators["naxx40 loatheb group heal"] = &RaidNaxxTriggerContext::naxx40_loatheb_group_heal;
+        creators["naxx40 loatheb spore"] = &RaidNaxxTriggerContext::naxx40_loatheb_spore;
+        creators["naxx40 loatheb healer dps"] = &RaidNaxxTriggerContext::naxx40_loatheb_healer_dps;
 
         creators["sapphiron ground"] = &RaidNaxxTriggerContext::sapphiron_ground;
         creators["sapphiron flight"] = &RaidNaxxTriggerContext::sapphiron_flight;
@@ -39,6 +49,12 @@ public:
         creators["kel'thuzad"] = &RaidNaxxTriggerContext::kelthuzad;
 
         creators["anub'rekhan"] = &RaidNaxxTriggerContext::anubrekhan;
+        creators["naxx40 anub spread"] = &RaidNaxxTriggerContext::naxx40_anub_spread;
+        creators["naxx40 patchwerk soaker heal"] = &RaidNaxxTriggerContext::naxx40_patchwerk_soaker_heal;
+        creators["naxx40 patchwerk mt heal"] = &RaidNaxxTriggerContext::naxx40_patchwerk_mt_heal;
+        creators["naxx40 patchwerk threat hold"] = &RaidNaxxTriggerContext::naxx40_patchwerk_threat_hold;
+        creators["naxx40 patchwerk mana refill"] = &RaidNaxxTriggerContext::naxx40_patchwerk_mana_refill;
+        creators["naxx40 patchwerk threat boost"] = &RaidNaxxTriggerContext::naxx40_patchwerk_threat_boost;
         creators["faerlina"] = &RaidNaxxTriggerContext::faerlina;
         creators["maexxna"] = &RaidNaxxTriggerContext::maexxna;
         //creators["patchwerk tank"] = &RaidNaxxTriggerContext::patchwerk_tank;
@@ -82,11 +98,27 @@ private:
 
     static Trigger* four_horsemen_attractors(PlayerbotAI* botAI) { return new FourHorsemenAttractorsTrigger(botAI); }
     static Trigger* four_horsemen_except_attractors(PlayerbotAI* botAI) { return new FourHorsemenExceptAttractorsTrigger(botAI); }
+    static Trigger* naxx40_horsemen_tank(PlayerbotAI* botAI) { return new Naxx40HorsemenTankTrigger(botAI); }
+    static Trigger* naxx40_horsemen_raid(PlayerbotAI* botAI) { return new Naxx40HorsemenRaidTrigger(botAI); }
+    static Trigger* naxx40_horsemen_tank_heal(PlayerbotAI* botAI) { return new Naxx40HorsemenTankHealTrigger(botAI); }
+    static Trigger* naxx40_horsemen_threat_hold(PlayerbotAI* botAI) { return new Naxx40HorsemenThreatHoldTrigger(botAI); }
+    static Trigger* naxx40_loatheb_consumable(PlayerbotAI* botAI) { return new Naxx40LoathebConsumableTrigger(botAI); }
+    static Trigger* naxx40_loatheb_tank_cooldown(PlayerbotAI* botAI) { return new Naxx40LoathebTankCooldownTrigger(botAI); }
+    static Trigger* naxx40_loatheb_tank_heal(PlayerbotAI* botAI) { return new Naxx40LoathebTankHealTrigger(botAI); }
+    static Trigger* naxx40_loatheb_group_heal(PlayerbotAI* botAI) { return new Naxx40LoathebGroupHealTrigger(botAI); }
+    static Trigger* naxx40_loatheb_spore(PlayerbotAI* botAI) { return new Naxx40LoathebSporeTrigger(botAI); }
+    static Trigger* naxx40_loatheb_healer_dps(PlayerbotAI* botAI) { return new Naxx40LoathebHealerDpsTrigger(botAI); }
 
     static Trigger* sapphiron_ground(PlayerbotAI* botAI) { return new SapphironGroundTrigger(botAI); }
     static Trigger* sapphiron_flight(PlayerbotAI* botAI) { return new SapphironFlightTrigger(botAI); }
     static Trigger* kelthuzad(PlayerbotAI* botAI) { return new KelthuzadTrigger(botAI); }
     static Trigger* anubrekhan(PlayerbotAI* botAI) { return new AnubrekhanTrigger(botAI); }
+    static Trigger* naxx40_anub_spread(PlayerbotAI* botAI) { return new Naxx40AnubSpreadTrigger(botAI); }
+    static Trigger* naxx40_patchwerk_soaker_heal(PlayerbotAI* botAI) { return new Naxx40PatchwerkSoakerHealTrigger(botAI); }
+    static Trigger* naxx40_patchwerk_mt_heal(PlayerbotAI* botAI) { return new Naxx40PatchwerkMtHealTrigger(botAI); }
+    static Trigger* naxx40_patchwerk_threat_hold(PlayerbotAI* botAI) { return new Naxx40PatchwerkThreatHoldTrigger(botAI); }
+    static Trigger* naxx40_patchwerk_mana_refill(PlayerbotAI* botAI) { return new Naxx40PatchwerkManaRefillTrigger(botAI); }
+    static Trigger* naxx40_patchwerk_threat_boost(PlayerbotAI* botAI) { return new Naxx40PatchwerkThreatBoostTrigger(botAI); }
     static Trigger* faerlina(PlayerbotAI* botAI) { return new FaerlinaTrigger(botAI); }
     static Trigger* maexxna(PlayerbotAI* botAI) { return new MaexxnaTrigger(botAI); }
     //static Trigger* patchwerk_tank(PlayerbotAI* botAI) { return new PatchwerkTankTrigger(botAI); }

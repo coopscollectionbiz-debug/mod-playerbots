@@ -15,6 +15,32 @@ namespace
 constexpr uint32 SPELL_UNDERSTUDY_TAUNT = 29060;
 constexpr uint32 SPELL_BONE_BARRIER     = 29061;
 constexpr uint32 SPELL_BLOOD_STRIKE     = 61696;
+
+// Matched by entry, not name: mod-individual-progression's Naxx40 student (351084) is named
+// "Deathknight Understudy", so a name match never found it and no priest mind-controlled.
+constexpr uint32 NPC_UNDERSTUDY    = 16803;
+constexpr uint32 NPC_UNDERSTUDY_40 = 351084;
+
+// First understudy in the bot's attackers that nobody has mind-controlled yet.
+Unit* FindFreeUnderstudy(PlayerbotAI* botAI, GuidVector const& attackers)
+{
+    for (ObjectGuid const& guid : attackers)
+    {
+        Unit* unit = botAI->GetUnit(guid);
+        if (!unit || !unit->IsAlive())
+            continue;
+
+        uint32 entry = unit->GetEntry();
+        if (entry != NPC_UNDERSTUDY && entry != NPC_UNDERSTUDY_40)
+            continue;
+
+        if (unit->GetCharmerGUID())
+            continue;
+
+        return unit;
+    }
+    return nullptr;
+}
 }
 
 bool RazuviousUseObedienceCrystalAction::Execute(Event /*event*/)
@@ -76,8 +102,8 @@ bool RazuviousUseObedienceCrystalAction::Execute(Event /*event*/)
                 charm->CastSpell(target, SPELL_UNDERSTUDY_TAUNT, true);
                 charm->AddSpellCooldown(SPELL_UNDERSTUDY_TAUNT, 0, 20 * 1000);
             }
-            // strike
-            if (!charm->HasSpellCooldown(SPELL_BLOOD_STRIKE))
+            // strike (the WotLK understudy only; the Naxx40 one has no Blood Strike)
+            if (charm->GetEntry() == NPC_UNDERSTUDY && !charm->HasSpellCooldown(SPELL_BLOOD_STRIKE))
             {
                 charm->CastSpell(target, SPELL_BLOOD_STRIKE, true);
                 charm->AddSpellCooldown(SPELL_BLOOD_STRIKE, 0, 4 * 1000);
@@ -115,19 +141,7 @@ bool RazuviousUseObedienceCrystalAction::Execute(Event /*event*/)
         }
         else
         {
-            GuidVector attackers = context->GetValue<GuidVector>("attackers")->Get();
-            Unit* target = nullptr;
-            for (auto i = attackers.begin(); i != attackers.end(); ++i)
-            {
-                Unit* unit = botAI->GetUnit(*i);
-                if (!unit)
-                    continue;
-                if (botAI->EqualLowercaseName(unit->GetName(), "death knight understudy"))
-                {
-                    target = unit;
-                    break;
-                }
-            }
+            Unit* target = FindFreeUnderstudy(botAI, context->GetValue<GuidVector>("attackers")->Get());
             if (target)
             {
                 if (bot->GetDistance2d(target) > sPlayerbotAIConfig.spellDistance)
@@ -146,7 +160,7 @@ bool RazuviousTargetAction::Execute(Event /*event*/)
         return false;
 
     Unit* razuvious = AI_VALUE2(Unit*, "find target", "instructor razuvious");
-    Unit* understudy = AI_VALUE2(Unit*, "find target", "death knight understudy");
+    Unit* understudy = FindFreeUnderstudy(botAI, context->GetValue<GuidVector>("attackers")->Get());
     Unit* target = nullptr;
     if (botAI->IsTank(bot))
         target = understudy;

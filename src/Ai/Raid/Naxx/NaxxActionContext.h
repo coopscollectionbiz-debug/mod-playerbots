@@ -34,6 +34,16 @@ public:
 
         creators["four horsemen attract alternatively"] = &RaidNaxxActionContext::four_horsemen_attract_alternatively;
         creators["four horsemen attack in order"] = &RaidNaxxActionContext::four_horsemen_attack_in_order;
+        creators["naxx40 horsemen tank"] = &RaidNaxxActionContext::naxx40_horsemen_tank;
+        creators["naxx40 horsemen raid"] = &RaidNaxxActionContext::naxx40_horsemen_raid;
+        creators["naxx40 horsemen tank heal"] = &RaidNaxxActionContext::naxx40_horsemen_tank_heal;
+        creators["naxx40 horsemen threat hold"] = &RaidNaxxActionContext::naxx40_horsemen_threat_hold;
+        creators["naxx40 loatheb consumable"] = &RaidNaxxActionContext::naxx40_loatheb_consumable;
+        creators["naxx40 loatheb tank cooldown"] = &RaidNaxxActionContext::naxx40_loatheb_tank_cooldown;
+        creators["naxx40 loatheb tank heal"] = &RaidNaxxActionContext::naxx40_loatheb_tank_heal;
+        creators["naxx40 loatheb group heal"] = &RaidNaxxActionContext::naxx40_loatheb_group_heal;
+        creators["naxx40 loatheb spore"] = &RaidNaxxActionContext::naxx40_loatheb_spore;
+        creators["naxx40 loatheb healer dps"] = &RaidNaxxActionContext::naxx40_loatheb_healer_dps;
 
         creators["sapphiron ground position"] = &RaidNaxxActionContext::sapphiron_ground_position;
         creators["sapphiron flight position"] = &RaidNaxxActionContext::sapphiron_flight_position;
@@ -43,6 +53,12 @@ public:
 
         creators["anub'rekhan choose target"] = &RaidNaxxActionContext::anubrekhan_choose_target;
         creators["anub'rekhan position"] = &RaidNaxxActionContext::anubrekhan_position;
+        creators["naxx40 anub spread"] = &RaidNaxxActionContext::naxx40_anub_spread;
+        creators["naxx40 patchwerk soaker heal"] = &RaidNaxxActionContext::naxx40_patchwerk_soaker_heal;
+        creators["naxx40 patchwerk mt heal"] = &RaidNaxxActionContext::naxx40_patchwerk_mt_heal;
+        creators["naxx40 patchwerk threat hold"] = &RaidNaxxActionContext::naxx40_patchwerk_threat_hold;
+        creators["naxx40 patchwerk mana refill"] = &RaidNaxxActionContext::naxx40_patchwerk_mana_refill;
+        creators["naxx40 patchwerk threat boost"] = &RaidNaxxActionContext::naxx40_patchwerk_threat_boost;
 
         creators["gluth choose target"] = &RaidNaxxActionContext::gluth_choose_target;
         creators["gluth position"] = &RaidNaxxActionContext::gluth_position;
@@ -86,6 +102,16 @@ private:
     }
     static Action* four_horsemen_attract_alternatively(PlayerbotAI* botAI) { return new FourHorsemenAttractAlternativelyAction(botAI); }
     static Action* four_horsemen_attack_in_order(PlayerbotAI* botAI) { return new FourHorsemenAttackInOrderAction(botAI); }
+    static Action* naxx40_horsemen_tank(PlayerbotAI* botAI) { return new Naxx40HorsemenTankAction(botAI); }
+    static Action* naxx40_horsemen_raid(PlayerbotAI* botAI) { return new Naxx40HorsemenRaidAction(botAI); }
+    static Action* naxx40_horsemen_tank_heal(PlayerbotAI* botAI) { return new Naxx40HorsemenTankHealAction(botAI); }
+    static Action* naxx40_horsemen_threat_hold(PlayerbotAI* botAI) { return new Naxx40HorsemenThreatHoldAction(botAI); }
+    static Action* naxx40_loatheb_consumable(PlayerbotAI* botAI) { return new Naxx40LoathebConsumableAction(botAI); }
+    static Action* naxx40_loatheb_tank_cooldown(PlayerbotAI* botAI) { return new Naxx40LoathebTankCooldownAction(botAI); }
+    static Action* naxx40_loatheb_tank_heal(PlayerbotAI* botAI) { return new Naxx40LoathebTankHealAction(botAI); }
+    static Action* naxx40_loatheb_group_heal(PlayerbotAI* botAI) { return new Naxx40LoathebGroupHealAction(botAI); }
+    static Action* naxx40_loatheb_spore(PlayerbotAI* botAI) { return new Naxx40LoathebSporeAction(botAI); }
+    static Action* naxx40_loatheb_healer_dps(PlayerbotAI* botAI) { return new Naxx40LoathebHealerDpsAction(botAI); }
     // static Action* sapphiron_ground_main_tank_position(PlayerbotAI* botAI) { return new
     // SapphironGroundMainTankPositionAction(botAI); }
     static Action* sapphiron_ground_position(PlayerbotAI* botAI) { return new SapphironGroundPositionAction(botAI); }
@@ -95,6 +121,12 @@ private:
     static Action* kelthuzad_position(PlayerbotAI* botAI) { return new KelthuzadPositionAction(botAI); }
     static Action* anubrekhan_choose_target(PlayerbotAI* botAI) { return new AnubrekhanChooseTargetAction(botAI); }
     static Action* anubrekhan_position(PlayerbotAI* botAI) { return new AnubrekhanPositionAction(botAI); }
+    static Action* naxx40_anub_spread(PlayerbotAI* botAI) { return new Naxx40AnubSpreadAction(botAI); }
+    static Action* naxx40_patchwerk_soaker_heal(PlayerbotAI* botAI) { return new Naxx40PatchwerkSoakerHealAction(botAI); }
+    static Action* naxx40_patchwerk_mt_heal(PlayerbotAI* botAI) { return new Naxx40PatchwerkMtHealAction(botAI); }
+    static Action* naxx40_patchwerk_threat_hold(PlayerbotAI* botAI) { return new Naxx40PatchwerkThreatHoldAction(botAI); }
+    static Action* naxx40_patchwerk_mana_refill(PlayerbotAI* botAI) { return new Naxx40PatchwerkManaRefillAction(botAI); }
+    static Action* naxx40_patchwerk_threat_boost(PlayerbotAI* botAI) { return new Naxx40PatchwerkThreatBoostAction(botAI); }
     static Action* gluth_choose_target(PlayerbotAI* botAI) { return new GluthChooseTargetAction(botAI); }
     static Action* gluth_position(PlayerbotAI* botAI) { return new GluthPositionAction(botAI); }
     static Action* gluth_slowdown(PlayerbotAI* botAI) { return new GluthSlowdownAction(botAI); }
