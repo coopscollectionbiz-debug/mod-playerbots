@@ -15,6 +15,7 @@
 #include "PlayerbotAI.h"
 #include "Playerbots.h"
 #include "ScriptedCreature.h"
+#include "UldGeometry.h"
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -34,7 +35,10 @@ enum UlduarIDs
 
     // Kologarn
     NPC_RIGHT_ARM = 32934,
+    NPC_LEFT_ARM = 32933,
     NPC_RUBBLE = 33768,
+    NPC_EYE_LEFT = 33632,
+    NPC_EYE_RIGHT = 33802,
     SPELL_CRUNCH_ARMOR = 64002,
     SPELL_CRUNCH_ARMOR_10 = 63355,
 
@@ -154,6 +158,20 @@ constexpr float ULDUAR_KOLOGARN_AXIS_Z_PATHING_ISSUE_DETECT = 420.0f;
 constexpr float ULDUAR_KOLOGARN_EYEBEAM_RADIUS = 3.0f;
 // The beam's target keeps running while the beam is within this range; ours.
 constexpr float ULDUAR_KOLOGARN_EYEBEAM_KITE_DISTANCE = 10.0f;
+
+// Focused Eyebeam — geometric beam-line vacate. All distances in yards; tune DANGER_WIDTH at runtime.
+constexpr float ULDUAR_KOLOGARN_EYEBEAM_DANGER_WIDTH = 6.0f;    // half-width of the lethal beam corridor
+constexpr float ULDUAR_KOLOGARN_EYEBEAM_MARGIN = 3.0f;          // extra standoff past the corridor when vacating
+constexpr float ULDUAR_KOLOGARN_EYEBEAM_BOSS_STANDOFF = 10.0f;  // ignore the beam within this range of the boss (origin) so melee don't thrash
+constexpr float ULDUAR_KOLOGARN_EYEBEAM_SEARCH_RADIUS = 80.0f;  // platform-sized eye search (well under the 533y grid clamp)
+constexpr float ULDUAR_KOLOGARN_ARM_HOLD_PCT = 20.0f;  // hold the right arm at/below this HP% while the left arm is down (avoids double-arm Stone Shout)
+
+// Pit instakill rectangle from boss_kologarn_pit_kill_bunny (x/y footprint of the chasm — never move here).
+constexpr float ULDUAR_KOLOGARN_PIT_MIN_X = 1782.0f;
+constexpr float ULDUAR_KOLOGARN_PIT_MAX_X = 1832.0f;
+constexpr float ULDUAR_KOLOGARN_PIT_MIN_Y = -56.0f;
+constexpr float ULDUAR_KOLOGARN_PIT_MAX_Y = 8.0f;
+
 constexpr float ULDUAR_THORIM_AXIS_Z_FLOOR_THRESHOLD = 429.6094f;
 constexpr float ULDUAR_THORIM_AXIS_Z_PATHING_ISSUE_DETECT = 410.0f;
 constexpr float ULDUAR_AURIAYA_AXIS_Z_PATHING_ISSUE_DETECT = 410.0f;
@@ -201,6 +219,41 @@ extern const Position ULDUAR_YOGG_SARON_ICECROWN_CITADEL_ENTRANCE;
 extern const Position ULDUAR_YOGG_SARON_CHAMBER_OF_ASPECTS_ENTRANCE;
 extern const Position ULDUAR_YOGG_SARON_PHASE_3_MELEE_SPOT;
 extern const Position ULDUAR_YOGG_SARON_PHASE_3_RANGED_SPOT;
+
+// True if the given x/y is over the Kologarn chasm footprint — a vacate destination here is a death.
+inline bool IsOverKologarnPit(float x, float y)
+{
+    return UldPointInRect2D(x, y, ULDUAR_KOLOGARN_PIT_MIN_X, ULDUAR_KOLOGARN_PIT_MAX_X,
+                            ULDUAR_KOLOGARN_PIT_MIN_Y, ULDUAR_KOLOGARN_PIT_MAX_Y);
+}
+
+// Collect the currently-active Focused Eyebeam eyes near the bot (nearest of each variant).
+// One eye is active per cast; two entries cover a rare left+right overlap.
+inline void KologarnCollectEyes(Player* bot, std::vector<Unit*>& eyes)
+{
+    if (Creature* e = bot->FindNearestCreature(NPC_EYE_LEFT, ULDUAR_KOLOGARN_EYEBEAM_SEARCH_RADIUS, true))
+        eyes.push_back(e);
+    if (Creature* e = bot->FindNearestCreature(NPC_EYE_RIGHT, ULDUAR_KOLOGARN_EYEBEAM_SEARCH_RADIUS, true))
+        eyes.push_back(e);
+}
+
+// Resolve a live Kologarn arm by NPC entry (robust; independent of any bot's threat list).
+inline Unit* KologarnFindArm(Player* bot, uint32 entry)
+{
+    return bot->FindNearestCreature(entry, 100.0f, true);
+}
+
+// True when finishing the right arm now would risk both arms dead at once (Stone Shout): the right
+// arm is low AND the left arm is dead or also low. Bots DPS the boss body instead until the left is back.
+inline bool KologarnShouldHoldRightArm(Player* bot)
+{
+    Unit* rightArm = KologarnFindArm(bot, NPC_RIGHT_ARM);
+    if (!rightArm || rightArm->GetHealthPct() >= ULDUAR_KOLOGARN_ARM_HOLD_PCT)
+        return false;
+
+    Unit* leftArm = KologarnFindArm(bot, NPC_LEFT_ARM);
+    return !leftArm || leftArm->GetHealthPct() < ULDUAR_KOLOGARN_ARM_HOLD_PCT;
+}
 
 class RazorscaleBossHelper : public AiObject
 {

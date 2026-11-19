@@ -18,6 +18,7 @@
 #include "UldBossHelper.h"
 #include "UldScripts.h"
 #include "Vehicle.h"
+#include <vector>
 
 const std::vector<uint32> availableVehicles = {NPC_VEHICLE_CHOPPER, NPC_SALVAGED_DEMOLISHER,
                                                NPC_SALVAGED_DEMOLISHER_TURRET, NPC_SALVAGED_SIEGE_ENGINE,
@@ -363,12 +364,13 @@ bool KologarnMarkDpsTargetTrigger::IsActive()
     // Check that right arm is marked
     if (currentSkullUnit && currentSkullUnit->IsAlive() && currentSkullUnit->GetEntry() == NPC_RIGHT_ARM)
     {
-        return false;  // Skull marker is already set on right arm
+        // Re-mark (move skull to the body) if we should hold the right arm; otherwise it is correctly marked.
+        return KologarnShouldHoldRightArm(bot);
     }
 
-    // Check that there is right arm to mark
-    Unit* rightArm = AI_VALUE2(Unit*, "find target", "right arm");
-    if (rightArm && rightArm->IsAlive())
+    // Check that there is right arm to mark (unless we should hold it to avoid a double-arm Stone Shout)
+    Unit* rightArm = KologarnFindArm(bot, NPC_RIGHT_ARM);
+    if (rightArm && rightArm->IsAlive() && !KologarnShouldHoldRightArm(bot))
     {
         return true;  // Found a right arm to mark
     }
@@ -428,34 +430,40 @@ bool KologarnRubbleSlowdownTrigger::IsActive()
 bool KologarnEyebeamTrigger::IsActive()
 {
     Unit* boss = AI_VALUE2(Unit*, "find target", "kologarn");
-
-    // Check boss and it is alive
     if (!boss || !boss->IsAlive())
         return false;
 
-    GuidVector triggers = AI_VALUE(GuidVector, "possible triggers");
+    // Main tank holds the (stationary) body and must never leave to dodge.
+    if (botAI->IsMainTank(bot))
+        return false;
 
-    if (!triggers.empty())
+    std::vector<Unit*> eyes;
+    KologarnCollectEyes(bot, eyes);
+    if (eyes.empty())
+        return false;
+
+    // The fixated bot (the eye's chase target) always acts, to kite the beam away.
+    for (Unit* eye : eyes)
+        if (eye->GetVictim() == bot)
+            return true;
+
+    // Non-fixated: skip bots packed at the beam origin (melee under the boss) to avoid thrashing.
+    if (bot->GetExactDist2d(boss) < ULDUAR_KOLOGARN_EYEBEAM_BOSS_STANDOFF)
+        return false;
+
+    // Act if this bot is inside any beam corridor (boss -> eye).
+    float const px = bot->GetPositionX();
+    float const py = bot->GetPositionY();
+    float const bx = boss->GetPositionX();
+    float const by = boss->GetPositionY();
+    for (Unit* eye : eyes)
     {
-        for (ObjectGuid const guid : triggers)
-        {
-            if (Unit* unit = botAI->GetUnit(guid))
-            {
-                std::string triggerName = unit->GetNameForLocaleIdx(sWorld->GetDefaultDbcLocale());
-
-                if (triggerName.rfind("Focused Eyebeam", 0) != 0)
-                    continue;
-
-                float const distance = bot->GetDistance2d(unit);
-                if (distance < ULDUAR_KOLOGARN_EYEBEAM_RADIUS + 1.0f)
-                    return true;
-
-                // Without the cheat, the beam's target keeps kiting it while it is close behind.
-                if (!botAI->HasCheat(BotCheatMask::raid) && unit->GetVictim() == bot &&
-                    distance < ULDUAR_KOLOGARN_EYEBEAM_KITE_DISTANCE)
-                    return true;
-            }
-        }
+        float footX = 0.0f;
+        float footY = 0.0f;
+        float const dist = UldDistancePointToSegment2D(px, py, bx, by, eye->GetPositionX(),
+                                                       eye->GetPositionY(), footX, footY);
+        if (dist < ULDUAR_KOLOGARN_EYEBEAM_DANGER_WIDTH)
+            return true;
     }
 
     return false;

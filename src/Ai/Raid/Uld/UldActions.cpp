@@ -28,6 +28,8 @@
 #include "Unit.h"
 #include "Vehicle.h"
 #include <cmath>
+#include <limits>
+#include <vector>
 
 const std::string ADD_STRATEGY_CHAR = "+";
 const std::string REMOVE_STRATEGY_CHAR = "-";
@@ -1225,8 +1227,8 @@ bool KologarnMarkDpsTargetAction::Execute(Event /*event*/)
 
     if (!targetToMark)
     {
-        Unit* rightArm = AI_VALUE2(Unit*, "find target", "right arm");
-        if (rightArm && rightArm->IsAlive())
+        Unit* rightArm = KologarnFindArm(bot, NPC_RIGHT_ARM);
+        if (rightArm && rightArm->IsAlive() && !KologarnShouldHoldRightArm(bot))
         {
             targetToMark = rightArm;
             additionalTargetToMark = boss;
@@ -1243,7 +1245,7 @@ bool KologarnMarkDpsTargetAction::Execute(Event /*event*/)
     if (!targetToMark)
         return false;  // No target to mark
 
-    Unit* leftArm = AI_VALUE2(Unit*, "find target", "left arm");
+    Unit* leftArm = KologarnFindArm(bot, NPC_LEFT_ARM);
     if (leftArm && leftArm->IsAlive())
         targetToCcMark = leftArm;
 
@@ -1344,43 +1346,103 @@ bool KologarnRubbleSlowdownAction::Execute(Event /*event*/)
     return botAI->CastSpell("frost trap", currentSkullUnit);
 }
 
+bool KologarnEyebeamAction::KiteToNearerLane()
+{
+    // Run to whichever fixed side lane is nearer: shortest travel = the beam sweeps the least raid.
+    float const dl = bot->GetExactDist(ULDUAR_KOLOGARN_EYEBEAM_LEFT_POSITION);
+    float const dr = bot->GetExactDist(ULDUAR_KOLOGARN_EYEBEAM_RIGHT_POSITION);
+    Position const& lane =
+        (dl <= dr) ? ULDUAR_KOLOGARN_EYEBEAM_LEFT_POSITION : ULDUAR_KOLOGARN_EYEBEAM_RIGHT_POSITION;
+    return MoveTo(bot->GetMapId(), lane.GetPositionX(), lane.GetPositionY(), lane.GetPositionZ(), false,
+                  false, false, true, MovementPriority::MOVEMENT_FORCED);
+}
+
 bool KologarnEyebeamAction::Execute(Event /*event*/)
 {
-    if (!botAI->HasCheat(BotCheatMask::raid))
-        return KiteEyebeam();
+    Unit* boss = AI_VALUE2(Unit*, "find target", "kologarn");
+    if (!boss || !boss->IsAlive())
+        return false;
 
-    float distanceToLeftPoint = bot->GetExactDist(ULDUAR_KOLOGARN_EYEBEAM_LEFT_POSITION);
-    float distanceToRightPoint = bot->GetExactDist(ULDUAR_KOLOGARN_EYEBEAM_RIGHT_POSITION);
+    std::vector<Unit*> eyes;
+    KologarnCollectEyes(bot, eyes);
+    if (eyes.empty())
+        return false;
 
-    bool runToLeftSide;
-    if (!distanceToLeftPoint)
-        runToLeftSide = true;
-    else if (!distanceToRightPoint)
-        runToLeftSide = false;
-    else
-        runToLeftSide = distanceToRightPoint > distanceToLeftPoint;
+    // Fixated bot: kite the beam away by running to the nearer side lane.
+    for (Unit* eye : eyes)
+        if (eye->GetVictim() == bot)
+            return KiteToNearerLane();
 
-    bool teleportedToPoint;
-    KologarnEyebeamTrigger kologarnEyebeamTrigger(botAI);
-    if (runToLeftSide)
+    // Non-fixated bots packed at the origin don't dodge (matches the trigger's standoff gate).
+    if (bot->GetExactDist2d(boss) < ULDUAR_KOLOGARN_EYEBEAM_BOSS_STANDOFF)
+        return false;
+
+    // Find the closest threatening beam corridor and its foot point.
+    float const px = bot->GetPositionX();
+    float const py = bot->GetPositionY();
+    float const bx = boss->GetPositionX();
+    float const by = boss->GetPositionY();
+
+    float bestDist = std::numeric_limits<float>::max();
+    float footX = 0.0f;
+    float footY = 0.0f;
+    Unit* threatEye = nullptr;
+    for (Unit* eye : eyes)
     {
-        teleportedToPoint = bot->TeleportTo(bot->GetMapId(), ULDUAR_KOLOGARN_EYEBEAM_LEFT_POSITION.GetPositionX(),
-                                            ULDUAR_KOLOGARN_EYEBEAM_LEFT_POSITION.GetPositionY(),
-                                            ULDUAR_KOLOGARN_EYEBEAM_LEFT_POSITION.GetPositionZ(),
-                                            ULDUAR_KOLOGARN_EYEBEAM_LEFT_POSITION.GetOrientation());
+        float fX = 0.0f;
+        float fY = 0.0f;
+        float const dist =
+            UldDistancePointToSegment2D(px, py, bx, by, eye->GetPositionX(), eye->GetPositionY(), fX, fY);
+        if (dist < ULDUAR_KOLOGARN_EYEBEAM_DANGER_WIDTH && dist < bestDist)
+        {
+            bestDist = dist;
+            footX = fX;
+            footY = fY;
+            threatEye = eye;
+        }
     }
-    else
+    if (!threatEye)
+        return false;
+
+    // Perpendicular push-out to a safe distance from the beam.
+    float const safe = ULDUAR_KOLOGARN_EYEBEAM_DANGER_WIDTH + ULDUAR_KOLOGARN_EYEBEAM_MARGIN;
+    float dirX = px - footX;
+    float dirY = py - footY;
+    float len = std::sqrt(dirX * dirX + dirY * dirY);
+    if (len < 0.01f)
     {
-        teleportedToPoint = bot->TeleportTo(bot->GetMapId(), ULDUAR_KOLOGARN_EYEBEAM_RIGHT_POSITION.GetPositionX(),
-                                            ULDUAR_KOLOGARN_EYEBEAM_RIGHT_POSITION.GetPositionY(),
-                                            ULDUAR_KOLOGARN_EYEBEAM_RIGHT_POSITION.GetPositionZ(),
-                                            ULDUAR_KOLOGARN_EYEBEAM_RIGHT_POSITION.GetOrientation());
+        // Bot sits exactly on the beam: pick a perpendicular from the beam direction (rotate 90 deg).
+        float const abx = threatEye->GetPositionX() - bx;
+        float const aby = threatEye->GetPositionY() - by;
+        float const ablen = std::sqrt(abx * abx + aby * aby);
+        if (ablen < 0.01f)
+            return false;
+        dirX = -aby / ablen;
+        dirY = abx / ablen;
+        len = 1.0f;
     }
+    float const ux = dirX / len;
+    float const uy = dirY / len;
+    float const destZ = bot->GetPositionZ();
 
-    if (teleportedToPoint)
-        SetNextMovementDelay(5000);
+    // Candidate 1: push out on the bot's current side (shortest). Candidate 2: the opposite side.
+    float const c1x = footX + ux * safe;
+    float const c1y = footY + uy * safe;
+    float const c2x = footX - ux * safe;
+    float const c2y = footY - uy * safe;
 
-    return teleportedToPoint;
+    if (!IsOverKologarnPit(c1x, c1y) &&
+        MoveTo(bot->GetMapId(), c1x, c1y, destZ, false, false, false, true,
+               MovementPriority::MOVEMENT_FORCED))
+        return true;
+
+    if (!IsOverKologarnPit(c2x, c2y) &&
+        MoveTo(bot->GetMapId(), c2x, c2y, destZ, false, false, false, true,
+               MovementPriority::MOVEMENT_FORCED))
+        return true;
+
+    // Both perpendicular exits are over the pit — fall back to a known-good side lane.
+    return KiteToNearerLane();
 }
 
 bool KologarnEyebeamAction::isUseful()

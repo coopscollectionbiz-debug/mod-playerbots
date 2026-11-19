@@ -177,6 +177,7 @@ public:
 
 private:
     bool KiteEyebeam();
+    bool KiteToNearerLane();
 };
 
 class KologarnRtiTargetAction : public Action
