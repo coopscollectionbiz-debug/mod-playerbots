@@ -14,6 +14,7 @@ bool AnubrekhanChooseTargetAction::Execute(Event /*event*/)
     Unit* target = nullptr;
     Unit* target_boss = nullptr;
     std::vector<Unit*> target_guards;
+    Unit* loose_scarab = nullptr;
     for (ObjectGuid const guid : attackers)
     {
         Unit* unit = botAI->GetUnit(guid);
@@ -24,6 +25,22 @@ bool AnubrekhanChooseTargetAction::Execute(Event /*event*/)
 
         if (botAI->EqualLowercaseName(unit->GetName(), "anub'rekhan"))
             target_boss = unit;
+
+        // Corpse Scarabs (five from every raid member who dies) on someone other than a tank.
+        if (botAI->EqualLowercaseName(unit->GetName(), "corpse scarab") && unit->IsAlive() && unit->GetVictim() &&
+            unit->GetVictim()->ToPlayer() && !botAI->IsTank(unit->GetVictim()->ToPlayer()))
+        {
+            if (!loose_scarab || bot->GetExactDist(unit) < bot->GetExactDist(loose_scarab))
+                loose_scarab = unit;
+        }
+    }
+    // Melee damage dealers clear the scarabs off the raid first: they come in fives and finish
+    // off the healers and casters they land on, and each death brings five more.
+    if (loose_scarab && !botAI->IsTank(bot) && !botAI->IsRanged(bot))
+    {
+        if (context->GetValue<Unit*>("current target")->Get() == loose_scarab)
+            return false;
+        return Attack(loose_scarab);
     }
     if (botAI->IsMainTank(bot))
         target = target_boss;
