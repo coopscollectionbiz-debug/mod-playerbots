@@ -3599,7 +3599,9 @@ void RandomPlayerbotMgr::OnPlayerLogin(Player* player)
             PlayerbotAI* botAI = GET_PLAYERBOT_AI(bot);
             if (botAI && member == player && (!botAI->GetMaster() || GET_PLAYERBOT_AI(botAI->GetMaster())))
             {
-                if (!bot->InBattleground())
+                // Battlefield raids (Wintergrasp) are not ownership: don't hand the bot to a
+                // real player who merely shares the war raid (see UpdateAIGroupMaster).
+                if (!bot->InBattleground() && !group->isBFGroup())
                 {
                     botAI->SetMaster(player);
                     botAI->ResetStrategies();

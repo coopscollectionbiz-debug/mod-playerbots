@@ -559,6 +559,13 @@ void PlayerbotAI::UpdateAIGroupMaster()
 
     if (!master || (masterBotAI && !IsSelfBot(master)))
     {
+        // Never ACQUIRE a master through a battlefield-managed raid: Wintergrasp auto-groups
+        // every war participant, so a real player joining the battle would instantly become
+        // "owner" of every random bot in the raid (they all greet + follow instead of fighting
+        // the war). Real invites/parties are unaffected — those groups are not BF groups.
+        if (sRandomPlayerbotMgr.IsRandomBot(bot) && group->isBFGroup())
+            return;
+
         Player* newMaster = FindNewMaster();
         if (newMaster)
         {
@@ -1722,7 +1729,13 @@ void PlayerbotAI::DoNextAction(bool min)
 
     if (minimal)
     {
-        if (!bot->isAFK() && !bot->InBattleground() && !HasGameClientMaster())
+        // Wintergrasp bots: never self-AFK a battlefield-war participant. The WG battle kicks AFK
+        // players out of the zone every 20s and the director just teleports fresh ones in — a
+        // raid/zone revolving door (runtime-observed churn). WG is a Battlefield, not a
+        // Battleground, so the InBattleground() guard above doesn't cover it.
+        Battlefield* wgBf = sBattlefieldMgr->GetBattlefieldToZoneId(bot->GetZoneId());
+        bool inBattlefieldWar = wgBf && wgBf->IsWarTime();
+        if (!bot->isAFK() && !bot->InBattleground() && !inBattlefieldWar && !HasGameClientMaster())
             bot->ToggleAFK();
 
         SetNextCheckDelay(sPlayerbotAIConfig.passiveDelay);

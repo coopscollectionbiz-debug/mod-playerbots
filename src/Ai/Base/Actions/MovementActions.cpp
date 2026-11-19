@@ -198,6 +198,66 @@ bool MovementAction::MoveTo(uint32 mapId, float x, float y, float z, bool /*idle
         float distance = vehicleBase->GetExactDist(x, y, z);  // use vehicle distance, not bot
         if (distance > 0.01f)
         {
+            // Wintergrasp: never drive a siege vehicle through standing walls/doors — they are
+            // dynamic GO WMOs absent from the navmesh, so a generated path happily crosses them
+            // (combat-chase drove demolishers through the keep, runtime-observed). Truncate the
+            // move at the last wall-clear path point; first segment exempt (a vehicle against a
+            // structure false-positives on it).
+            if (bot->GetZoneId() == 4197 && generatePath)
+            {
+                // Center ray + 3y side rays (wide hull); first segment exempt only while roofed
+                // by a structure (escaping the workshop bay) — a blanket exemption rolls forward
+                // with re-pathing and drives vehicles into towers.
+                // Wall ray + climb rejection (no lateral side-rays: they over-block the
+                // tower-flanked gate approach and stall the siege — see WintergraspSiegeStrategy).
+                auto wgSegmentClear = [&](G3D::Vector3 const& a, G3D::Vector3 const& b)
+                {
+                    if (b.z - a.z > 2.5f)   // vehicles don't climb rampart stairs
+                        return false;
+
+                    // Fix 4a: keep siege vehicles out of deep water (they can't swim); bridges
+                    // snap to their deck (above the surface) and pass. Mirror of
+                    // WintergraspSiegeStrategy::SegmentClearWide — keep the 1.5y depth in sync.
+                    if (vehicleBase->GetMap()->IsUnderWater(vehicleBase->GetPhaseMask(),
+                                                            b.x, b.y, b.z, 1.5f))
+                        return false;
+
+                    return vehicleBase->GetMap()->isInLineOfSight(
+                        a.x, a.y, a.z + 2.0f, b.x, b.y, b.z + 2.0f,
+                        vehicleBase->GetPhaseMask(), LINEOFSIGHT_CHECK_GOBJECT_WMO,
+                        VMAP::ModelIgnoreFlags::Nothing);
+                };
+
+                PathGenerator wgPath(vehicleBase);
+                wgPath.CalculatePath(x, y, z, false);
+                auto const& wgPts = wgPath.GetPath();
+                if (wgPts.size() >= 2)
+                {
+                    bool escapeOk = !vehicleBase->GetMap()->isInLineOfSight(
+                        vehicleBase->GetPositionX(), vehicleBase->GetPositionY(), vehicleBase->GetPositionZ() + 0.5f,
+                        vehicleBase->GetPositionX(), vehicleBase->GetPositionY(), vehicleBase->GetPositionZ() + 40.0f,
+                        vehicleBase->GetPhaseMask(), LINEOFSIGHT_CHECK_GOBJECT_WMO,
+                        VMAP::ModelIgnoreFlags::Nothing);
+                    size_t lastClear = wgPts.size() - 1;
+                    for (size_t i = 1; i < wgPts.size(); ++i)
+                    {
+                        bool clear = wgSegmentClear(wgPts[i - 1], wgPts[i]);
+                        if (!clear && i == 1 && escapeOk)
+                            continue;
+                        if (!clear)
+                        {
+                            lastClear = i - 1;
+                            break;
+                        }
+                    }
+                    if (lastClear == 0)
+                        return false;   // wall right ahead: hold rather than clip
+                    x = wgPts[lastClear].x;
+                    y = wgPts[lastClear].y;
+                    z = wgPts[lastClear].z;
+                }
+            }
+
             DoMovePoint(vehicleBase, x, y, z, generatePath, backwards);
             float speed = backwards ? vehicleBase->GetSpeed(MOVE_RUN_BACK) : vehicleBase->GetSpeed(MOVE_RUN);
             float delay = 1000.0f * (distance / speed);

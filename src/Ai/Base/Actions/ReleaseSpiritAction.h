@@ -36,6 +36,7 @@ public:
 
 private:
     bool HandleBattlegroundSpiritHealer();
+    bool HandleBattlefieldSpiritHealer();   // Wintergrasp: release + queue for the battlefield mass-res
     bool ShouldAutoRelease() const;
     bool ShouldDelayBattlegroundRelease() const;
 

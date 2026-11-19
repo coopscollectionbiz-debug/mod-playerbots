@@ -5,6 +5,8 @@
  */
 
 #include "ReleaseSpiritAction.h"
+#include "Battlefield.h"
+#include "BattlefieldMgr.h"
 #include "Corpse.h"
 #include "Event.h"
 #include "GameGraveyard.h"
@@ -15,6 +17,18 @@
 #include "PlayerbotTextMgr.h"
 #include "Playerbots.h"
 #include "ServerFacade.h"
+
+namespace
+{
+    // Wintergrasp and other outdoor Battlefields are NOT Battlegrounds, so Player::InBattleground()
+    // is false in them. A bot dying in an active battlefield should release to the graveyard and
+    // wait for the battlefield's periodic mass-resurrection (like a real player), not corpse-run.
+    bool InActiveBattlefield(Player* bot)
+    {
+        Battlefield* bf = sBattlefieldMgr->GetBattlefieldToZoneId(bot->GetZoneId());
+        return bf && bf->IsWarTime();
+    }
+}
 
 // ReleaseSpiritAction implementation
 bool ReleaseSpiritAction::Execute(Event event)
@@ -83,6 +97,11 @@ void ReleaseSpiritAction::LogRelease(std::string const& releaseMsg) const
 // AutoReleaseSpiritAction implementation
 bool AutoReleaseSpiritAction::Execute(Event /*event*/)
 {
+    // Wintergrasp/battlefield: release to the graveyard and queue for the mass-res instead of
+    // corpse-running (WG is a Battlefield, not a Battleground, so InBattleground() is false).
+    if (!bot->InBattleground() && InActiveBattlefield(bot))
+        return HandleBattlefieldSpiritHealer();
+
     IncrementDeathCount();
     bot->DurabilityRepairAll(false, 1.0f, false);
     LogRelease("auto released");
@@ -106,6 +125,11 @@ bool AutoReleaseSpiritAction::isUseful()
 {
     if (!bot->isDead() || bot->InArena())
         return false;
+
+    // Battlefield (WG): stay useful the whole time the bot is dead so we drive
+    // release -> spirit-healer queue -> wait (Execute yields the tick, blocking the corpse-run).
+    if (!bot->InBattleground() && InActiveBattlefield(bot))
+        return true;
 
     if (bot->InBattleground())
         return ShouldDelayBattlegroundRelease();
@@ -163,6 +187,45 @@ bool AutoReleaseSpiritAction::HandleBattlegroundSpiritHealer()
         bot->GetSession()->HandleGossipHelloOpcode(packet);
     }
 
+    return true;
+}
+
+// Wintergrasp/battlefield death: release to the graveyard, enter the battlefield resurrect queue
+// directly (Battlefield::AddPlayerToResurrectQueue casts SPELL_WAITING_FOR_RESURRECT), then wait.
+// The battlefield scheduler mass-resurrects every waiting in-zone ghost (~30s), so the bot no
+// longer corpse-runs into enemy territory. Playerbots' Battleground spirit-healer path can't be
+// reused here: it sends CMSG_GOSSIP_HELLO, which only queues for a Battleground, not a Battlefield.
+bool AutoReleaseSpiritAction::HandleBattlefieldSpiritHealer()
+{
+    if (!bot->isDead())
+        return false;
+
+    Battlefield* bf = sBattlefieldMgr->GetBattlefieldToZoneId(bot->GetZoneId());
+    if (!bf)
+        return false;   // war just ended: fall through to normal (non-battlefield) handling
+
+    // Not released yet: become a ghost. The core relocates the corpse to the nearest team
+    // graveyard, where the battlefield spirit heals.
+    if (!bot->HasPlayerFlag(PLAYER_FLAGS_GHOST))
+    {
+        IncrementDeathCount();
+        bot->DurabilityRepairAll(false, 1.0f, false);
+        WorldPacket packet(CMSG_REPOP_REQUEST);
+        packet << uint8(0);
+        bot->GetSession()->HandleRepopRequestOpcode(packet);
+        LogRelease("releases spirit (battlefield)");
+        return true;
+    }
+
+    // Ghost at the graveyard: enter the battlefield resurrect queue directly. AddPlayerToResurrectQueue
+    // ignores the npc arg and just casts SPELL_WAITING_FOR_RESURRECT — no spirit-NPC search or gossip
+    // needed, so the bot can never end up a stuck ghost. The battlefield scheduler then mass-resurrects
+    // every waiting in-zone ghost (~30s), at which point isUseful() goes false and the bot fights again.
+    if (!bot->HasAura(SPELL_WAITING_FOR_RESURRECT))
+    {
+        bf->AddPlayerToResurrectQueue(ObjectGuid::Empty, bot->GetGUID());
+        LogRelease("queued for battlefield resurrection");
+    }
     return true;
 }
 

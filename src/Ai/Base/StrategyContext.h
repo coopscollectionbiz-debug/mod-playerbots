@@ -10,6 +10,7 @@
 #include "AggressiveStrategy.h"
 #include "AttackEnemyPlayersStrategy.h"
 #include "BattlegroundStrategy.h"
+#include "WintergraspSiegeStrategy.h"
 #include "CastTimeStrategy.h"
 #include "ChatCommandHandlerStrategy.h"
 #include "CombatStrategy.h"
@@ -111,6 +112,7 @@ public:
         creators["arathi"] = &StrategyContext::arathi;
         creators["eye"] = &StrategyContext::eye;
         creators["isle"] = &StrategyContext::isle;
+        creators["wg siege"] = &StrategyContext::wg_siege;
         creators["arena"] = &StrategyContext::arena;
         creators["mount"] = &StrategyContext::mount;
         creators["rtsc"] = &StrategyContext::rtsc;
@@ -188,6 +190,7 @@ private:
     static Strategy* arathi(PlayerbotAI* botAI) { return new ArathiStrategy(botAI); }
     static Strategy* eye(PlayerbotAI* botAI) { return new EyeStrategy(botAI); }
     static Strategy* isle(PlayerbotAI* botAI) { return new IsleStrategy(botAI); }
+    static Strategy* wg_siege(PlayerbotAI* botAI) { return new WintergraspSiegeStrategy(botAI); }
     static Strategy* arena(PlayerbotAI* botAI) { return new ArenaStrategy(botAI); }
     static Strategy* rtsc(PlayerbotAI* botAI) { return new RTSCStrategy(botAI); }
     static Strategy* attack_tagged(PlayerbotAI* botAI) { return new AttackTaggedStrategy(botAI); }

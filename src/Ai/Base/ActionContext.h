@@ -30,6 +30,7 @@
 #include "FishingAction.h"
 #include "FollowActions.h"
 #include "GenericSpellActions.h"
+#include "WintergraspSiegeStrategy.h"
 #include "GiveItemAction.h"
 #include "GreetAction.h"
 #include "GuildAcceptAction.h"
@@ -237,6 +238,7 @@ public:
         creators["steam blast"] = &ActionContext::steam_blast;
         creators["napalm"] = &ActionContext::napalm;
         creators["fire cannon"] = &ActionContext::fire_cannon;
+        creators["wg siege"] = &ActionContext::wg_siege;
         creators["incendiary rocket"] = &ActionContext::incendiary_rocket;
         creators["rocket blast"] = &ActionContext::rocket_blast;
         creators["blade salvo"] = &ActionContext::blade_salvo;
@@ -443,6 +445,7 @@ private:
     static Action* steam_rush(PlayerbotAI* botAI) { return new CastSteamRushAction(botAI); }
     static Action* napalm(PlayerbotAI* botAI) { return new CastNapalmAction(botAI); }
     static Action* fire_cannon(PlayerbotAI* botAI) { return new CastFireCannonAction(botAI); }
+    static Action* wg_siege(PlayerbotAI* botAI) { return new WintergraspSiegeAction(botAI); }
     static Action* incendiary_rocket(PlayerbotAI* botAI) { return new CastIncendiaryRocketAction(botAI); }
     static Action* rocket_blast(PlayerbotAI* botAI) { return new CastRocketBlastAction(botAI); }
     static Action* glaive_throw(PlayerbotAI* botAI) { return new CastGlaiveThrowAction(botAI); }

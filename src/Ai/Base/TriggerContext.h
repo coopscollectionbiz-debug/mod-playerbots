@@ -25,6 +25,7 @@
 #include "StuckTriggers.h"
 #include "TravelTriggers.h"
 #include "WaitForAttackTriggers.h"
+#include "WintergraspSiegeStrategy.h"
 
 class PlayerbotAI;
 
@@ -207,6 +208,7 @@ public:
 
         creators["vehicle near"] = &TriggerContext::vehicle_near;
         creators["in vehicle"] = &TriggerContext::in_vehicle;
+        creators["wg siege active"] = &TriggerContext::wg_siege_active;
 
         creators["need world buff"] = &TriggerContext::need_world_buff;
         creators["falling"] = &TriggerContext::falling;
@@ -423,6 +425,7 @@ private:
     static Trigger* at_dark_portal_outland(PlayerbotAI* botAI) { return new AtDarkPortalOutlandTrigger(botAI); }
     static Trigger* at_dark_portal_azeroth(PlayerbotAI* botAI) { return new AtDarkPortalAzerothTrigger(botAI); }
     static Trigger* in_vehicle(PlayerbotAI* botAI) { return new InVehicleTrigger(botAI); }
+    static Trigger* wg_siege_active(PlayerbotAI* botAI) { return new WgSiegeActiveTrigger(botAI); }
     static Trigger* vehicle_near(PlayerbotAI* botAI) { return new VehicleNearTrigger(botAI); }
     static Trigger* near_dark_portal(PlayerbotAI* botAI) { return new NearDarkPortalTrigger(botAI); }
     static Trigger* need_world_buff(PlayerbotAI* botAI) { return new NeedWorldBuffTrigger(botAI); }
