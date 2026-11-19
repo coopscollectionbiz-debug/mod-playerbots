@@ -403,7 +403,6 @@ bool StoreLootAction::Execute(Event event)
     uint8 loot_type;
     uint32 gold = 0;
     uint8 items = 0;
-    uint8 autostored = 0;
 
     p.rpos(0);
     p >> guid;       // 8 corpse guid
@@ -449,39 +448,27 @@ bool StoreLootAction::Execute(Event event)
         if (!proto)
             continue;
 
-        // Skip loot that isn't useful when bags are nearly full.
         if (!IsRealPlayer(botAI->GetMaster()) && AI_VALUE(uint8, "bag space") > 80)
         {
-            ItemUsage usage = AI_VALUE2(ItemUsage, "item usage", itemid);
-            bool const isUsefulItem = proto->StartQuest ||
-                                      (usage != ITEM_USAGE_NONE && usage != ITEM_USAGE_VENDOR && usage != ITEM_USAGE_AH);
+            uint32 maxStack = proto->GetMaxStackSize();
+            if (maxStack == 1)
+                continue;
 
-            if (isUsefulItem)
-            {
-                ItemPosCountVec dest;
-                if (bot->CanStoreNewItem(INVENTORY_SLOT_BAG_0, NULL_SLOT, dest, itemid, itemcount) != EQUIP_ERR_OK)
-                    continue;
-            }
-            else
-            {
-                uint32 maxStack = proto->GetMaxStackSize();
-                if (maxStack == 1)
-                    continue;
+            std::vector<Item*> found = parseItems(chat->FormatItem(proto));
 
-                std::vector<Item*> found = parseItems(chat->FormatItem(proto));
-                bool hasFreeStack = false;
-                for (auto stack : found)
+            bool hasFreeStack = false;
+
+            for (auto stack : found)
+            {
+                if (stack->GetCount() + itemcount < maxStack)
                 {
-                    if (stack->GetCount() + itemcount < maxStack)
-                    {
-                        hasFreeStack = true;
-                        break;
-                    }
+                    hasFreeStack = true;
+                    break;
                 }
-
-                if (!hasFreeStack)
-                    continue;
             }
+
+            if (!hasFreeStack)
+                continue;
         }
 
         Player* master = botAI->GetMaster();
@@ -502,7 +489,6 @@ bool StoreLootAction::Execute(Event event)
         bot->GetSession()->QueuePacket(packet);
         // bot->GetSession()->HandleAutostoreLootItemOpcode(packet);
         botAI->SetNextCheckDelay(sPlayerbotAIConfig.lootDelay);
-        ++autostored;
 
         if (proto->Quality > ITEM_QUALITY_NORMAL && !urand(0, 50) && botAI->HasStrategy("emote", BOT_STATE_NON_COMBAT) && sPlayerbotAIConfig.randomBotEmote)
             botAI->PlayEmote(TEXT_EMOTE_CHEER);
@@ -513,14 +499,7 @@ bool StoreLootAction::Execute(Event event)
         BroadcastHelper::BroadcastLootingItem(botAI, bot, proto);
     }
 
-    // Nothing storable: defer instead of reopening the window in a loop.
-    if (autostored == 0 && guid.IsGameObject())
-        availableLoot->DeferLoot(guid);
-    else
-        availableLoot->Remove(guid);
-
-    if (AI_VALUE(LootObject, "loot target").guid == guid)
-        context->GetValue<LootObject>("loot target")->Set(LootObject());
+    AI_VALUE(LootObjectStack*, "available loot")->Remove(guid);
 
     // release loot
     WorldPacket* packet = new WorldPacket(CMSG_LOOT_RELEASE, 8);
