@@ -5,6 +5,9 @@
  */
 
 #include "ChooseTargetActions.h"
+
+#include "Battleground.h"
+#include "BgPriorityActions.h"
 #include "ChooseRpgTargetAction.h"
 #include "Event.h"
 #include "LootObjectStack.h"
@@ -142,11 +145,22 @@ bool AttackAnythingAction::isPossible() { return GetTarget() && AttackAction::is
 
 bool DpsAssistAction::isUseful()
 {
+    // overlay patch 0019: the BG director already owns this bot's victim. "dps target" comes from
+    // the threat-based "attackers" list, which never contains an enemy healer/FC that is not
+    // hitting our side, so "not dps target active" stays true forever after a director switch and
+    // this action would flip the victim back every tick (cancelling the bot's movement with it).
+    if (BgDirectorOwnsVictim(bot, context))
+        return false;
+
     if (PlayerHasFlag::IsCapturingFlag(bot))
         return false;
 
     return true;
 }
+
+// overlay patch 0019: same hazard for tank specs — AiFactory's class switch adds "tank assist"
+// unconditionally, so it rides into a battleground at relevance 50 alongside "dps assist".
+bool TankAssistAction::isUseful() { return !BgDirectorOwnsVictim(bot, context); }
 
 bool AttackRtiTargetAction::Execute(Event /*event*/)
 {

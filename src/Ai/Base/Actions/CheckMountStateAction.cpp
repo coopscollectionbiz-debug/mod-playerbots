@@ -8,6 +8,7 @@
 
 #include "AreaDefines.h"
 #include "BattleGroundTactics.h"
+#include "BattlegroundBotsApi.h"   // overlay patch 0019 (mod-battleground-bots)
 #include "BattlegroundEY.h"
 #include "BattlegroundWS.h"
 #include "DBCStores.h"
@@ -21,6 +22,7 @@
 #include "ServerFacade.h"
 #include "SpellAuraEffects.h"
 #include "WorgoblinMounts.h"
+#include "Timer.h"                 // getMSTime() - overlay patch 0019
 
 static constexpr uint32 SPELL_COLD_WEATHER_FLYING = 54197;
 static constexpr float PARACHUTE_LAND_THRESHOLD = 15.0f;
@@ -234,6 +236,19 @@ bool CheckMountStateAction::isUseful()
         if (Battleground* bg = bot->GetBattleground())
             if (bg->GetStatus() == STATUS_WAIT_JOIN && bg->GetStartDelayTime() > BG_START_DELAY_30S)
                 return false;
+
+        // mod-battleground-bots (overlay patch 0019): hold the remount off for a few seconds after
+        // the director dismounted this bot on approach to a contested objective (BGTactics::
+        // moveToObjective). Without it the bot remounts the very next tick — it is still far from
+        // any target — and mount/dismount-thrashes its way in. The hold is the existing retarget
+        // cooldown knob x4 (~12s at the 3000ms default) on purpose: no new knob for this.
+        // Guarded on !IsMounted() so the action's DISMOUNT/cleanup paths keep running regardless.
+        if (!bot->IsMounted() && BattlegroundBotsApi::Enabled())
+        {
+            uint32 const t = AI_VALUE(uint32, "bg dismount time");
+            if (t && getMSTime() - t < BattlegroundBotsApi::Knobs().retargetCooldownMs * 4)
+                return false;
+        }
     }
 
     return true;

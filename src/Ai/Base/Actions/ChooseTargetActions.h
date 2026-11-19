@@ -34,6 +34,7 @@ public:
     TankAssistAction(PlayerbotAI* botAI) : AttackAction(botAI, "tank assist") {}
 
     std::string const GetTargetName() override { return "tank target"; }
+    bool isUseful() override;   // overlay patch 0019: yield the target slot to the BG director
 };
 
 class AggressiveTargetAction : public AttackAction

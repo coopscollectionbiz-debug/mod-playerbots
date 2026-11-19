@@ -32,6 +32,16 @@ public:
     BgRoleValue(PlayerbotAI* botAI) : ManualSetValue<uint32>(botAI, 0, "bg role") {}
 };
 
+// mod-battleground-bots (overlay patch 0019): getMSTime() of the last director-forced dismount
+// (BGTactics::moveToObjective). 0 = never. CheckMountStateAction reads it to hold off the stock
+// remount for a few seconds, so a bot walking into a contested objective does not mount/dismount
+// in a loop. Mirrors BgRoleValue exactly: a manual-set uint32 defaulting to 0.
+class BgDismountTimeValue : public ManualSetValue<uint32>
+{
+public:
+    BgDismountTimeValue(PlayerbotAI* botAI) : ManualSetValue<uint32>(botAI, 0, "bg dismount time") {}
+};
+
 class BgMastersValue : public SingleCalculatedValue<std::vector<CreatureData const*>>, public Qualified
 {
 public:

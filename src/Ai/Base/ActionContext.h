@@ -13,6 +13,7 @@
 #include "AutoMaintenanceOnLevelupAction.h"
 #include "BattleGroundJoinAction.h"
 #include "BattleGroundTactics.h"
+#include "BgPriorityActions.h"
 #include "BuyAction.h"
 #include "CancelChannelAction.h"
 #include "CastCustomSpellAction.h"
@@ -229,6 +230,9 @@ public:
         creators["bg protect fc"] = &ActionContext::bg_protect_fc;
         creators["bg use buff"] = &ActionContext::bg_use_buff;
         creators["attack enemy flag carrier"] = &ActionContext::attack_enemy_fc;
+        creators["attack bg priority target"] = &ActionContext::attack_bg_priority_target;   // overlay patch 0019
+        creators["bg peel for ally"] = &ActionContext::bg_peel_for_ally;
+        creators["bg healer follow squad"] = &ActionContext::bg_healer_follow_squad;
         creators["bg check flag"] = &ActionContext::bg_check_flag;
 
         // Vehicles
@@ -436,6 +440,9 @@ private:
     static Action* bg_attack_fc(PlayerbotAI* botAI) { return new BGTactics(botAI, "attack fc"); }
     static Action* bg_protect_fc(PlayerbotAI* botAI) { return new BGTactics(botAI, "protect fc"); }
     static Action* attack_enemy_fc(PlayerbotAI* botAI) { return new AttackEnemyFlagCarrierAction(botAI); }
+    static Action* attack_bg_priority_target(PlayerbotAI* botAI) { return new AttackBgPriorityTargetAction(botAI); }
+    static Action* bg_peel_for_ally(PlayerbotAI* botAI) { return new BgPeelForAllyAction(botAI); }
+    static Action* bg_healer_follow_squad(PlayerbotAI* botAI) { return new BgHealerFollowSquadAction(botAI); }
     static Action* bg_use_buff(PlayerbotAI* botAI) { return new BGTactics(botAI, "use buff"); }
     static Action* bg_check_flag(PlayerbotAI* botAI) { return new BGTactics(botAI, "check flag"); }
 

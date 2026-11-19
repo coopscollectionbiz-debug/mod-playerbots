@@ -5,6 +5,7 @@
  */
 
 #include "BattleGroundTactics.h"
+#include "BattlegroundBotsApi.h"
 #include "ArenaCoordValues.h"
 #include "ArenaTeam.h"
 #include "ArenaTeamMgr.h"
@@ -1873,6 +1874,19 @@ bool BGTactics::selectObjective(bool reset)
     if (pos.isSet() && !reset)
         return false;
 
+    // mod-battleground-bots director (overlay patch 0019): when the director owns this bot its
+    // assignment replaces the stock dice below. No assignment (module off, ROAM share, unknown BG,
+    // bot not in census, bot IS the flag carrier) falls through to stock behaviour unchanged.
+    {
+        BattlegroundBotsApi::BgAssignment directed;
+        if (BattlegroundBotsApi::Enabled() && BattlegroundBotsApi::GetAssignment(bot, directed))
+        {
+            pos.Set(directed.target.GetPositionX(), directed.target.GetPositionY(), directed.target.GetPositionZ(), bot->GetMapId());
+            posMap["bg objective"] = pos;
+            return true;
+        }
+    }
+
     WorldObject* BgObjective = nullptr;
 
     BattlegroundTypeId bgType = bg->GetBgTypeID();
@@ -3234,6 +3248,38 @@ bool BGTactics::moveToObjective(bool ignoreDist)
         // std::ostringstream out; out << "Moving to objective " << pos.x << ", " << pos.y << ", Distance: " <<
         // ServerFacade::instance().GetDistance2d(bot, pos.x, pos.y); bot->Say(out.str(), LANG_UNIVERSAL);
 
+        // mod-battleground-bots (patch 0019): arrive on foot when contact is imminent FOR THIS BOT.
+        // Keying purely on "an enemy is near the objective" dismounted bots that were still 100+y
+        // out; stock CheckMountStateAction then remounted them (far from any target), and the bot
+        // mount/dismount-thrashed all the way in. So dismount only when either
+        //   (a) an alive enemy is within DismountRange of the BOT, or
+        //   (b) the BOT is within DismountRange of the destination AND an enemy is too.
+        // The dismount is then remembered in "bg dismount time" so CheckMountStateAction::isUseful
+        // can hold the remount off for a few seconds (hysteresis) — see that file.
+        if (BattlegroundBotsApi::Enabled() && bot->IsMounted())
+        {
+            float const range = BattlegroundBotsApi::Knobs().dismountRange;
+            bool const botAtDest = bot->GetExactDist2d(pos.x, pos.y) <= range;
+            bool dismount = false;
+            for (ObjectGuid const& guid : AI_VALUE(GuidVector, "nearest enemy players"))
+            {
+                Unit* enemy = botAI->GetUnit(guid);
+                if (!enemy || !enemy->IsAlive())
+                    continue;
+                if (bot->GetExactDist2d(enemy) <= range ||
+                    (botAtDest && enemy->GetExactDist2d(pos.x, pos.y) <= range))
+                {
+                    dismount = true;
+                    break;
+                }
+            }
+            if (dismount)
+            {
+                bot->RemoveAurasByType(SPELL_AURA_MOUNTED);
+                context->GetValue<uint32>("bg dismount time")->Set(getMSTime());
+            }
+        }
+
         // dont increase from 1.5 will cause bugs with horde capping AV towers
         return MoveNear(bot->GetMapId(), pos.x, pos.y, pos.z, 1.5f);
     }
@@ -3401,8 +3447,15 @@ bool BGTactics::resetObjective()
         bot->HasAura(BG_WS_SPELL_SILVERWING_FLAG) ||
         bot->HasAura(BG_EY_NETHERSTORM_FLAG_SPELL);
 
-    // Change role if allowed by odds and not carrying flag
-    if (urand(0, 99) < oddsToChangeRole && !isCarryingFlag)
+    // Change role if allowed by odds and not carrying flag. A director-owned bot (patch 0019) keeps
+    // its role: the director, not the dice, decides what it does.
+    bool directed = false;
+    if (BattlegroundBotsApi::Enabled())
+    {
+        BattlegroundBotsApi::BgAssignment a;
+        directed = BattlegroundBotsApi::GetAssignment(bot, a);
+    }
+    if (!directed && urand(0, 99) < oddsToChangeRole && !isCarryingFlag)
         context->GetValue<uint32>("bg role")->Set(urand(0, 9));
 
     // Reset objective position
