@@ -51,7 +51,7 @@ bool LootAction::Execute(Event /*event*/)
 
 bool LootAction::isUseful()
 {
-    if (!sPlayerbotAIConfig.FreeMethodLoot && bot->GetGroup() && bot->GetGroup()->GetLootMethod() == FREE_FOR_ALL &&
+    if (!sPlayerbotAIConfig.freeMethodLoot && bot->GetGroup() && bot->GetGroup()->GetLootMethod() == FREE_FOR_ALL &&
         !IsSelfBot(bot))
         return false;
 
@@ -506,7 +506,7 @@ bool StoreLootAction::Execute(Event event)
         *packet << itemindex;
         bot->GetSession()->QueuePacket(packet);
         // bot->GetSession()->HandleAutostoreLootItemOpcode(packet);
-        botAI->SetNextCheckDelay(sPlayerbotAIConfig.LootDelay);
+        botAI->SetNextCheckDelay(sPlayerbotAIConfig.lootDelay);
         ++autostored;
 
         if (proto->Quality > ITEM_QUALITY_NORMAL && !urand(0, 50) &&

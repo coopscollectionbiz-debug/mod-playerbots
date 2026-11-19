@@ -2706,7 +2706,7 @@ bool MoveToLootAction::Execute(Event /*event*/)
 
     // Drop a target the bot is not getting closer to (blocked path, pulled elsewhere), so the next
     // pickup chooses a closer reachable one.
-    if (distance > sPlayerbotAIConfig.ContactDistance + reachedMargin && nowMs - lootWatchMs >= noProgressMs)
+    if (distance > sPlayerbotAIConfig.contactDistance + reachedMargin && nowMs - lootWatchMs >= noProgressMs)
     {
         availableLoot->DeferLoot(loot.guid);
         if (AI_VALUE(LootObject, "loot target").guid == loot.guid)
@@ -2715,7 +2715,7 @@ bool MoveToLootAction::Execute(Event /*event*/)
         return false;
     }
 
-    return MoveNear(target, sPlayerbotAIConfig.ContactDistance);
+    return MoveNear(target, sPlayerbotAIConfig.contactDistance);
 }
 
 bool MoveOutOfEnemyContactAction::Execute(Event /*event*/)
