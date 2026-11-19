@@ -8,6 +8,8 @@
 #include "CharmInfo.h"
 #include "Creature.h"
 #include "CreatureAI.h"
+#include "Group.h"
+#include "Map.h"
 #include "Pet.h"
 #include "Player.h"
 #include "PlayerbotAI.h"
@@ -17,6 +19,7 @@
 #include "SpellInfo.h"
 #include "SpellMgr.h"
 #include <algorithm>
+#include <cstring>
 #include <vector>
 
 enum PetSpells
@@ -381,6 +384,12 @@ bool TogglePetSpellAutoCastAction::Execute(Event /*event*/)
                 break;
             }
         }
+        // Overlay patch 0021: a hunter pet never autocasts Growl (any rank) in a raid — it pulls
+        // aggro off the tanks. Solo/dungeon behaviour is unchanged.
+        if (shouldApply && bot->getClass() == CLASS_HUNTER && spellInfo->SpellName[0] &&
+            std::strcmp(spellInfo->SpellName[0], "Growl") == 0 &&
+            ((bot->GetMap() && bot->GetMap()->IsRaid()) || (bot->GetGroup() && bot->GetGroup()->isRaidGroup())))
+            shouldApply = false;
         bool isAutoCast = false;
         for (unsigned int& m_autospell : pet->m_autospells)
         {
