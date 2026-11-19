@@ -373,7 +373,7 @@ namespace Naxx40Anub
             {
                 float const surface = std::hypot(target->GetPositionX() - p.x, target->GetPositionY() - p.y) -
                                       target->GetCombatReach() - bot->GetCombatReach();
-                if (surface > sPlayerbotAIConfig.SpellDistance)
+                if (surface > sPlayerbotAIConfig.spellDistance)
                     return false;
             }
         }
