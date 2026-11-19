@@ -153,7 +153,7 @@ namespace
 bool TempleOfAhnQirajHelpers::TwinsRestorePets(Player* owner)
 {
     ReactStates react = REACT_DEFENSIVE;
-    switch (sPlayerbotAIConfig.DefaultPetStance)
+    switch (sPlayerbotAIConfig.defaultPetStance)
     {
         case 0:
             react = REACT_PASSIVE;

@@ -971,7 +971,7 @@ namespace
         if (veklor->GetReactState() != REACT_PASSIVE &&
             warlock->GetExactDist2d(veklor) < Aq40TwinsRules::WRONG_VICTIM_MIN)
             return "inside12";
-        if (!warlock->IsWithinCombatRange(veklor, sPlayerbotAIConfig.SpellDistance))
+        if (!warlock->IsWithinCombatRange(veklor, sPlayerbotAIConfig.spellDistance))
             return "range";
         if (!warlock->IsWithinLOSInMap(veklor))
             return "los";
@@ -1546,7 +1546,7 @@ namespace
     {
         return (veklor->GetReactState() == REACT_PASSIVE ||
                 bot->GetExactDist2d(veklor) >= Aq40TwinsRules::WRONG_VICTIM_MIN) &&
-               bot->IsWithinCombatRange(veklor, sPlayerbotAIConfig.SpellDistance) && bot->IsWithinLOSInMap(veklor);
+               bot->IsWithinCombatRange(veklor, sPlayerbotAIConfig.spellDistance) && bot->IsWithinLOSInMap(veklor);
     }
 
     // What the active warlock does with its feet (rulings R13 F1, R15). Hold: inside the landing window. Cast: it can
@@ -1569,7 +1569,7 @@ namespace
         if (bot->GetExactDist2d(view.veklor) < Aq40TwinsRules::WRONG_VICTIM_MIN)
             return TwinsWarlockMove::Escape;
         // At or beyond WRONG_VICTIM_MIN and in range (TwinsWarlockCastsFromHere's own range test), so it failed on LOS.
-        if (bot->IsWithinCombatRange(view.veklor, sPlayerbotAIConfig.SpellDistance))
+        if (bot->IsWithinCombatRange(view.veklor, sPlayerbotAIConfig.spellDistance))
             return TwinsWarlockMove::Los;
         return TwinsWarlockMove::Reach;
     }
