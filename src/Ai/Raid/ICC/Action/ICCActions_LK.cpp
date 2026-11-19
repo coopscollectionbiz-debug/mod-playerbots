@@ -37,6 +37,20 @@ static bool IsLkValkyr(Unit* unit)
            entry == NPC_VALKYR_SHADOWGUARD3 || entry == NPC_VALKYR_SHADOWGUARD4;
 }
 
+// A Vile Spirit spawns REACT_PASSIVE and is harmless for 15s (core:
+// VileSpiritActivateEvent in boss_the_lich_king.cpp), then flips to REACT_AGGRESSIVE,
+// charges a random player and detonates on contact. React state is the engine's own
+// arming signal: exact, needs no timers or shared state, and every bot reads the same
+// value off the same object.
+static bool IsSpiritArmed(Unit const* spirit)
+{
+    if (!spirit)
+        return false;
+
+    Creature const* creature = spirit->ToCreature();
+    return creature && creature->GetReactState() == REACT_AGGRESSIVE;
+}
+
 static bool IsLkVileSpirit(Unit* unit)
 {
     if (!unit)
@@ -3936,10 +3950,47 @@ bool IccLichKingAddsAction::HandleVileSpiritMechanics()
     // avoid cross-instance pollution when multiple ICCs run simultaneously.
     int& sharedSlot = IcecrownHelpers::IccState(bot->GetInstanceId()).lkSharedSlot;
 
+    // H1 pause budget, per (instance, bot), refreshed when a wave ends. Declared here so
+    // the zero-spirit branch below can reset it.
+    struct HealerPause
+    {
+        uint32 startMs;      // 0 = no pause running
+        uint8 used;
+        bool dormantSeen;
+    };
+    static std::map<std::pair<uint32, ObjectGuid>, HealerPause> s_healerPause;
+    auto const pauseKey = std::make_pair(bot->GetInstanceId(), bot->GetGUID());
+
     if (spiritCount == 0)
     {
         sharedSlot = -1;
+        s_healerPause.erase(pauseKey);
         return false;
+    }
+
+    // Refill the pause budget at the start of each wave. Every wave begins with dormant
+    // spirits, so a 0 -> non-zero transition in the dormant count is an exact per-bot wave
+    // marker. The spiritCount == 0 erase above is NOT sufficient on its own: core removes
+    // a spirit only when it detonates or dies, so one survivor carrying over from the
+    // previous wave would leave the budget exhausted for the rest of the fight.
+    {
+        bool dormantNow = false;
+        for (Unit const* spirit : spirits)
+        {
+            if (!IsSpiritArmed(spirit))
+            {
+                dormantNow = true;
+                break;
+            }
+        }
+
+        HealerPause& wavePause = s_healerPause[pauseKey];
+        if (dormantNow && !wavePause.dormantSeen)
+        {
+            wavePause.used = 0;
+            wavePause.startMs = 0;
+        }
+        wavePause.dormantSeen = dormantNow;
     }
 
     Difficulty const diff = bot->GetRaidDifficulty();
@@ -3952,6 +4003,34 @@ bool IccLichKingAddsAction::HandleVileSpiritMechanics()
             float const d =
                 std::hypot(slot.GetPositionX() - defile->GetPositionX(), slot.GetPositionY() - defile->GetPositionY());
             if (d < radius + SAFETY_MARGIN)
+                return false;
+        }
+        return true;
+    };
+
+    // Shared by H1 (healer pause) and H2 (tank pacing, next task).
+    static constexpr float ARMED_DANGER_RADIUS = 20.0f;
+
+    auto ArmedSpiritNear = [&](Unit* who, float radius) -> bool
+    {
+        for (Unit* spirit : spirits)
+        {
+            if (!IsSpiritArmed(spirit))
+                continue;
+            if (who->GetDistance2d(spirit) < radius)
+                return true;
+        }
+        return false;
+    };
+
+    auto DefileSafeAt = [&](float x, float y) -> bool
+    {
+        static constexpr float DEFILE_MARGIN = 2.0f;
+        for (Unit const* defile : defiles)
+        {
+            float const radius = GetDefileEffectiveRadius(defile, diff);
+            if (std::hypot(x - defile->GetPositionX(), y - defile->GetPositionY()) <
+                radius + DEFILE_MARGIN)
                 return false;
         }
         return true;
@@ -3985,6 +4064,12 @@ bool IccLichKingAddsAction::HandleVileSpiritMechanics()
     {
         for (Unit const* spirit : spirits)
         {
+            // Only ARMED stragglers may delay departure. A dormant spirit is harmless for
+            // 15s and its dormancy IS the raid's travel window — holding for one is what
+            // made bots leave late and cross into the wave as it armed.
+            if (!IsSpiritArmed(spirit))
+                continue;
+
             float const d = std::hypot(bot->GetPositionX() - spirit->GetPositionX(),
                                        bot->GetPositionY() - spirit->GetPositionY());
             if (d > OLD_SPIRIT_RADIUS)
@@ -4005,7 +4090,9 @@ bool IccLichKingAddsAction::HandleVileSpiritMechanics()
         }
         else if (spiritHit)
         {
-            // New spirits at current slot; wait if previous-wave spirits still alive
+            // Only ARMED stragglers hold us here (see HasOldSpirits above). A freshly
+            // spawned dormant wave must never delay departure — its 15s dormancy is
+            // exactly the window the raid needs to cross.
             if (HasOldSpirits())
                 return false;
 
@@ -4072,6 +4159,12 @@ bool IccLichKingAddsAction::HandleVileSpiritMechanics()
         float chaseTargetDist = std::numeric_limits<float>::max();
         for (Unit* spirit : spirits)
         {
+            // E3: only intercept ARMED spirits. A dormant wave is harmless for 15s, and
+            // committing to it early drags the off-tank out of position with nothing to
+            // pop. With no armed spirit, chaseTarget stays null and he holds the anchor.
+            if (!IsSpiritArmed(spirit))
+                continue;
+
             float const d = std::hypot(spirit->GetPositionX() - anchorX, spirit->GetPositionY() - anchorY);
             if (d < chaseTargetDist)
             {
@@ -4227,6 +4320,92 @@ bool IccLichKingAddsAction::HandleVileSpiritMechanics()
     float const distToSlot = std::hypot(bot->GetPositionX() - tx, bot->GetPositionY() - ty);
     if (distToSlot <= arriveTol)
         return false;
+
+    // ---- H1: healer stutter-heal ------------------------------------------------
+    // CanCastSpell (PlayerbotAI.cpp:3373) refuses ANY cast-time spell while the bot is
+    // moving, so a healer running the whole 73y crossing lands nothing for ~10s and the
+    // tank dies en route. Spend a bounded slice of the 15s dormancy standing still.
+    // 2 x 1200ms against ~4.6s of slack still reaches the far side well before spirits arm.
+    //
+    // StopMoving() is mandatory, not decorative: simply skipping the MoveTo would leave
+    // the motion master running the PREVIOUS spline, and the bot would sail on still
+    // moving. StopMoving is also what clears isMoving() so the heal can actually cast.
+    static constexpr uint32 PAUSE_CHUNK_MS = 1200;
+    static constexpr uint8 PAUSE_MAX_CHUNKS = 2;
+    static constexpr float PAUSE_HEAL_RANGE = 30.0f;
+    static constexpr float PAUSE_HEAL_PCT = 90.0f;
+
+    if (botAI->IsHeal(bot))
+    {
+        HealerPause& hp = s_healerPause[pauseKey];
+        uint32 const pauseNow = getMSTime();
+
+        bool const safeToPause = !ArmedSpiritNear(bot, ARMED_DANGER_RADIUS) &&
+                                 DefileSafeAt(bot->GetPositionX(), bot->GetPositionY());
+
+        if (!safeToPause)
+        {
+            // Armed spirit or defile — abandon any running pause and run.
+            hp.startMs = 0;
+        }
+        else
+        {
+            bool const pauseRunning = hp.startMs != 0 &&
+                                      getMSTimeDiff(hp.startMs, pauseNow) < PAUSE_CHUNK_MS;
+
+            Unit* const healTarget = AI_VALUE(Unit*, "main tank");
+            bool const targetNeedsHeal = healTarget && healTarget->IsAlive() &&
+                                         healTarget->GetHealthPct() < PAUSE_HEAL_PCT &&
+                                         bot->GetDistance2d(healTarget) <= PAUSE_HEAL_RANGE;
+
+            if (!pauseRunning && targetNeedsHeal && hp.used < PAUSE_MAX_CHUNKS)
+            {
+                hp.startMs = pauseNow;
+                ++hp.used;
+            }
+
+            if (hp.startMs != 0 && getMSTimeDiff(hp.startMs, pauseNow) < PAUSE_CHUNK_MS)
+            {
+                bot->StopMoving();
+                return false;
+            }
+        }
+    }
+
+    // ---- H2: tank pacing ---------------------------------------------------------
+    // The main tank drags the boss across. If he outruns his healers while they are
+    // paused casting, H1 buys nothing. Hold him within PACE_GAP of the nearest living
+    // healer. Fails OPEN on no group / no living healer / armed spirit on him, so he can
+    // never be frozen — the worst case is a slower crossing, not a stuck tank.
+    static constexpr float PACE_GAP = 30.0f;
+
+    if (botAI->IsMainTank(bot) && !ArmedSpiritNear(bot, ARMED_DANGER_RADIUS) &&
+        DefileSafeAt(bot->GetPositionX(), bot->GetPositionY()))
+    {
+        float nearestHealerDist = std::numeric_limits<float>::max();
+        bool anyHealerAlive = false;
+
+        if (Group* group = bot->GetGroup())
+        {
+            for (GroupReference* ref = group->GetFirstMember(); ref; ref = ref->next())
+            {
+                Player* member = ref->GetSource();
+                if (!member || !member->IsAlive() || !PlayerbotAI::IsHeal(member))
+                    continue;
+
+                anyHealerAlive = true;
+                nearestHealerDist = std::min(nearestHealerDist, bot->GetDistance2d(member));
+            }
+        }
+
+        if (anyHealerAlive && nearestHealerDist > PACE_GAP)
+        {
+            // StopMoving, not a bare return: the motion master would otherwise keep
+            // running the previous spline and carry him onward anyway.
+            bot->StopMoving();
+            return false;
+        }
+    }
 
     auto const [sx, sy] = DefileAwareStep(tx, ty, defiles, diff);
     float sz = slotPos.GetPositionZ();
