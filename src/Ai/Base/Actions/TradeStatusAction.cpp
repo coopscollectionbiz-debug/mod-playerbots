@@ -216,7 +216,16 @@ bool TradeStatusAction::CheckTrade()
     }
 
     uint32 accountId = bot->GetSession()->GetAccountId();
-    if (!sPlayerbotAIConfig.IsInRandomAccountList(accountId))
+    // Owner-trade bypass (patch 0017): a real player who owns this bot may freely take (or
+    // give) items, skipping the buy/sell economics that otherwise treat the owner like a
+    // customer. Same owner guard the master branch uses in Execute(). Our bots live on
+    // rndbot-prefixed accounts, so IsInRandomAccountList() is true for them and they would
+    // otherwise fall into the economic gate below.
+    // upstream 17214b3 dropped PlayerbotAI::HasActivePlayerMaster(); the free
+    // IsRealPlayer(Player*) ("no bot AI attached") is its exact replacement.
+    bool ownerTrade = IsRealPlayer(GetMaster()) && trader == GetMaster() &&
+                      botAI->GetSecurity()->CheckLevelFor(PLAYERBOT_SECURITY_ALLOW_ALL, true, trader);
+    if (ownerTrade || !sPlayerbotAIConfig.IsInRandomAccountList(accountId))
     {
         int32 botItemsMoney = CalculateCost(bot, true);
         int32 botMoney = bot->GetTradeData()->GetMoney() + botItemsMoney;
