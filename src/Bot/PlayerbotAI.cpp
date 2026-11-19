@@ -1909,6 +1909,9 @@ void PlayerbotAI::ApplyInstanceStrategies(uint32 mapId, bool tellMaster)
         case 568:
             strategyName = "zulaman";  // Zul'Aman
             break;
+        case 580:
+            strategyName = "sunwell";  // Sunwell Plateau
+            break;
         case 574:
             strategyName = "wotlk-uk";  // Utgarde Keep
             break;
@@ -1920,9 +1923,6 @@ void PlayerbotAI::ApplyInstanceStrategies(uint32 mapId, bool tellMaster)
             break;
         case 578:
             strategyName = "wotlk-occ";  // The Oculus
-            break;
-        case 580:
-            strategyName = "sunwell";  // Sunwell Plateau
             break;
         case 585:
             strategyName = "tbc-mgt";  // Magisters' Terrace

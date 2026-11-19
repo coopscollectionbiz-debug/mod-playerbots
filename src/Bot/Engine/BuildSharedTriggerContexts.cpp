@@ -52,9 +52,9 @@ void AiObjectContext::BuildSharedTriggerContexts(
     triggerContexts.Add(new RaidHyjalTriggerContext());
     triggerContexts.Add(new RaidBlackTempleTriggerContext());
     triggerContexts.Add(new RaidZulAmanTriggerContext());
+    triggerContexts.Add(new RaidSunwellPlateauTriggerContext());
     triggerContexts.Add(new RaidOsTriggerContext());
     triggerContexts.Add(new RaidEoETriggerContext());
-    triggerContexts.Add(new RaidSunwellPlateauTriggerContext());
     triggerContexts.Add(new RaidTrialOfTheCrusaderTriggerContext());
     triggerContexts.Add(new RaidVoATriggerContext());
     triggerContexts.Add(new RaidUlduarTriggerContext());

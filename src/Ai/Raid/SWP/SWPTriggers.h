@@ -11,192 +11,432 @@
 
 // General
 
-class SwpKillOrderMarkTrigger : public Trigger
+class SunwellBotIsNotInCombatTrigger : public Trigger
 {
 public:
-    SwpKillOrderMarkTrigger(PlayerbotAI* botAI) : Trigger(botAI, "swp kill order mark") {}
-    bool IsActive() override;
-};
-
-class SwpCcMarkTrigger : public Trigger
-{
-public:
-    SwpCcMarkTrigger(PlayerbotAI* botAI) : Trigger(botAI, "swp cc mark") {}
-    bool IsActive() override;
-};
-
-class SwpAvoidHazardTrigger : public Trigger
-{
-public:
-    SwpAvoidHazardTrigger(PlayerbotAI* botAI) : Trigger(botAI, "swp avoid hazard") {}
+    SunwellBotIsNotInCombatTrigger(
+        PlayerbotAI* botAI) : Trigger(botAI, "sunwell bot is not in combat") {}
     bool IsActive() override;
 };
 
 // Kalecgos
 
-// Checked every second: the portal search and team pick walk the area and the raid.
-class SwpKalecgosTakePortalTrigger : public Trigger
+class KalecgosMeleeInBreathOrTailArcTrigger : public Trigger
 {
 public:
-    SwpKalecgosTakePortalTrigger(PlayerbotAI* botAI) : Trigger(botAI, "swp kalecgos take portal", 1000) {}
+    KalecgosMeleeInBreathOrTailArcTrigger(
+        PlayerbotAI* botAI) : Trigger(botAI, "kalecgos melee in breath or tail arc") {}
     bool IsActive() override;
 };
 
-class SwpKalecgosHealKalecTrigger : public Trigger
+class KalecgosTankPositionBossTrigger : public Trigger
 {
 public:
-    SwpKalecgosHealKalecTrigger(PlayerbotAI* botAI) : Trigger(botAI, "swp kalecgos heal kalec") {}
+    KalecgosTankPositionBossTrigger(
+        PlayerbotAI* botAI) : Trigger(botAI, "kalecgos tank position boss") {}
     bool IsActive() override;
 };
 
-class SwpKalecgosNotVictimTrigger : public Trigger
+class KalecgosRangedClumpedTrigger : public Trigger
 {
 public:
-    SwpKalecgosNotVictimTrigger(PlayerbotAI* botAI) : Trigger(botAI, "swp kalecgos not victim") {}
+    KalecgosRangedClumpedTrigger(
+        PlayerbotAI* botAI) : Trigger(botAI, "kalecgos ranged clumped") {}
+    bool IsActive() override;
+};
+
+class KalecgosSpectralRealmNeedsTankTrigger : public Trigger
+{
+public:
+    KalecgosSpectralRealmNeedsTankTrigger(
+        PlayerbotAI* botAI) : Trigger(botAI, "kalecgos spectral realm needs tank") {}
+    bool IsActive() override;
+};
+
+class KalecgosSpectralRealmNeedsHealerTrigger : public Trigger
+{
+public:
+    KalecgosSpectralRealmNeedsHealerTrigger(
+        PlayerbotAI* botAI) : Trigger(botAI, "kalecgos spectral realm needs healer") {}
+    bool IsActive() override;
+};
+
+class KalecgosStrayOffPlatformTrigger : public Trigger
+{
+public:
+    KalecgosStrayOffPlatformTrigger(
+        PlayerbotAI* botAI) : Trigger(botAI, "kalecgos stray off platform") {}
+    bool IsActive() override;
+};
+
+class KalecgosSpectralRealmNeedsDpsTrigger : public Trigger
+{
+public:
+    KalecgosSpectralRealmNeedsDpsTrigger(
+        PlayerbotAI* botAI) : Trigger(botAI, "kalecgos spectral realm needs dps") {}
+    bool IsActive() override;
+};
+
+class KalecgosSathrovarrLooseTrigger : public Trigger
+{
+public:
+    KalecgosSathrovarrLooseTrigger(
+        PlayerbotAI* botAI) : Trigger(botAI, "kalecgos sathrovarr loose in spectral realm") {}
+    bool IsActive() override;
+};
+
+class KalecgosSpectralDpsWrongTargetTrigger : public Trigger
+{
+public:
+    KalecgosSpectralDpsWrongTargetTrigger(
+        PlayerbotAI* botAI) : Trigger(botAI, "kalecgos spectral dps wrong target") {}
+    bool IsActive() override;
+};
+
+class KalecgosKalecNeedsHealingTrigger : public Trigger
+{
+public:
+    KalecgosKalecNeedsHealingTrigger(
+        PlayerbotAI* botAI) : Trigger(botAI, "kalecgos kalec needs healing") {}
     bool IsActive() override;
 };
 
 // Brutallus
 
-class SwpBrutallusTankSwapTrigger : public Trigger
+class BrutallusOutOfStationTrigger : public Trigger
 {
 public:
-    SwpBrutallusTankSwapTrigger(PlayerbotAI* botAI) : Trigger(botAI, "swp brutallus tank swap") {}
+    BrutallusOutOfStationTrigger(
+        PlayerbotAI* botAI) : Trigger(botAI, "brutallus out of station") {}
     bool IsActive() override;
 };
 
-class SwpBrutallusSoakTrigger : public Trigger
+class BrutallusTankSwapTrigger : public Trigger
 {
 public:
-    SwpBrutallusSoakTrigger(PlayerbotAI* botAI) : Trigger(botAI, "swp brutallus soak") {}
+    BrutallusTankSwapTrigger(
+        PlayerbotAI* botAI) : Trigger(botAI, "brutallus tank swap") {}
     bool IsActive() override;
 };
 
-class SwpBrutallusNotSoakerTrigger : public Trigger
+class BrutallusBurningTrigger : public Trigger
 {
 public:
-    SwpBrutallusNotSoakerTrigger(PlayerbotAI* botAI) : Trigger(botAI, "swp brutallus not soaker") {}
+    BrutallusBurningTrigger(
+        PlayerbotAI* botAI) : Trigger(botAI, "brutallus burning") {}
     bool IsActive() override;
 };
 
-class SwpBrutallusBurnTrigger : public Trigger
+// This bot carries Burn AND has a self-clear that actually strips it, so it can stay in the cone
+// and keep contributing instead of walking out. See BrutallusPurgeBurnAction for which abilities
+// qualify - it is a shorter list than it looks.
+class BrutallusCanPurgeBurnTrigger : public Trigger
 {
 public:
-    SwpBrutallusBurnTrigger(PlayerbotAI* botAI) : Trigger(botAI, "swp brutallus burn") {}
+    BrutallusCanPurgeBurnTrigger(
+        PlayerbotAI* botAI) : Trigger(botAI, "brutallus can purge burn") {}
     bool IsActive() override;
 };
 
 // Felmyst
 
-class SwpFelmystNotVictimTrigger : public Trigger
+// She is airborne, a fog lane has been identified, and this bot is standing in it. Only one lane is
+// ever fogged at a time and it disperses before the next strafe, so this is a short sideways hop and
+// the bot holds position the rest of the flight phase - see the FELMYST_* block in SWPHelpers.h.
+class FelmystInFogLaneTrigger : public Trigger
 {
 public:
-    SwpFelmystNotVictimTrigger(PlayerbotAI* botAI) : Trigger(botAI, "swp felmyst not victim") {}
+    FelmystInFogLaneTrigger(
+        PlayerbotAI* botAI) : Trigger(botAI, "felmyst in fog lane") {}
     bool IsActive() override;
 };
 
-class SwpFelmystVaporTrigger : public Trigger
+// A raid member is Encapsulated and this bot is inside the 20y blast. The victim itself is pacified
+// and rooted, so clearing out is entirely the job of the bots around it.
+class FelmystNearEncapsulateTrigger : public Trigger
 {
 public:
-    SwpFelmystVaporTrigger(PlayerbotAI* botAI) : Trigger(botAI, "swp felmyst vapor") {}
+    FelmystNearEncapsulateTrigger(
+        PlayerbotAI* botAI) : Trigger(botAI, "felmyst near encapsulate") {}
     bool IsActive() override;
 };
 
-class SwpFelmystLaneTrigger : public Trigger
+// Gas Nova is on enough of the raid nearby for a Mass Dispel to be worth its cooldown. Priest-only,
+// and stands down whenever the bot owes a repositioning move - see FelmystShouldMassDispel.
+// A raid member has been mind-controlled and is now fighting the raid. They cannot be saved (see
+// FindFelmystCharmedRaider), so the only answer is to kill them - which is the retail mechanic too.
+class FelmystCharmedRaiderLooseTrigger : public Trigger
 {
 public:
-    SwpFelmystLaneTrigger(PlayerbotAI* botAI) : Trigger(botAI, "swp felmyst lane") {}
+    FelmystCharmedRaiderLooseTrigger(
+        PlayerbotAI* botAI) : Trigger(botAI, "felmyst charmed raider loose") {}
+    bool IsActive() override;
+};
+
+class FelmystGasNovaDispellableTrigger : public Trigger
+{
+public:
+    FelmystGasNovaDispellableTrigger(
+        PlayerbotAI* botAI) : Trigger(botAI, "felmyst gas nova dispellable") {}
+    bool IsActive() override;
+};
+
+// This bot is stranded away from the raid and has no live reason to be - typically a vapor carrier whose
+// vapor has despawned. Stands down while any fog lane is live so the walk back never crosses one.
+class FelmystStrayFromRaidTrigger : public Trigger
+{
+public:
+    FelmystStrayFromRaidTrigger(
+        PlayerbotAI* botAI) : Trigger(botAI, "felmyst stray from raid") {}
+    bool IsActive() override;
+};
+
+class FelmystChasedByVaporTrigger : public Trigger
+{
+public:
+    FelmystChasedByVaporTrigger(
+        PlayerbotAI* botAI) : Trigger(botAI, "felmyst chased by vapor") {}
     bool IsActive() override;
 };
 
 // Eredar Twins
-// Checked every 2s: finding the nearest raid member walks the whole group.
 
-class SwpTwinsSpreadTrigger : public Trigger
+// A Conflagration is being cast AT THIS BOT and the cast has not landed yet. That window is the whole
+// mechanic: the destination is resolved when the cast completes, so running now moves an 8y chain bomb
+// out of the raid, and once it lands the bot is confused and can do nothing at all.
+class TwinsConflagrationOnMeTrigger : public Trigger
 {
 public:
-    SwpTwinsSpreadTrigger(PlayerbotAI* botAI) : Trigger(botAI, "swp twins spread", 2) {}
+    TwinsConflagrationOnMeTrigger(
+        PlayerbotAI* botAI) : Trigger(botAI, "twins conflagration on me") {}
     bool IsActive() override;
 };
 
-class SwpSacrolashTankTrigger : public Trigger
+// Somebody else nearby is a Conflagration bomb - either being cast at, or already pulsing 1600 into
+// everything within 8y of itself.
+class TwinsNearConflagrationTrigger : public Trigger
 {
 public:
-    SwpSacrolashTankTrigger(PlayerbotAI* botAI) : Trigger(botAI, "swp sacrolash tank") {}
+    TwinsNearConflagrationTrigger(
+        PlayerbotAI* botAI) : Trigger(botAI, "twins near conflagration") {}
     bool IsActive() override;
 };
 
-class SwpAlythessTankTrigger : public Trigger
+// This bot is damaging Alythess while Sacrolash is still alive. Every point of it is thrown away -
+// Empower fully heals whichever twin survives - and killing Alythess first is strictly worse besides,
+// because the survivor then inherits Conflagration.
+class TwinsWrongDpsTargetTrigger : public Trigger
 {
 public:
-    SwpAlythessTankTrigger(PlayerbotAI* botAI) : Trigger(botAI, "swp alythess tank") {}
+    TwinsWrongDpsTargetTrigger(
+        PlayerbotAI* botAI) : Trigger(botAI, "twins wrong dps target") {}
     bool IsActive() override;
 };
 
-// M'uru
-
-class SwpVoidSentinelTankTrigger : public Trigger
+// The raid's off tank is not holding Alythess. She never melees, so her entire threat to the raid is
+// Blaze landing on whoever holds her - which needs to be somebody with a health pool and a healer.
+class TwinsAlythessUntankedTrigger : public Trigger
 {
 public:
-    SwpVoidSentinelTankTrigger(PlayerbotAI* botAI) : Trigger(botAI, "swp void sentinel tank") {}
+    TwinsAlythessUntankedTrigger(
+        PlayerbotAI* botAI) : Trigger(botAI, "twins alythess untanked") {}
     bool IsActive() override;
 };
 
-class SwpDarkFiendTrigger : public Trigger
+// One trigger for BOTH directions of blaze footwork - stepping out of a patch, and stepping into one to
+// convert away a stack of Dark Touched. Splitting them into two triggers would recreate the in-and-out
+// oscillator; see GetTwinsBlazeStation, which is the single position authority.
+class TwinsBlazeFootworkTrigger : public Trigger
 {
 public:
-    SwpDarkFiendTrigger(PlayerbotAI* botAI) : Trigger(botAI, "swp dark fiend") {}
+    TwinsBlazeFootworkTrigger(
+        PlayerbotAI* botAI) : Trigger(botAI, "twins blaze footwork") {}
+    bool IsActive() override;
+};
+
+// Buried in Flame Touched, and out of range of the Shadow Blades that would strip it.
+class TwinsNeedsShadowCleanseTrigger : public Trigger
+{
+public:
+    TwinsNeedsShadowCleanseTrigger(
+        PlayerbotAI* botAI) : Trigger(botAI, "twins needs shadow cleanse") {}
+    bool IsActive() override;
+};
+
+// Pyrogenics is up on Alythess and this bot can strip a magic buff off an enemy.
+class TwinsPyrogenicsUpTrigger : public Trigger
+{
+public:
+    TwinsPyrogenicsUpTrigger(
+        PlayerbotAI* botAI) : Trigger(botAI, "twins pyrogenics up") {}
+    bool IsActive() override;
+};
+
+// This bot's co-tank on Sacrolash has been hit by Confounding Blow and is confused, so it cannot steer
+// her for the next 6s. Symmetric between the two Sacrolash tanks - whoever taunts keeps her until the
+// next Confounding Blow lands on them.
+class TwinsCotankConfoundedTrigger : public Trigger
+{
+public:
+    TwinsCotankConfoundedTrigger(
+        PlayerbotAI* botAI) : Trigger(botAI, "twins cotank confounded") {}
+    bool IsActive() override;
+};
+
+// Phase 2: Sacrolash is dead and this bot is out of the clump. Shadow Nova is by then the only shadow in
+// the fight, so standing together is what strips Flame Touched off the raid - see TWINS_STACK_RANGE.
+// -------------------------------------------------------------------------------------------------
+// M'uru / Entropius
+
+// Standing in - or about to be standing in - M'uru's 15y Darkness. Ranked above even the Dark Fiend
+// dispel: 3000 shadow per second with healing received at -100% kills a level-70 bot in four ticks and
+// no healer can answer it, so a bot in there is worth nothing to the raid until it is out.
+class MuruInDarknessTrigger : public Trigger
+{
+public:
+    MuruInDarknessTrigger(PlayerbotAI* botAI) : Trigger(botAI, "muru in darkness") {}
+    bool IsActive() override;
+};
+
+// A Dark Fiend this bot has been assigned still carries 45934. This is THE wipe mechanic of the fight:
+// 45944 is 5000 plus 2000 per second for ten seconds to every player within FIFTY yards, uncapped, and
+// damage cannot kill a fiend at all - only a MAGIC dispel removes it.
+class MuruDarkFiendUpTrigger : public Trigger
+{
+public:
+    MuruDarkFiendUpTrigger(PlayerbotAI* botAI) : Trigger(botAI, "muru dark fiend up") {}
+    bool IsActive() override;
+};
+
+class MuruInVoidZoneTrigger : public Trigger
+{
+public:
+    MuruInVoidZoneTrigger(PlayerbotAI* botAI) : Trigger(botAI, "muru in void zone") {}
+    bool IsActive() override;
+};
+
+// An ARMED singularity is within pull range. Armed matters: it spends the first 8 of its 18 seconds
+// without 46228 and cannot grab anybody, and it is chasing someone the whole time.
+class MuruNearSingularityTrigger : public Trigger
+{
+public:
+    MuruNearSingularityTrigger(PlayerbotAI* botAI) : Trigger(botAI, "muru near singularity") {}
+    bool IsActive() override;
+};
+
+// A melee DPS is inside a Void Sentinel's 10y Shadow Pulse. The Sentinel's own tank is exempt.
+class MuruInShadowPulseTrigger : public Trigger
+{
+public:
+    MuruInShadowPulseTrigger(PlayerbotAI* botAI) : Trigger(botAI, "muru in shadow pulse") {}
+    bool IsActive() override;
+};
+
+// A tank's assigned add is loose on somebody who is not a tank.
+class MuruAddUntankedTrigger : public Trigger
+{
+public:
+    MuruAddUntankedTrigger(PlayerbotAI* botAI) : Trigger(botAI, "muru add untanked") {}
+    bool IsActive() override;
+};
+
+// This bot is on the wrong thing for its lane - including the handoff window, where M'uru is clamped to
+// 1 HP and NOT_SELECTABLE for a full 7 seconds before Entropius exists.
+class MuruWrongTargetTrigger : public Trigger
+{
+public:
+    MuruWrongTargetTrigger(PlayerbotAI* botAI) : Trigger(botAI, "muru wrong target") {}
+    bool IsActive() override;
+};
+
+class TwinsOutOfAlythessStackTrigger : public Trigger
+{
+public:
+    TwinsOutOfAlythessStackTrigger(
+        PlayerbotAI* botAI) : Trigger(botAI, "twins out of alythess stack") {}
+    bool IsActive() override;
+};
+
+// Sacrolash has drifted toward the 50y mark where CheckInRoom fires raid-wide Fireblast. Only her
+// current tank sees this, because only her current tank can walk her back.
+class TwinsSacrolashOverextendedTrigger : public Trigger
+{
+public:
+    TwinsSacrolashOverextendedTrigger(
+        PlayerbotAI* botAI) : Trigger(botAI, "twins sacrolash overextended") {}
     bool IsActive() override;
 };
 
 // Kil'jaeden
 
-class SwpHandTankTrigger : public Trigger
+// An Armageddon marker is close enough that the meteor beneath it would land on this bot. 9999 fire in a
+// 9y circle, six seconds after the marker appears - instant death at level 70.
+class KjInArmageddonTrigger : public Trigger
 {
 public:
-    SwpHandTankTrigger(PlayerbotAI* botAI) : Trigger(botAI, "swp hand tank") {}
+    KjInArmageddonTrigger(PlayerbotAI* botAI) : Trigger(botAI, "kj in armageddon") {}
     bool IsActive() override;
 };
 
-class SwpHandVolleyTrigger : public Trigger
+// This bot is possessing a blue drake. Stays true for the whole possession: the drake is the only thing
+// standing between the raid and 47,499 unmitigated shadow, and the bot's own body is pacified, silenced
+// and movement-locked, so it has nothing else it could be doing.
+class KjPilotingDrakeTrigger : public Trigger
 {
 public:
-    SwpHandVolleyTrigger(PlayerbotAI* botAI) : Trigger(botAI, "swp hand volley") {}
+    KjPilotingDrakeTrigger(PlayerbotAI* botAI) : Trigger(botAI, "kj piloting drake") {}
     bool IsActive() override;
 };
 
-class SwpRangedAddTrigger : public Trigger
+// Kil'jaeden is carrying the 8s Darkness aura. Its expiry deals 47,499 at radius 50000 - the whole map -
+// so this is not a dodge, it is a deadline to be inside the drake's 12y shield.
+class KjDarknessIncomingTrigger : public Trigger
 {
 public:
-    SwpRangedAddTrigger(PlayerbotAI* botAI) : Trigger(botAI, "swp ranged add") {}
+    KjDarknessIncomingTrigger(PlayerbotAI* botAI) : Trigger(botAI, "kj darkness incoming") {}
     bool IsActive() override;
 };
 
-class SwpFireBloomTrigger : public Trigger
+// An orb has been empowered, this bot is the designated pilot, and nobody in the raid holds a drake.
+class KjOrbAvailableTrigger : public Trigger
 {
 public:
-    SwpFireBloomTrigger(PlayerbotAI* botAI) : Trigger(botAI, "swp fire bloom") {}
+    KjOrbAvailableTrigger(PlayerbotAI* botAI) : Trigger(botAI, "kj orb available") {}
     bool IsActive() override;
 };
 
-class SwpTakeDragonOrbTrigger : public Trigger
+// This bot is carrying Fire Bloom - ten separate 1618 hits into 10y of allies, one every two seconds.
+// Deliberately inactive inside a Darkness window, because the shield strips the DoT outright.
+class KjFireBloomOnMeTrigger : public Trigger
 {
 public:
-    SwpTakeDragonOrbTrigger(PlayerbotAI* botAI) : Trigger(botAI, "swp take dragon orb") {}
+    KjFireBloomOnMeTrigger(PlayerbotAI* botAI) : Trigger(botAI, "kj fire bloom on me") {}
     bool IsActive() override;
 };
 
-class SwpRideDragonTrigger : public Trigger
+// The main tank has drifted off the authored anchor, and the boss chases his victim - so the boss has
+// drifted with him, and every fixed position in the fight is measured from that anchor.
+class KjBossOffAnchorTrigger : public Trigger
 {
 public:
-    SwpRideDragonTrigger(PlayerbotAI* botAI) : Trigger(botAI, "swp ride dragon") {}
+    KjBossOffAnchorTrigger(PlayerbotAI* botAI) : Trigger(botAI, "kj boss off anchor") {}
     bool IsActive() override;
 };
 
-class SwpDarknessStackTrigger : public Trigger
+// A ranged bot or healer is off its slot on the spread ring.
+class KjOutOfStationTrigger : public Trigger
 {
 public:
-    SwpDarknessStackTrigger(PlayerbotAI* botAI) : Trigger(botAI, "swp darkness stack") {}
+    KjOutOfStationTrigger(PlayerbotAI* botAI) : Trigger(botAI, "kj out of station") {}
+    bool IsActive() override;
+};
+
+// This bot is on the wrong thing for its lane - including the two windows where Kil'jaeden exists but
+// cannot legally be attacked (the 11s rebirth, and after the killing blow).
+class KjWrongTargetTrigger : public Trigger
+{
+public:
+    KjWrongTargetTrigger(PlayerbotAI* botAI) : Trigger(botAI, "kj wrong target") {}
     bool IsActive() override;
 };
 

@@ -51,10 +51,10 @@ void AiObjectContext::BuildSharedActionContexts(
     actionContexts.Add(new RaidHyjalActionContext());
     actionContexts.Add(new RaidBlackTempleActionContext());
     actionContexts.Add(new RaidZulAmanActionContext());
+    actionContexts.Add(new RaidSunwellPlateauActionContext());
     actionContexts.Add(new RaidNaxxActionContext());
     actionContexts.Add(new RaidOsActionContext());
     actionContexts.Add(new RaidEoEActionContext());
-    actionContexts.Add(new RaidSunwellPlateauActionContext());
     actionContexts.Add(new RaidTrialOfTheCrusaderActionContext());
     actionContexts.Add(new RaidVoAActionContext());
     actionContexts.Add(new RaidUlduarActionContext());
