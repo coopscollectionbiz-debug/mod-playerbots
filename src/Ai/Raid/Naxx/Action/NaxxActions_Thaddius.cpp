@@ -17,8 +17,9 @@ bool ThaddiusAttackNearestPetAction::isUseful()
     if (!helper.IsPhasePet())
         return false;
 
-    Unit* target = helper.GetNearestPet();
-    if (!target || !bot->IsWithinDistInMap(target, 50.0f))
+    // The assigned pet can be the far one (the platforms are ~80 yd apart).
+    Unit* target = helper.GetAssignedPet();
+    if (!target || !bot->IsWithinDistInMap(target, 150.0f))
         return false;
 
     return true;
@@ -26,8 +27,27 @@ bool ThaddiusAttackNearestPetAction::isUseful()
 
 bool ThaddiusAttackNearestPetAction::Execute(Event /*event*/)
 {
-    Unit* target = helper.GetNearestPet();
-    if (!target || !bot->IsWithinLOSInMap(target))
+    Unit* target = helper.GetAssignedPet();
+    if (!target)
+        return false;
+
+    // The two pet tanks hold their platform spot whether or not they have aggro yet: a pet follows its
+    // victim, and one drawn down to the low floor leaves its 28 yd leash and the coils shock the raid
+    // (focus runs landed on the low floor; 20 Shock deaths with both pets still at 99-100%).
+    bool const petHolder = PlayerbotAI::IsMainTank(bot) || PlayerbotAI::IsAssistTankOfIndex(bot, 0);
+    if (petHolder)
+    {
+        std::pair<float, float> const posForTank = helper.PetPhaseGetPosForTank();
+        if (bot->GetExactDist2d(posForTank.first, posForTank.second) > 4.0f)
+        {
+            if (AI_VALUE(Unit*, "current target") != target && bot->IsWithinLOSInMap(target))
+                Attack(target);
+            return MoveTo(533, posForTank.first, posForTank.second, helper.tankPosZ, false, false, false, false,
+                          MovementPriority::MOVEMENT_COMBAT);
+        }
+    }
+
+    if (!bot->IsWithinLOSInMap(target))
         return MoveTo(target, 0, MovementPriority::MOVEMENT_COMBAT);
 
     if (AI_VALUE(Unit*, "current target") != target)

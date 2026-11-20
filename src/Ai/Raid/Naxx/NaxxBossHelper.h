@@ -280,26 +280,35 @@ public:
 
         return getMSTime() - _last_land_ms <= POSITION_TIME_AFTER_LANDED;
     }
+    // The ice blocks themselves (GO 181247) are the cover: Frost Breath spares a target when a block sits on
+    // the line from Sapphiron to it and the target is within 10 yd of that block (boss_sapphiron_40.cpp
+    // IsValidExplosionTarget). Hiding only while a member still carried the Icebolt aura let the raid walk
+    // off before the breath landed (Naxx40 focus runs: 16 Frost Breath deaths over two runs).
+    GameObject* NearestIceBlock() { return bot->FindNearestGameObject(181247, 80.0f); }
+    // Hide only once the last block is down. Icebolt splashes everyone near its target, and gathering behind
+    // the FIRST block while the 2nd and 3rd were still being cast lost 5 bots to one bolt (9 Icebolt deaths
+    // in tr-20261120-090913-1). The script summons the third block and starts Frost Breath on the same
+    // event; the explosion lands 8.5 s later. A raid too small for three targets breathes after fewer.
+    bool AllIceBlocksDown()
+    {
+        std::list<GameObject*> blocks;
+        bot->GetGameObjectListWithEntryInGrid(blocks, 181247, 80.0f);
+        uint32 targets = 0;
+        if (Group* group = bot->GetGroup())
+            for (GroupReference* ref = group->GetFirstMember(); ref; ref = ref->next())
+                if (Player* member = ref->GetSource())
+                    if (member->IsAlive() && member->GetMapId() == bot->GetMapId())
+                        ++targets;
+        return !blocks.empty() && blocks.size() >= std::min<uint32>(3, targets);
+    }
     bool WaitForExplosion()
     {
         if (!IsPhaseFlight())
             return false;
 
-        Group* group = bot->GetGroup();
-        if (!group)
-            return false;
-
-        for (GroupReference* ref = group->GetFirstMember(); ref; ref = ref->next())
-        {
-            Player* member = ref->GetSource();
-            if (member &&
-                (NaxxSpellIds::HasAnyAura(member, {NaxxSpellIds::Icebolt10, NaxxSpellIds::Icebolt25}) ||
-                 botAI->HasAura("icebolt", member, false, false, -1, true)))
-            {
-                return true;
-            }
-        }
-        return false;
+        // Not the Icebolt aura on a member: that sent the raid to the first frozen player while more bolts
+        // were still coming.
+        return AllIceBlocksDown();
     }
     bool FindPosToAvoidChill(std::vector<float>& dest)
     {
@@ -611,16 +620,40 @@ public:
 
         return unit;
     }
+    // Each pet is fought on its own platform by its own half of the raid. A pet dragged more than 28 yd from
+    // home makes its Tesla Coil shock the raid (boss_thaddius_40.cpp), and sending everyone to the nearest pet
+    // left the other one chasing a target across the room: Naxx40 boss-focus runs lost 46 bots to Shock
+    // (tp-20261120-065855-2). Main tank and even raid slots take Feugen; the first assist tank and odd slots
+    // take Stalagg. Once one pet is down, everyone takes the other.
+    Unit* GetAssignedPet()
+    {
+        bool const feugenUp = IsPetActive(feugen);
+        bool const stalaggUp = IsPetActive(stalagg);
+        if (!feugenUp || !stalaggUp)
+            return feugenUp ? feugen : (stalaggUp ? stalagg : nullptr);
+
+        bool toStalagg;
+        if (PlayerbotAI::IsMainTank(bot))
+            toStalagg = false;
+        else if (PlayerbotAI::IsAssistTankOfIndex(bot, 0))
+            toStalagg = true;
+        else
+        {
+            int32 const slot = botAI->GetGroupSlotIndex(bot);
+            toStalagg = slot >= 0 && (slot % 2) == 1;
+        }
+        return toStalagg ? stalagg : feugen;
+    }
     std::pair<float, float> PetPhaseGetPosForTank()
     {
-        if (GetNearestPet() == feugen)
+        if (GetAssignedPet() == feugen)
             return tankPosFeugen;
 
         return tankPosStalagg;
     }
     std::pair<float, float> PetPhaseGetPosForRanged()
     {
-        if (GetNearestPet() == feugen)
+        if (GetAssignedPet() == feugen)
             return rangedPosFeugen;
 
         return rangedPosStalagg;

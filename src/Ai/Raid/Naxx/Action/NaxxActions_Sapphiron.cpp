@@ -71,6 +71,21 @@ bool SapphironFlightPositionAction::Execute(Event /*event*/)
 
 bool SapphironFlightPositionAction::MoveToNearestIcebolt()
 {
+    // Stand 3 yd behind the nearest ice block, on the line from Sapphiron through the block.
+    if (GameObject* block = helper.NearestIceBlock())
+    {
+        if (Unit* boss = AI_VALUE2(Unit*, "find target", "sapphiron"))
+        {
+            float const angle = boss->GetAngle(block);
+            float const posX = block->GetPositionX() + cos(angle) * 3.0f;
+            float const posY = block->GetPositionY() + sin(angle) * 3.0f;
+            if (bot->GetExactDist2d(posX, posY) < 1.5f)
+                return false;
+            return MoveTo(NAXX_MAP_ID, posX, posY, helper.GENERIC_HEIGHT, false, false, false, false,
+                          MovementPriority::MOVEMENT_COMBAT);
+        }
+    }
+
     Group* group = bot->GetGroup();
     if (!group)
         return false;
