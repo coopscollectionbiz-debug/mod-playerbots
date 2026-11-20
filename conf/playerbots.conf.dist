@@ -494,6 +494,11 @@ AiPlayerbot.DropObsoleteQuests = 1
 # Auto add dungeon/raid strategies when entering the instance if implemented
 AiPlayerbot.ApplyInstanceStrategies = 1
 
+# The AQ40 strategy's Twin Emperors part (lathcf's Twins v2). 0 leaves the fight to mod-raid-clear's
+# Twin Emperors rules; only one of the two should own it. C'Thun and Huhuran are unaffected.
+# Default: 1
+AiPlayerbot.Aq40.TwinEmperors.Enable = 1
+
 # Enable auto avoid aoe strategy
 # Default: 1 (enabled)
 AiPlayerbot.AutoAvoidAoe = 1

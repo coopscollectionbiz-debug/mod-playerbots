@@ -296,6 +296,7 @@ public:
     std::string combatStrategies, nonCombatStrategies;
     std::string randomBotCombatStrategies, randomBotNonCombatStrategies;
     bool applyInstanceStrategies;
+    bool aq40TwinEmperors;  // AiPlayerbot.Aq40.TwinEmperors.Enable: the AQ40 strategy's Twin Emperors part
     uint32 randomBotMinLevel, randomBotMaxLevel;
     float randomChangeMultiplier;
 

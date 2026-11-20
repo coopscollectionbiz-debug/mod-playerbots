@@ -15,6 +15,10 @@
 // always-active action starves anything ranked under it. ACTION_RAID is 60, ACTION_EMERGENCY 90.
 void RaidAq40Strategy::InitTriggers(std::vector<TriggerNode*>& triggers)
 {
+    // AiPlayerbot.Aq40.TwinEmperors.Enable: off leaves the Twin Emperors to mod-raid-clear (only one should own
+    // the fight); C'Thun and Huhuran below stay on.
+    if (sPlayerbotAIConfig.aq40TwinEmperors)
+    {
     // Housekeeping, and harmless: only fires out of combat with the encounter not running.
     triggers.push_back(new TriggerNode("aq40 twins not in combat", {
         NextAction("aq40 twins erase trackers", ACTION_EMERGENCY + 11) }));
@@ -106,6 +110,8 @@ void RaidAq40Strategy::InitTriggers(std::vector<TriggerNode*>& triggers)
     // move (Revision 3 §12.1). After a window a melee bot's twin is beside it, and native combat movement engages it.
     // Fixed (anchored) spots are for bodies that must be in a known place at the roll: healers and the four
     // designated tanks (Revision 9 §18.1: ranged Dps are native too).
+
+    }
 
     // ---- C'Thun ----
     // The two encounters never run at once, so relevance values overlapping the Twins ones are fine.
@@ -227,9 +233,12 @@ void RaidAq40Strategy::InitMultipliers(std::vector<Multiplier*>& multipliers)
 {
     // ALL THREE ship together. Shipping the target-hold veto later cost the first attempt four revisions, and the
     // threat multiplier is what enforces hold-fire (ruling R8).
-    multipliers.push_back(new TwinEmperorsMovementMultiplier(botAI));
-    multipliers.push_back(new TwinEmperorsTargetHoldMultiplier(botAI));
-    multipliers.push_back(new TwinEmperorsThreatMultiplier(botAI));
+    if (sPlayerbotAIConfig.aq40TwinEmperors)
+    {
+        multipliers.push_back(new TwinEmperorsMovementMultiplier(botAI));
+        multipliers.push_back(new TwinEmperorsTargetHoldMultiplier(botAI));
+        multipliers.push_back(new TwinEmperorsThreatMultiplier(botAI));
+    }
     multipliers.push_back(new Aq40CthunMovementMultiplier(botAI));
     multipliers.push_back(new Aq40CthunTargetHoldMultiplier(botAI));
     multipliers.push_back(new Aq40CthunCastSafetyMultiplier(botAI));

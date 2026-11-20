@@ -26,17 +26,30 @@ bool AnubrekhanChooseTargetAction::Execute(Event /*event*/)
         if (botAI->EqualLowercaseName(unit->GetName(), "anub'rekhan"))
             target_boss = unit;
 
-        // Corpse Scarabs (five from every raid member who dies) on someone other than a tank.
+        // Corpse Scarabs (five from every raid member who dies) on someone other than a tank. One on a
+        // healer comes first: a dead healer starts the next five.
         if (botAI->EqualLowercaseName(unit->GetName(), "corpse scarab") && unit->IsAlive() && unit->GetVictim() &&
             unit->GetVictim()->ToPlayer() && !botAI->IsTank(unit->GetVictim()->ToPlayer()))
         {
-            if (!loose_scarab || bot->GetExactDist(unit) < bot->GetExactDist(loose_scarab))
+            bool const onHealer = botAI->IsHeal(unit->GetVictim()->ToPlayer());
+            bool const bestOnHealer = loose_scarab && loose_scarab->GetVictim() && loose_scarab->GetVictim()->ToPlayer() &&
+                                      botAI->IsHeal(loose_scarab->GetVictim()->ToPlayer());
+            if (!loose_scarab || (onHealer && !bestOnHealer) ||
+                (onHealer == bestOnHealer && bot->GetExactDist(unit) < bot->GetExactDist(loose_scarab)))
                 loose_scarab = unit;
         }
     }
-    // Melee damage dealers clear the scarabs off the raid first: they come in fives and finish
-    // off the healers and casters they land on, and each death brings five more.
-    if (loose_scarab && !botAI->IsTank(bot) && !botAI->IsRanged(bot))
+    // Every damage dealer, melee and ranged, clears the scarabs off the raid first: they come in fives and
+    // finish off the healers and casters they land on, and each death brings five more. Melee alone was
+    // too slow (Corpse Scarabs: 28 of 45 deaths in the 11-19 item level 70 wipes). An off-tank with no Crypt
+    // Guard loose takes them too, so they end up on plate instead of cloth.
+    bool guardLoose = false;
+    for (Unit* g : target_guards)
+        if (g->GetVictim() && g->GetVictim()->ToPlayer() && !botAI->IsTank(g->GetVictim()->ToPlayer()))
+            guardLoose = true;
+    bool const takesScarabs = (!botAI->IsTank(bot) && !botAI->IsHeal(bot)) ||
+                              (botAI->IsAssistTank(bot) && !botAI->IsMainTank(bot) && !guardLoose);
+    if (loose_scarab && takesScarabs)
     {
         if (context->GetValue<Unit*>("current target")->Get() == loose_scarab)
             return false;
