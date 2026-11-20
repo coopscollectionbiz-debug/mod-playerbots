@@ -34,8 +34,10 @@ bool ThaddiusAttackNearestPetAction::Execute(Event /*event*/)
     // The two pet tanks hold their platform spot whether or not they have aggro yet: a pet follows its
     // victim, and one drawn down to the low floor leaves its 28 yd leash and the coils shock the raid
     // (focus runs landed on the low floor; 20 Shock deaths with both pets still at 99-100%).
+    // In combat only: out of combat the tank spots are inside the pets' aggro range (Feugen pulled at
+    // 21.7 yd), and the pull itself is DungeonClear's (both pets at once, each onto its own tank).
     bool const petHolder = PlayerbotAI::IsMainTank(bot) || PlayerbotAI::IsAssistTankOfIndex(bot, 0);
-    if (petHolder)
+    if (petHolder && bot->IsInCombat())
     {
         std::pair<float, float> const posForTank = helper.PetPhaseGetPosForTank();
         if (bot->GetExactDist2d(posForTank.first, posForTank.second) > 4.0f)
