@@ -318,6 +318,7 @@ constexpr uint32 TWINS_STAGING_EPISODE_GAP_MS = 5000;
 // real player (no bot AI, or a selfbot), not the bot itself, on the bot's map within ROOM_RADIUS of that midpoint.
 // When the instance-wide part fails it drops the instance's staging cache (lock-free while no instance holds one),
 // so the next form-up is a new episode.
+bool TwinsOwnerInRoom(Player* bot);
 bool IsTwinsFormUp(Player* bot);
 // The bot's form-up assignment: Aq40TwinsRules::AssignTwins over its group (the same inputs the engage latch uses,
 // so the same deterministic result), cached per instance for TWINS_STAGING_TTL_MS under its own mutex, apart from

@@ -2738,6 +2738,32 @@ namespace
     }
 }  // namespace
 
+// A player (or self-bot) owner on this map, inside the Twins room: someone who can say "twins pull".
+bool TwinsOwnerInRoom(Player* bot)
+{
+    PlayerbotAI* const botAI = GET_PLAYERBOT_AI(bot);
+    Player* const master = botAI ? botAI->GetMaster() : nullptr;
+    if (!master || master == bot || !master->IsInWorld() || master->GetMap() != bot->GetMap())
+        return false;
+    if (GET_PLAYERBOT_AI(master) && !IsSelfBot(master))
+        return false;
+    Position const mid((TWINS_VEKLOR_SPAWN.GetPositionX() + TWINS_VEKNILASH_SPAWN.GetPositionX()) * 0.5f,
+                       (TWINS_VEKLOR_SPAWN.GetPositionY() + TWINS_VEKNILASH_SPAWN.GetPositionY()) * 0.5f,
+                       (TWINS_VEKLOR_SPAWN.GetPositionZ() + TWINS_VEKNILASH_SPAWN.GetPositionZ()) * 0.5f);
+    return master->GetExactDist(mid) <= Aq40TwinsRules::ROOM_RADIUS;
+}
+
+// No player who could say "twins pull" on this map: a bot master, or an owner elsewhere (DungeonClear's GM driver).
+// A player owner on the map but not in the room yet is still coming: the bots follow them in and wait.
+bool TwinsNoOwnerHere(Player* bot)
+{
+    PlayerbotAI* const botAI = GET_PLAYERBOT_AI(bot);
+    Player* const master = botAI ? botAI->GetMaster() : nullptr;
+    if (!master || master == bot || !master->IsInWorld() || master->GetMap() != bot->GetMap())
+        return true;
+    return GET_PLAYERBOT_AI(master) && !IsSelfBot(master);
+}
+
 bool IsTwinsFormUp(Player* bot)
 {
     if (!IsInAq40(bot) || !bot->IsInWorld())
@@ -2767,15 +2793,12 @@ bool IsTwinsFormUp(Player* bot)
                        (TWINS_VEKLOR_SPAWN.GetPositionZ() + TWINS_VEKNILASH_SPAWN.GetPositionZ()) * 0.5f);
     if (bot->GetExactDist(mid) > Aq40TwinsRules::ROOM_RADIUS)
         return false;
-    PlayerbotAI* const botAI = GET_PLAYERBOT_AI(bot);
-    Player* const master = botAI ? botAI->GetMaster() : nullptr;
-    if (!master || master == bot || !master->IsInWorld() || master->GetMap() != bot->GetMap())
-        return false;
-    // A bot master (random-bot groups, all-bot test raids): no owner to say "twins pull", so the form-up runs only
-    // with AiPlayerbot.Aq40.TwinEmperors.AutoPull, and warlock A pulls itself once everyone is formed up.
-    if (GET_PLAYERBOT_AI(master) && !IsSelfBot(master) && !sPlayerbotAIConfig.aq40TwinsAutoPull)
-        return false;
-    return master->GetExactDist(mid) <= Aq40TwinsRules::ROOM_RADIUS;
+    // A player owner in the room says "twins pull". With nobody to say it (a bot master, or an owner who is not
+    // here - DungeonClear's GM driver, say) the form-up runs only with AiPlayerbot.Aq40.TwinEmperors.AutoPull, and
+    // warlock A pulls itself once everyone is formed up (TwinsAutoPullDue).
+    if (TwinsOwnerInRoom(bot))
+        return true;
+    return sPlayerbotAIConfig.aq40TwinsAutoPull && TwinsNoOwnerHere(bot);
 }
 
 TwinsMe GetTwinsStagingMe(Player* bot)
@@ -2838,9 +2861,7 @@ bool TwinsAutoPullDue(Player* bot)
 {
     if (!sPlayerbotAIConfig.aq40TwinsAutoPull || !IsTwinsFormUp(bot))
         return false;
-    PlayerbotAI* const botAI = GET_PLAYERBOT_AI(bot);
-    Player* const master = botAI ? botAI->GetMaster() : nullptr;
-    if (!master || !GET_PLAYERBOT_AI(master) || IsSelfBot(master))
+    if (!TwinsNoOwnerHere(bot))
         return false;  // a player owner says "twins pull" themselves
     TwinsStagingEntry e;
     Position stageA;
