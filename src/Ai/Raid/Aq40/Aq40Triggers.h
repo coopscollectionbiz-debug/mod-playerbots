@@ -130,6 +130,14 @@ public:
     bool IsActive() override;
 };
 
+// All-bot raids stand in for the owner's "twins pull" once everyone is formed up.
+class Aq40TwinsAutoPullTrigger : public Trigger
+{
+public:
+    Aq40TwinsAutoPullTrigger(PlayerbotAI* botAI) : Trigger(botAI, "aq40 twins auto pull", 2) {}
+    bool IsActive() override;
+};
+
 // C'Thun. Every name is prefixed "aq40 cthun" for the same shared-registry reason as above.
 
 class Aq40CthunNotInCombatTrigger : public Trigger

@@ -85,3 +85,5 @@ bool Aq40TwinsFormUpTrigger::IsActive()
     Position spot;
     return GetTwinsStagingSpot(bot, spot);
 }
+
+bool Aq40TwinsAutoPullTrigger::IsActive() { return TwinsAutoPullDue(bot); }

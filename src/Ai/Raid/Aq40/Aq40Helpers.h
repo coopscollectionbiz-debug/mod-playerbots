@@ -341,6 +341,8 @@ void TwinsReportStageMove(Player* bot, bool moved, float dist);
 // assigned bot) whispers the master
 // `Twins: formed up - say "twins pull" when ready.` Call it from the bot's own staging action.
 void TwinsMaybeAnnounceFormedUp(Player* bot);
+// All-bot raids (AiPlayerbot.Aq40.TwinEmperors.AutoPull): warlock A, everyone formed up, a bot master.
+bool TwinsAutoPullDue(Player* bot);
 
 // ---- positions (spec §5.3/§5.4) ----
 // Every predicate below fetches the view once (then the bot's own assignment once), returns false / null when

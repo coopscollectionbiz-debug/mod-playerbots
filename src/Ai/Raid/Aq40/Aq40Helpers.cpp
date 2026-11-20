@@ -2771,8 +2771,10 @@ bool IsTwinsFormUp(Player* bot)
     Player* const master = botAI ? botAI->GetMaster() : nullptr;
     if (!master || master == bot || !master->IsInWorld() || master->GetMap() != bot->GetMap())
         return false;
-    if (GET_PLAYERBOT_AI(master) && !IsSelfBot(master))
-        return false;  // a bot master (random-bot groups): no owner to say "twins pull"
+    // A bot master (random-bot groups, all-bot test raids): no owner to say "twins pull", so the form-up runs only
+    // with AiPlayerbot.Aq40.TwinEmperors.AutoPull, and warlock A pulls itself once everyone is formed up.
+    if (GET_PLAYERBOT_AI(master) && !IsSelfBot(master) && !sPlayerbotAIConfig.aq40TwinsAutoPull)
+        return false;
     return master->GetExactDist(mid) <= Aq40TwinsRules::ROOM_RADIUS;
 }
 
@@ -2830,6 +2832,25 @@ void TwinsReportStageMove(Player* bot, bool moved, float dist)
     if (parkedNow)
         LOG_DEBUG("playerbots", "[Aq40Twins] {} parked at form-up: staging spot unreachable ({:.1f} y off)",
                   bot->GetName(), dist);
+}
+
+bool TwinsAutoPullDue(Player* bot)
+{
+    if (!sPlayerbotAIConfig.aq40TwinsAutoPull || !IsTwinsFormUp(bot))
+        return false;
+    PlayerbotAI* const botAI = GET_PLAYERBOT_AI(bot);
+    Player* const master = botAI ? botAI->GetMaster() : nullptr;
+    if (!master || !GET_PLAYERBOT_AI(master) || IsSelfBot(master))
+        return false;  // a player owner says "twins pull" themselves
+    TwinsStagingEntry e;
+    Position stageA;
+    if (!TwinsStagingEntryFor(bot, e, stageA))
+        return false;
+    if (e.me.role != Aq40TwinsRules::Role::WarlockTank || e.me.side != Aq40TwinsRules::Side::A)
+        return false;
+    std::lock_guard<std::mutex> lock(twinsStagingMutex);
+    auto it = twinsStagingByInstance.find(bot->GetMap()->GetInstanceId());
+    return it != twinsStagingByInstance.end() && it->second.allFormed;
 }
 
 void TwinsMaybeAnnounceFormedUp(Player* bot)

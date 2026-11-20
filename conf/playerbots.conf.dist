@@ -499,6 +499,12 @@ AiPlayerbot.ApplyInstanceStrategies = 1
 # Default: 1
 AiPlayerbot.Aq40.TwinEmperors.Enable = 1
 
+# With a bot as the group's master (random-bot groups, all-bot test raids) there is no player to say
+# "twins pull": the bots still form up, and warlock A pulls Vek'lor once everyone is on their spot.
+# 0 = the old behaviour, no form-up without a player owner. A player owner still says "twins pull".
+# Default: 1
+AiPlayerbot.Aq40.TwinEmperors.AutoPull = 1
+
 # Enable auto avoid aoe strategy
 # Default: 1 (enabled)
 AiPlayerbot.AutoAvoidAoe = 1

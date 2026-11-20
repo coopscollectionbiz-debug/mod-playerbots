@@ -587,6 +587,7 @@ bool PlayerbotAIConfig::Initialize()
     nonCombatStrategies = sConfigMgr->GetOption<std::string>("AiPlayerbot.NonCombatStrategies", "");
     applyInstanceStrategies = sConfigMgr->GetOption<bool>("AiPlayerbot.ApplyInstanceStrategies", true);
     aq40TwinEmperors = sConfigMgr->GetOption<bool>("AiPlayerbot.Aq40.TwinEmperors.Enable", true);
+    aq40TwinsAutoPull = sConfigMgr->GetOption<bool>("AiPlayerbot.Aq40.TwinEmperors.AutoPull", true);
 
     commandPrefix = sConfigMgr->GetOption<std::string>("AiPlayerbot.CommandPrefix", "");
     commandSeparator = sConfigMgr->GetOption<std::string>("AiPlayerbot.CommandSeparator", "\\\\");

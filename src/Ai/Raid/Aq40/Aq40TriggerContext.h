@@ -29,6 +29,7 @@ public:
         creators["aq40 twins threat hold"] = &RaidAq40TriggerContext::twins_threat_hold;
         creators["aq40 twins pet on wrong twin"] = &RaidAq40TriggerContext::pet_on_wrong_twin;
         creators["aq40 twins form up"] = &RaidAq40TriggerContext::twins_form_up;
+        creators["aq40 twins auto pull"] = &RaidAq40TriggerContext::twins_auto_pull;
         // Spec §5.5: the owner's chat command, named exactly "twins pull" (plain "pull" is a stock command).
         creators["twins pull"] = &RaidAq40TriggerContext::twins_pull;
         creators["aq40 twins tank heal"] = &RaidAq40TriggerContext::twins_tank_heal;
@@ -66,6 +67,7 @@ private:
     static Trigger* pet_on_wrong_twin(PlayerbotAI* b) { return new Aq40TwinsPetOnWrongTwinTrigger(b); }
     static Trigger* twins_form_up(PlayerbotAI* b) { return new Aq40TwinsFormUpTrigger(b); }
     static Trigger* twins_pull(PlayerbotAI* b) { return new ChatCommandTrigger(b, "twins pull"); }
+    static Trigger* twins_auto_pull(PlayerbotAI* b) { return new Aq40TwinsAutoPullTrigger(b); }
     static Trigger* twins_tank_heal(PlayerbotAI* b) { return new Aq40TwinsTankHealTrigger(b); }
     static Trigger* cthun_not_in_combat(PlayerbotAI* b) { return new Aq40CthunNotInCombatTrigger(b); }
     static Trigger* cthun_in_stomach(PlayerbotAI* b) { return new Aq40CthunInStomachTrigger(b); }

@@ -105,6 +105,9 @@ void RaidAq40Strategy::InitTriggers(std::vector<TriggerNode*>& triggers)
     // the family, so the cast is never queued behind a stage step.
     triggers.push_back(new TriggerNode("twins pull", {
         NextAction("aq40 twins pull", ACTION_EMERGENCY + 12) }));
+    // All-bot raids: no owner, so warlock A pulls once everyone is formed up (AiPlayerbot.Aq40.TwinEmperors.AutoPull).
+    triggers.push_back(new TriggerNode("aq40 twins auto pull", {
+        NextAction("aq40 twins pull", ACTION_EMERGENCY + 12) }));
 
     // NOTE what is absent: melee DPS movement, except the landing clear, the wrong-victim hold and the pre-swap
     // move (Revision 3 §12.1). After a window a melee bot's twin is beside it, and native combat movement engages it.
