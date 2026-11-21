@@ -13,6 +13,7 @@
 #include "NaxxTriggers.h"
 #include "ObjectGuid.h"
 #include "PlayerbotAIConfig.h"
+#include "Group.h"
 #include "Playerbots.h"
 #include "SharedDefines.h"
 
@@ -196,6 +197,27 @@ bool RazuviousUseObedienceCrystalAction::Execute(Event /*event*/)
                 }
                 return ok;
             }
+            // No Understudy left to take: shield a priest who is channelling one. Mind Control reaches 20 yd, so the
+            // controller stands inside Disrupting Shout's 30 yd and cannot cast while channelling; a shout (3.6-4.2k)
+            // on a hurt controller ended the channel and freed the Understudy on the raid. Power Word: Shield (40 yd)
+            // absorbs it; Weakened Soul (15 s) fits the 25 s shout cycle.
+            if (Group* group = bot->GetGroup())
+                for (GroupReference* ref = group->GetFirstMember(); ref; ref = ref->next())
+                {
+                    Player* member = ref->GetSource();
+                    if (!member || member == bot || !member->IsAlive() || member->getClass() != CLASS_PRIEST ||
+                        !member->GetCharmGUID() || bot->GetDistance(member) > 38.0f)
+                        continue;
+                    if (botAI->HasAura("power word: shield", member) || botAI->HasAura("weakened soul", member))
+                        continue;
+                    if (botAI->CastSpell("power word: shield", member))
+                    {
+                        if (say)
+                            LOG_INFO("module", "[Naxx40 Razuvious] {} shielded {} (controlling an Understudy)",
+                                     bot->GetName(), member->GetName());
+                        return true;
+                    }
+                }
             if (say)
                 LOG_INFO("module", "[Naxx40 Razuvious] {} found no free understudy among {} attackers", bot->GetName(),
                          context->GetValue<GuidVector>("attackers")->Get().size());

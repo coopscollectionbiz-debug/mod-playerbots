@@ -4,6 +4,7 @@
  * or (at your option) any later version.
  */
 
+#include <cmath>
 #include "NaxxActions.h"
 #include "Playerbots.h"
 
@@ -33,12 +34,22 @@ bool GrobbulusMoveAwayAction::Execute(Event /*event*/)
     if (currentDistance >= distance)
         return false;
 
-    const float angle = boss->GetAngle(bot);
-    const float x = boss->GetPositionX() + cos(angle) * distance;
-    const float y = boss->GetPositionY() + sin(angle) * distance;
-    const float z = bot->GetPositionZ();
-
-    return MoveTo(bot->GetMapId(), x, y, z, false, false, false, false, MovementPriority::MOVEMENT_COMBAT);
+    // A spot the boss can see, at the same height: a point behind a wall sent the injected bot round the corridors
+    // (Naxx40 runs ended 180-205 yd away in the Living Poison hall, tr-20261121-085338-1). Try angles either side.
+    const float base = boss->GetAngle(bot);
+    static float const offsets[] = {0.0f, 0.5f, -0.5f, 1.0f, -1.0f, 1.5f, -1.5f, 2.0f, -2.0f};
+    for (float off : offsets)
+    {
+        float x = boss->GetPositionX() + cos(base + off) * distance;
+        float y = boss->GetPositionY() + sin(base + off) * distance;
+        float z = boss->GetPositionZ();
+        bot->UpdateAllowedPositionZ(x, y, z);
+        if (std::fabs(z - boss->GetPositionZ()) > 4.0f || !boss->IsWithinLOS(x, y, z + 2.0f) ||
+            !bot->IsWithinLOS(x, y, z + 2.0f))
+            continue;
+        return MoveTo(bot->GetMapId(), x, y, z, false, false, false, false, MovementPriority::MOVEMENT_COMBAT);
+    }
+    return false;
 }
 
 uint32 GrobbulusRotateAction::GetCurrWaypoint()
