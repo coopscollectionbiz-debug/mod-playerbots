@@ -4,6 +4,7 @@
  * or (at your option) any later version.
  */
 
+#include <list>
 #include <unordered_map>
 #include "NaxxActions.h"
 #include "ObjectGuid.h"
@@ -143,6 +144,19 @@ bool RazuviousUseObedienceCrystalAction::Execute(Event /*event*/)
         else
         {
             Unit* target = FindFreeUnderstudy(botAI, context->GetValue<GuidVector>("attackers")->Get());
+            // IP's Naxx40 Understudies (351084) stand at their dummies and never join the fight, so they are not in
+            // "attackers" (every priest logged "no free understudy among 1 attackers"): look for one near the bot.
+            if (!target)
+            {
+                std::list<Creature*> nearby;
+                bot->GetCreatureListWithEntryInGrid(nearby, NPC_UNDERSTUDY_40, 80.0f);
+                for (Creature* c : nearby)
+                    if (c->IsAlive() && !c->GetCharmerGUID() && !c->HasAura(10912) && !c->HasAura(10911) && !c->HasAura(605))
+                    {
+                        target = c;
+                        break;
+                    }
+            }
             // Diagnostic (2026-11-20 overnight): Naxx40 Razuvious wiped with 3 priests and the Understudies on the
             // raid; say what each priest does, at most every 10 s.
             static std::unordered_map<uint64, uint32> lastSay;
