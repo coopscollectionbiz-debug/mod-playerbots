@@ -4,6 +4,8 @@
  * or (at your option) any later version.
  */
 
+#include <unordered_map>
+
 #include "KaraActions.h"
 #include "EncounterHelpers.h"
 #include "KaraHelpers.h"
@@ -1206,8 +1208,27 @@ bool NightbaneGroundPhaseTanksPositionBossAction::Execute(Event /*event*/)
     if (!nightbane)
         return false;
 
+    // Bear Form first: druid tanks met his landing in caster form and died to one or two swings at 100%
+    // (Grootiam 7878, Wtfpwnt 2x 4157; tr-20261121-11xxxx).
+    if (bot->getClass() == CLASS_DRUID && !bot->HasAura(9634) && !bot->HasAura(5487))
+    {
+        if (botAI->CastSpell("dire bear form", bot) || botAI->CastSpell("bear form", bot))
+            return true;
+    }
+
     if (AI_VALUE(Unit*, "current target") != nightbane)
         return Attack(nightbane);
+
+    // He resets his threat on every landing, and heals done meanwhile put a healer on top (diag: tank 0-33 threat,
+    // healer 100-434, 1-2 s after landing). The main tank taunts him back.
+    if (PlayerbotAI::IsMainTank(bot) && nightbane->GetVictim() && nightbane->GetVictim() != bot)
+    {
+        if (botAI->CastSpell("taunt", nightbane) || botAI->CastSpell("growl", nightbane) ||
+            botAI->CastSpell("hand of reckoning", nightbane))
+            return true;
+        if (Unit* victim = nightbane->GetVictim(); victim->IsPlayer() && botAI->CastSpell("righteous defense", victim))
+            return true;
+    }
 
     if (nightbane->GetVictim() != bot || !bot->IsWithinMeleeRange(nightbane))
         return false;
@@ -1543,6 +1564,35 @@ bool NightbaneManageTimersAndTrackersAction::Execute(Event /*event*/)
     time_t const now = std::time(nullptr);
     bool const isMechanicTracker = IsMechanicTrackerBot(bot, KARA_MAP_ID);
     bool didSomething = false;
+
+    // Diagnostic (2026-11-21, temporary): Nightbane wipes start with ranged and healers dying to his melee and Cleave
+    // at 5-9 yd. Say when he turns to a non-tank: seconds since he landed, the main tank, and their threat.
+    if (isMechanicTracker && nightbane->GetPositionZ() <= NIGHTBANE_FLIGHT_Z)
+    {
+        static std::unordered_map<uint32, ObjectGuid> lastVictim;
+        Unit* victim = nightbane->GetVictim();
+        ObjectGuid const victimGuid = victim ? victim->GetGUID() : ObjectGuid::Empty;
+        ObjectGuid& last = lastVictim[instanceId];
+        if (victimGuid != last)
+        {
+            last = victimGuid;
+            Player* victimPlayer = victim ? victim->ToPlayer() : nullptr;
+            if (victimPlayer && !PlayerbotAI::IsTank(victimPlayer))
+            {
+                Player* mainTank = GetGroupMainTank(bot);
+                auto it = nightbaneDpsWaitTimer.find(instanceId);
+                long const sinceLanding = it == nightbaneDpsWaitTimer.end() ? -1 : long(now - it->second);
+                LOG_INFO("playerbots", "[Kara Nightbane] turned to {} ({} yd, threat {:.0f}); main tank {} ({}, {:.0f} yd, threat {:.0f}); {} s since landing, boss {:.0f}%",
+                         victimPlayer->GetName(), nightbane->GetDistance(victimPlayer),
+                         nightbane->GetThreatMgr().GetThreat(victimPlayer),
+                         mainTank ? mainTank->GetName() : "none",
+                         !mainTank ? "dead/none" : mainTank->IsAlive() ? "alive" : "dead",
+                         mainTank ? nightbane->GetDistance(mainTank) : 0.0f,
+                         mainTank ? nightbane->GetThreatMgr().GetThreat(mainTank) : 0.0f, sinceLanding,
+                         nightbane->GetHealthPct());
+            }
+        }
+    }
 
     if (nightbane->GetPositionZ() <= NIGHTBANE_FLIGHT_Z)
     {

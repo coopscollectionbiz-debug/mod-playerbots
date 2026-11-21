@@ -8,6 +8,7 @@
 #include <cmath>
 #include <list>
 #include <unordered_map>
+#include <vector>
 #include "NaxxActions.h"
 #include "NaxxTriggers.h"
 #include "ObjectGuid.h"
@@ -210,6 +211,25 @@ bool RazuviousTargetAction::Execute(Event /*event*/)
 
     Unit* razuvious = AI_VALUE2(Unit*, "find target", "instructor razuvious");
     Unit* understudy = FindFreeUnderstudy(botAI, context->GetValue<GuidVector>("attackers")->Get());
+    // Naxx40: his engage puts all four Understudies on the raid at once, and every tank took the same first free one, so
+    // the other three killed casters (Understudy melee 10-19 deaths a wipe, tr-20261121-091533-6..-092008-9). One free
+    // Understudy per tank, by tank slot (main tank 0, assist tanks 1..).
+    if (botAI->IsTank(bot) && razuvious && razuvious->GetEntry() == 351036)
+    {
+        std::list<Creature*> nearby;
+        bot->GetCreatureListWithEntryInGrid(nearby, NPC_UNDERSTUDY_40, 80.0f);
+        std::vector<Creature*> free;
+        for (Creature* c : nearby)
+            if (c->IsAlive() && !c->GetCharmerGUID())
+                free.push_back(c);
+        std::sort(free.begin(), free.end(), [](Creature* a, Creature* b) { return a->GetGUID() < b->GetGUID(); });
+        // The main tank holds Razuvious until a Mind-Controlled Understudy taunts him (with every tank on an Understudy
+        // his melee was the top killer, 28-29 a wipe, tr-20261121-121744-3/-122032-4); assist tanks take one each.
+        if (botAI->IsMainTank(bot) || free.empty())
+            understudy = razuvious;
+        else
+            understudy = free[size_t(std::max(0, PlayerbotAI::GetAssistTankIndex(bot))) % free.size()];
+    }
     Unit* target = nullptr;
     if (botAI->IsTank(bot))
         target = understudy;
@@ -254,6 +274,13 @@ bool RazuviousKeepShoutRangeAction::Execute(Event /*event*/)
     Unit* razuvious = AI_VALUE2(Unit*, "find target", "instructor razuvious");
     if (!IsShoutRangeBot(botAI, bot, razuvious))
         return false;
+    // Diagnostic (2026-11-21, temporary): healers 10-29 yd from him still died to the shout (tr-20261121-120757-2).
+    static std::unordered_map<uint64, uint32> lastSay;
+    uint32 const nowMs = getMSTime();
+    uint32& lastMs = lastSay[bot->GetGUID().GetRawValue()];
+    bool const say = !lastMs || getMSTimeDiff(lastMs, nowMs) > 10000;
+    if (say)
+        lastMs = nowMs ? nowMs : 1;
     float const base = razuvious->GetAngle(bot);
     static float const offsets[] = {0.0f, 0.4f, -0.4f, 0.8f, -0.8f, 1.2f, -1.2f, 1.6f, -1.6f};
     for (float off : offsets)
@@ -267,7 +294,14 @@ bool RazuviousKeepShoutRangeAction::Execute(Event /*event*/)
             continue;
         if (!razuvious->IsWithinLOS(x, y, z + 2.0f) || !bot->IsWithinLOS(x, y, z + 2.0f))
             continue;
-        return MoveTo(bot->GetMapId(), x, y, z, false, false, false, false, MovementPriority::MOVEMENT_COMBAT);
+        bool const moved = MoveTo(bot->GetMapId(), x, y, z, false, false, false, false, MovementPriority::MOVEMENT_COMBAT);
+        if (say)
+            LOG_INFO("module", "[Naxx40 Razuvious] {} shout range: {:.1f} yd, moving to a spot {:.1f} yd off (offset {:.1f}): {}",
+                     bot->GetName(), bot->GetExactDist2d(razuvious), bot->GetExactDist2d(x, y), off, moved ? "moving" : "MoveTo refused");
+        return moved;
     }
+    if (say)
+        LOG_INFO("module", "[Naxx40 Razuvious] {} shout range: {:.1f} yd, no clear spot at 34 yd", bot->GetName(),
+                 bot->GetExactDist2d(razuvious));
     return false;
 }
