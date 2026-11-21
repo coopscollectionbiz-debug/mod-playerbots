@@ -129,6 +129,11 @@ void RaidNaxxStrategy::InitTriggers(std::vector<TriggerNode*>& triggers)
         { NextAction("razuvious target", ACTION_RAID + 1) }
     ));
 
+    // Naxx40: mana users out of Disrupting Shout's 30 yd, ahead of the Mind Control and target actions.
+    triggers.push_back(new TriggerNode("razuvious shout range",
+        { NextAction("razuvious keep shout range", ACTION_RAID + 3) }
+    ));
+
     // four horsemen
     triggers.push_back(new TriggerNode("four horsemen attractors",
         { NextAction("four horsemen attract alternatively", ACTION_RAID + 1) }

@@ -104,6 +104,13 @@ private:
     RazuviousBossHelper helper;
 };
 
+class RazuviousShoutRangeTrigger : public Trigger
+{
+public:
+    RazuviousShoutRangeTrigger(PlayerbotAI* ai) : Trigger(ai, "razuvious shout range") {}
+    bool IsActive() override;
+};
+
 class KelthuzadTrigger : public Trigger
 {
 public:

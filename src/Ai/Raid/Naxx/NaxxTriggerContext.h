@@ -29,6 +29,7 @@ public:
 
         creators["razuvious tank"] = &RaidNaxxTriggerContext::razuvious_tank;
         creators["razuvious nontank"] = &RaidNaxxTriggerContext::razuvious_nontank;
+        creators["razuvious shout range"] = &RaidNaxxTriggerContext::razuvious_shout_range;
 
         creators["four horsemen attractors"] = &RaidNaxxTriggerContext::four_horsemen_attractors;
         creators["four horsemen except attractors"] = &RaidNaxxTriggerContext::four_horsemen_except_attractors;
@@ -95,6 +96,7 @@ private:
     static Trigger* thaddius_phase_thaddius(PlayerbotAI* botAI) { return new ThaddiusPhaseThaddiusTrigger(botAI); }
     static Trigger* razuvious_tank(PlayerbotAI* botAI) { return new RazuviousTankTrigger(botAI); }
     static Trigger* razuvious_nontank(PlayerbotAI* botAI) { return new RazuviousNontankTrigger(botAI); }
+    static Trigger* razuvious_shout_range(PlayerbotAI* botAI) { return new RazuviousShoutRangeTrigger(botAI); }
 
     static Trigger* four_horsemen_attractors(PlayerbotAI* botAI) { return new FourHorsemenAttractorsTrigger(botAI); }
     static Trigger* four_horsemen_except_attractors(PlayerbotAI* botAI) { return new FourHorsemenExceptAttractorsTrigger(botAI); }

@@ -4,10 +4,12 @@
  * or (at your option) any later version.
  */
 
+#include <algorithm>
 #include <cmath>
 #include <list>
 #include <unordered_map>
 #include "NaxxActions.h"
+#include "NaxxTriggers.h"
 #include "ObjectGuid.h"
 #include "PlayerbotAIConfig.h"
 #include "Playerbots.h"
@@ -168,8 +170,13 @@ bool RazuviousUseObedienceCrystalAction::Execute(Event /*event*/)
                 last = now ? now : 1;
             if (target)
             {
-                if (bot->GetDistance2d(target) > sPlayerbotAIConfig.spellDistance)
-                    return MoveNear(target, sPlayerbotAIConfig.spellDistance, MovementPriority::MOVEMENT_COMBAT);
+                // Mind Control's own range, not the generic spell distance: most refusals were OUT_OF_RANGE (97) from
+                // priests standing between the two (tr-20261121-083605-2: 31 of 64 attempts).
+                float range = sPlayerbotAIConfig.spellDistance;
+                if (SpellInfo const* mcInfo = sSpellMgr->GetSpellInfo(605))
+                    range = std::min(range, mcInfo->GetMaxRange(false, bot) - 3.0f);
+                if (bot->GetDistance(target) > range)
+                    return MoveNear(target, range - 2.0f, MovementPriority::MOVEMENT_COMBAT);
                 bool const ok = botAI->CastSpell("mind control", target);
                 if (say)
                 {
@@ -202,25 +209,6 @@ bool RazuviousTargetAction::Execute(Event /*event*/)
         return false;
 
     Unit* razuvious = AI_VALUE2(Unit*, "find target", "instructor razuvious");
-    // Naxx40 (351036): Disrupting Shout is the vanilla mana burn (spell 26046: instant, 30 yd, every 25 s; it killed 23
-    // of 41 in tr-20261121-072613-2). Ranged and healer mana users hold at 34 yd; the Mind-Controlled Understudies tank
-    // him and the healers reach them from there. Melee stays on him (strategy guides: line of sight or range).
-    if (razuvious && razuvious->GetEntry() == 351036 && bot->getPowerType() == POWER_MANA &&
-        (botAI->IsRanged(bot) || botAI->IsHeal(bot)))
-    {
-        float const dist = bot->GetExactDist2d(razuvious);
-        if (dist < 33.0f)
-        {
-            float const angle = razuvious->GetAngle(bot);
-            float x = razuvious->GetPositionX() + 34.0f * std::cos(angle);
-            float y = razuvious->GetPositionY() + 34.0f * std::sin(angle);
-            float z = bot->GetPositionZ();
-            bot->UpdateAllowedPositionZ(x, y, z);
-            if (MoveTo(bot->GetMapId(), x, y, z, false, false, false, false, MovementPriority::MOVEMENT_COMBAT))
-                return true;
-            return MoveAway(razuvious, 34.0f - dist);
-        }
-    }
     Unit* understudy = FindFreeUnderstudy(botAI, context->GetValue<GuidVector>("attackers")->Get());
     Unit* target = nullptr;
     if (botAI->IsTank(bot))
@@ -232,4 +220,54 @@ bool RazuviousTargetAction::Execute(Event /*event*/)
         return false;
 
     return Attack(target);
+}
+
+namespace
+{
+constexpr uint32 NPC_RAZUVIOUS_40 = 351036;
+constexpr float SHOUT_SAFE_DISTANCE = 34.0f;  // Disrupting Shout (26046) reaches 30 yd
+
+// Ranged and healer mana users (healer priests only while not holding a Mind Control), while Naxx40 Razuvious is fighting.
+bool IsShoutRangeBot(PlayerbotAI* botAI, Player* bot, Unit* razuvious)
+{
+    if (!razuvious || razuvious->GetEntry() != NPC_RAZUVIOUS_40 || !razuvious->IsAlive() || !razuvious->IsInCombat() ||
+        !bot->IsInCombat() || bot->getPowerType() != POWER_MANA)
+        return false;
+    // Shadow priests do the Mind Controls (they would ping-pong between this and MoveNear); healer priests step out.
+    if (bot->getClass() == CLASS_PRIEST)
+        return botAI->IsHeal(bot) && !bot->GetCharmGUID();
+    return botAI->IsRanged(bot) || botAI->IsHeal(bot);
+}
+}
+
+bool RazuviousShoutRangeTrigger::IsActive()
+{
+    Unit* razuvious = AI_VALUE2(Unit*, "find target", "instructor razuvious");
+    return IsShoutRangeBot(botAI, bot, razuvious) && bot->GetExactDist2d(razuvious) < SHOUT_SAFE_DISTANCE - 1.0f;
+}
+
+// Disrupting Shout is IP's vanilla mana burn (26046: instant, 30 yd, every 25 s) and killed about half of every
+// 40-player raid, priests most of all (tr-20261121-081520-2). Step out to 34 yd on a spot both the boss and the bot can
+// see: a point behind a wall sent the whole raid round the corridors (tr-20261121-074556-3).
+bool RazuviousKeepShoutRangeAction::Execute(Event /*event*/)
+{
+    Unit* razuvious = AI_VALUE2(Unit*, "find target", "instructor razuvious");
+    if (!IsShoutRangeBot(botAI, bot, razuvious))
+        return false;
+    float const base = razuvious->GetAngle(bot);
+    static float const offsets[] = {0.0f, 0.4f, -0.4f, 0.8f, -0.8f, 1.2f, -1.2f, 1.6f, -1.6f};
+    for (float off : offsets)
+    {
+        float const angle = base + off;
+        float x = razuvious->GetPositionX() + SHOUT_SAFE_DISTANCE * std::cos(angle);
+        float y = razuvious->GetPositionY() + SHOUT_SAFE_DISTANCE * std::sin(angle);
+        float z = razuvious->GetPositionZ();
+        bot->UpdateAllowedPositionZ(x, y, z);
+        if (std::fabs(z - razuvious->GetPositionZ()) > 4.0f)
+            continue;
+        if (!razuvious->IsWithinLOS(x, y, z + 2.0f) || !bot->IsWithinLOS(x, y, z + 2.0f))
+            continue;
+        return MoveTo(bot->GetMapId(), x, y, z, false, false, false, false, MovementPriority::MOVEMENT_COMBAT);
+    }
+    return false;
 }

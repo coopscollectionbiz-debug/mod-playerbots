@@ -142,6 +142,13 @@ private:
     RazuviousBossHelper helper;
 };
 
+class RazuviousKeepShoutRangeAction : public MovementAction
+{
+public:
+    RazuviousKeepShoutRangeAction(PlayerbotAI* ai) : MovementAction(ai, "razuvious keep shout range") {}
+    bool Execute(Event event) override;
+};
+
 class RazuviousTargetAction : public AttackAction
 {
 public:

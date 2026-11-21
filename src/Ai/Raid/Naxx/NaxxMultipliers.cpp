@@ -200,8 +200,10 @@ float InstructorRazuviousGenericMultiplier::GetValue(Action* action)
     // Naxx40: ranged and healer mana users hold outside Disrupting Shout (26046, 30 yd, instant, every 25 s); do not
     // let a spell's range walk them back in (RazuviousTargetAction keeps them at 34 yd).
     if (Unit* razuvious = AI_VALUE2(Unit*, "find target", "instructor razuvious"))
-        if (razuvious->GetEntry() == 351036 && bot->getPowerType() == POWER_MANA && bot->getClass() != CLASS_PRIEST &&
-            (botAI->IsRanged(bot) || botAI->IsHeal(bot)) && dynamic_cast<ReachTargetAction*>(action))
+        if (razuvious->GetEntry() == 351036 && razuvious->IsInCombat() && bot->IsInCombat() &&
+            bot->getPowerType() == POWER_MANA &&
+            (bot->getClass() == CLASS_PRIEST ? (botAI->IsHeal(bot) && !bot->GetCharmGUID()) : (botAI->IsRanged(bot) || botAI->IsHeal(bot))) &&
+            dynamic_cast<ReachTargetAction*>(action))
             return 0.0f;
     if (botAI->GetState() == BOT_STATE_COMBAT &&
         (dynamic_cast<DpsAssistAction*>(action) || dynamic_cast<TankAssistAction*>(action) ||

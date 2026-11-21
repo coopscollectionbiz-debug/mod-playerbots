@@ -31,6 +31,7 @@ public:
 
         creators["razuvious use obedience crystal"] = &RaidNaxxActionContext::razuvious_use_obedience_crystal;
         creators["razuvious target"] = &RaidNaxxActionContext::razuvious_target;
+        creators["razuvious keep shout range"] = &RaidNaxxActionContext::razuvious_keep_shout_range;
 
         creators["four horsemen attract alternatively"] = &RaidNaxxActionContext::four_horsemen_attract_alternatively;
         creators["four horsemen attack in order"] = &RaidNaxxActionContext::four_horsemen_attack_in_order;
@@ -96,6 +97,7 @@ private:
     static Action* thaddius_move_to_platform(PlayerbotAI* ai) { return new ThaddiusMoveToPlatformAction(ai); }
     static Action* thaddius_move_polarity(PlayerbotAI* ai) { return new ThaddiusMovePolarityAction(ai); }
     static Action* razuvious_target(PlayerbotAI* ai) { return new RazuviousTargetAction(ai); }
+    static Action* razuvious_keep_shout_range(PlayerbotAI* ai) { return new RazuviousKeepShoutRangeAction(ai); }
     static Action* razuvious_use_obedience_crystal(PlayerbotAI* ai)
     {
         return new RazuviousUseObedienceCrystalAction(ai);
