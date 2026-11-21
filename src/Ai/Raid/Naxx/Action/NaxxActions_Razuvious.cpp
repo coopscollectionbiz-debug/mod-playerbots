@@ -148,10 +148,14 @@ bool RazuviousUseObedienceCrystalAction::Execute(Event /*event*/)
         }
         else
         {
-            Unit* target = FindFreeUnderstudy(botAI, context->GetValue<GuidVector>("attackers")->Get());
+            // Four controllers, one per Understudy, by priest index; the other priests keep the controllers shielded.
+            // With every priest racing for "a free one" the shield branch never ran (tr-20261121-140256-2 .. -141024-9).
+            bool const controller = botAI->GetClassIndex(bot, CLASS_PRIEST) < 4;
+            Unit* target = controller ? FindFreeUnderstudy(botAI, context->GetValue<GuidVector>("attackers")->Get())
+                                      : nullptr;
             // IP's Naxx40 Understudies (351084) stand at their dummies and never join the fight, so they are not in
             // "attackers" (every priest logged "no free understudy among 1 attackers"): look for one near the bot.
-            if (!target)
+            if (!target && controller)
             {
                 std::list<Creature*> nearby;
                 bot->GetCreatureListWithEntryInGrid(nearby, NPC_UNDERSTUDY_40, 80.0f);

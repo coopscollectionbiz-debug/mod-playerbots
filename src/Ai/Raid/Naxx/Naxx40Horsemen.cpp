@@ -316,10 +316,13 @@ namespace Naxx40Horsemen
                 Player* act = FindPlayer(map, r.assign->active[h]);
                 Player* rest = FindPlayer(map, r.assign->resting[h]);
                 Unit* victim = alive[h] ? horse[h]->GetVictim() : nullptr;
-                line += Acore::StringFormat(" | {} {}% act {}({}) rest {}({}) vic {}", TAG[h],
+                // TEMPORARY: distances to the horseman (resting tanks kept gaining his Mark, 4-6 stacks at rest).
+                line += Acore::StringFormat(" | {} {}% act {}({}@{:.0f}) rest {}({}@{:.0f}) vic {}", TAG[h],
                                             alive[h] ? uint32(horse[h]->GetHealthPct()) : 0,
                                             NameOf(map, r.assign->active[h]), act ? MarkStacks(act, hh) : 0,
+                                            act && alive[h] ? horse[h]->GetDistance(act) : -1.0f,
                                             NameOf(map, r.assign->resting[h]), rest ? MarkStacks(rest, hh) : 0,
+                                            rest && alive[h] ? horse[h]->GetDistance(rest) : -1.0f,
                                             victim ? victim->GetName() : "none");
             }
             line += Acore::StringFormat(" | free {} benched {}", r.assign->spareTanks.size(), r.benched.size());
