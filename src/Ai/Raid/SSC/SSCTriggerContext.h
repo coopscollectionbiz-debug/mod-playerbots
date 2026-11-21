@@ -127,6 +127,9 @@ public:
         creators["morogrim tidewalker pulling boss"] =
             &RaidSSCTriggerContext::morogrim_tidewalker_pulling_boss;
 
+        creators["morogrim tidewalker murlocs loose"] =
+            &RaidSSCTriggerContext::morogrim_tidewalker_murlocs_loose;
+
         creators["morogrim tidewalker water globules are incoming"] =
             &RaidSSCTriggerContext::morogrim_tidewalker_water_globules_are_incoming;
 
@@ -286,6 +289,9 @@ private:
     }
     static Trigger* morogrim_tidewalker_pulling_boss(PlayerbotAI* botAI) {
         return new MorogrimTidewalkerPullingBossTrigger(botAI);
+    }
+    static Trigger* morogrim_tidewalker_murlocs_loose(PlayerbotAI* botAI) {
+        return new MorogrimTidewalkerMurlocsLooseTrigger(botAI);
     }
     static Trigger* morogrim_tidewalker_water_globules_are_incoming(PlayerbotAI* botAI) {
         return new MorogrimTidewalkerWaterGlobulesAreIncomingTrigger(botAI);

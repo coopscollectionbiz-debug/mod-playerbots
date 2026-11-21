@@ -384,6 +384,44 @@ bool MorogrimTidewalkerBossEngagedByMainTankTrigger::IsActive()
            AI_VALUE2(Unit*, "find target", "morogrim tidewalker");
 }
 
+namespace
+{
+    constexpr uint32 NPC_TIDEWALKER_LURKER = 21920;
+
+    // A murloc in the boss's room that is not on a tank: the pack's own tank is the assist tank picking it up.
+    Unit* LooseTidewalkerLurker(Player* bot)
+    {
+        std::list<Creature*> murlocs;
+        bot->GetCreatureListWithEntryInGrid(murlocs, NPC_TIDEWALKER_LURKER, 80.0f);
+        Unit* best = nullptr;
+        float bestDist = 0.0f;
+        for (Creature* m : murlocs)
+        {
+            if (!m->IsAlive() || !m->IsInCombat())
+                continue;
+            Unit* victim = m->GetVictim();
+            if (victim && victim->IsPlayer() && PlayerbotAI::IsTank(victim->ToPlayer()))
+                continue;
+            float const d = bot->GetExactDist(m);
+            if (!best || d < bestDist)
+            {
+                best = m;
+                bestDist = d;
+            }
+        }
+        return best;
+    }
+}
+
+bool MorogrimTidewalkerMurlocsLooseTrigger::IsActive()
+{
+    if (!bot->IsAlive() || !bot->IsInCombat() || !botAI->IsAssistTank(bot))
+        return false;
+    if (!AI_VALUE2(Unit*, "find target", "morogrim tidewalker"))
+        return false;
+    return LooseTidewalkerLurker(bot) != nullptr;
+}
+
 bool MorogrimTidewalkerWaterGlobulesAreIncomingTrigger::IsActive()
 {
     if (!botAI->IsRanged(bot))

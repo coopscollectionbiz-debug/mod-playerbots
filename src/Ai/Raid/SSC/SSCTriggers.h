@@ -303,6 +303,16 @@ public:
     bool IsActive() override;
 };
 
+// Earthquake brings 2 packs of 6 Tidewalker Lurkers (21920) from the entrances. Guides put a tank on each pack;
+// with nothing assigned they reached the raid and did 12 of 29 deaths (tr-20261120-194928-3).
+class MorogrimTidewalkerMurlocsLooseTrigger : public Trigger
+{
+public:
+    MorogrimTidewalkerMurlocsLooseTrigger(
+        PlayerbotAI* botAI) : Trigger(botAI, "morogrim tidewalker murlocs loose") {}
+    bool IsActive() override;
+};
+
 class MorogrimTidewalkerWaterGlobulesAreIncomingTrigger : public Trigger
 {
 public:

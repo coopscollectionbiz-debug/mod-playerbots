@@ -118,6 +118,9 @@ void RaidSSCStrategy::InitTriggers(std::vector<TriggerNode*>& triggers)
     triggers.push_back(new TriggerNode("morogrim tidewalker boss engaged by main tank", {
         NextAction("morogrim tidewalker move boss to tank position", ACTION_RAID + 1) }));
 
+    triggers.push_back(new TriggerNode("morogrim tidewalker murlocs loose", {
+        NextAction("morogrim tidewalker assist tank pick up murlocs", ACTION_RAID + 2) }));
+
     triggers.push_back(new TriggerNode("morogrim tidewalker water globules are incoming", {
         NextAction("morogrim tidewalker phase 2 reposition ranged", ACTION_RAID + 1) }));
 

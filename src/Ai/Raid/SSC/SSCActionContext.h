@@ -124,6 +124,9 @@ public:
         creators["morogrim tidewalker misdirect boss to main tank"] =
             &RaidSSCActionContext::morogrim_tidewalker_misdirect_boss_to_main_tank;
 
+        creators["morogrim tidewalker assist tank pick up murlocs"] =
+            &RaidSSCActionContext::morogrim_tidewalker_assist_tank_pick_up_murlocs;
+
         creators["morogrim tidewalker move boss to tank position"] =
             &RaidSSCActionContext::morogrim_tidewalker_move_boss_to_tank_position;
 
@@ -289,6 +292,9 @@ private:
     // Morogrim Tidewalker
     static Action* morogrim_tidewalker_misdirect_boss_to_main_tank(PlayerbotAI* botAI) {
         return new MorogrimTidewalkerMisdirectBossToMainTankAction(botAI);
+    }
+    static Action* morogrim_tidewalker_assist_tank_pick_up_murlocs(PlayerbotAI* botAI) {
+        return new MorogrimTidewalkerAssistTankPickUpMurlocsAction(botAI);
     }
     static Action* morogrim_tidewalker_move_boss_to_tank_position(PlayerbotAI* botAI) {
         return new MorogrimTidewalkerMoveBossToTankPositionAction(botAI);

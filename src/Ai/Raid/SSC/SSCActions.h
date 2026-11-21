@@ -305,6 +305,14 @@ public:
     bool Execute(Event event) override;
 };
 
+class MorogrimTidewalkerAssistTankPickUpMurlocsAction : public AttackAction
+{
+public:
+    MorogrimTidewalkerAssistTankPickUpMurlocsAction(
+        PlayerbotAI* botAI, std::string const name = "morogrim tidewalker assist tank pick up murlocs") : AttackAction(botAI, name) {}
+    bool Execute(Event event) override;
+};
+
 class MorogrimTidewalkerMoveBossToTankPositionAction : public AttackAction
 {
 public:

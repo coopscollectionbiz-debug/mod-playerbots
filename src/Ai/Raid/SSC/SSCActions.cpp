@@ -2912,3 +2912,33 @@ bool LadyVashjUseFreeActionAbilitiesAction::Execute(Event /*event*/)
 
     return false;
 }
+
+// Morogrim Tidewalker: assist tanks take the Earthquake murloc packs (Tidewalker Lurker 21920) off the raid.
+bool MorogrimTidewalkerAssistTankPickUpMurlocsAction::Execute(Event event)
+{
+    std::list<Creature*> murlocs;
+    bot->GetCreatureListWithEntryInGrid(murlocs, 21920, 80.0f);
+    Unit* target = nullptr;
+    float bestDist = 0.0f;
+    for (Creature* m : murlocs)
+    {
+        if (!m->IsAlive() || !m->IsInCombat())
+            continue;
+        Unit* victim = m->GetVictim();
+        if (victim && victim->IsPlayer() && PlayerbotAI::IsTank(victim->ToPlayer()))
+            continue;
+        float const d = bot->GetExactDist(m);
+        if (!target || d < bestDist)
+        {
+            target = m;
+            bestDist = d;
+        }
+    }
+    if (!target)
+        return false;
+    if (AI_VALUE(Unit*, "current target") != target)
+        return Attack(target);
+    if (target->GetVictim() != bot)
+        return botAI->DoSpecificAction("taunt spell", event, true);
+    return false;
+}
