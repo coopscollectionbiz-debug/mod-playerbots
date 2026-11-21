@@ -171,8 +171,20 @@ bool RazuviousUseObedienceCrystalAction::Execute(Event /*event*/)
                     return MoveNear(target, sPlayerbotAIConfig.spellDistance, MovementPriority::MOVEMENT_COMBAT);
                 bool const ok = botAI->CastSpell("mind control", target);
                 if (say)
-                    LOG_INFO("module", "[Naxx40 Razuvious] {} mind control on {} ({:.0f} yd): {}", bot->GetName(),
-                             target->GetName(), bot->GetDistance(target), ok ? "cast" : "refused");
+                {
+                    int32 why = -1;  // temporary diagnostic: the cast check's reason
+                    if (!ok)
+                        if (SpellInfo const* mc = sSpellMgr->GetSpellInfo(605))
+                        {
+                            Spell* probe = new Spell(bot, mc, TRIGGERED_IGNORE_POWER_AND_REAGENT_COST);
+                            probe->m_targets.SetUnitTarget(target);
+                            why = static_cast<int32>(probe->CheckCast(true));
+                            delete probe;
+                        }
+                    LOG_INFO("module", "[Naxx40 Razuvious] {} mind control on {} ({:.0f} yd): {} (check {}, moving {}, level {} vs {})",
+                             bot->GetName(), target->GetName(), bot->GetDistance(target), ok ? "cast" : "refused", why,
+                             bot->isMoving() ? 1 : 0, bot->GetLevel(), target->GetLevel());
+                }
                 return ok;
             }
             if (say)
