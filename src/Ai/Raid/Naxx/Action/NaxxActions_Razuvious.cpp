@@ -4,6 +4,7 @@
  * or (at your option) any later version.
  */
 
+#include <unordered_map>
 #include "NaxxActions.h"
 #include "ObjectGuid.h"
 #include "PlayerbotAIConfig.h"
@@ -142,13 +143,27 @@ bool RazuviousUseObedienceCrystalAction::Execute(Event /*event*/)
         else
         {
             Unit* target = FindFreeUnderstudy(botAI, context->GetValue<GuidVector>("attackers")->Get());
+            // Diagnostic (2026-11-20 overnight): Naxx40 Razuvious wiped with 3 priests and the Understudies on the
+            // raid; say what each priest does, at most every 10 s.
+            static std::unordered_map<uint64, uint32> lastSay;
+            uint32 const now = getMSTime();
+            uint32& last = lastSay[bot->GetGUID().GetRawValue()];
+            bool const say = !last || getMSTimeDiff(last, now) > 10000;
+            if (say)
+                last = now ? now : 1;
             if (target)
             {
                 if (bot->GetDistance2d(target) > sPlayerbotAIConfig.spellDistance)
                     return MoveNear(target, sPlayerbotAIConfig.spellDistance, MovementPriority::MOVEMENT_COMBAT);
-                else
-                    return botAI->CastSpell("mind control", target);
+                bool const ok = botAI->CastSpell("mind control", target);
+                if (say)
+                    LOG_INFO("module", "[Naxx40 Razuvious] {} mind control on {} ({:.0f} yd): {}", bot->GetName(),
+                             target->GetName(), bot->GetDistance(target), ok ? "cast" : "refused");
+                return ok;
             }
+            if (say)
+                LOG_INFO("module", "[Naxx40 Razuvious] {} found no free understudy among {} attackers", bot->GetName(),
+                         context->GetValue<GuidVector>("attackers")->Get().size());
         }
     }
     return false;
