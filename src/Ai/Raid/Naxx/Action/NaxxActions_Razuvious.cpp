@@ -4,6 +4,7 @@
  * or (at your option) any later version.
  */
 
+#include <cmath>
 #include <list>
 #include <unordered_map>
 #include "NaxxActions.h"
@@ -201,6 +202,25 @@ bool RazuviousTargetAction::Execute(Event /*event*/)
         return false;
 
     Unit* razuvious = AI_VALUE2(Unit*, "find target", "instructor razuvious");
+    // Naxx40 (351036): Disrupting Shout is the vanilla mana burn (spell 26046: instant, 30 yd, every 25 s; it killed 23
+    // of 41 in tr-20261121-072613-2). Ranged and healer mana users hold at 34 yd; the Mind-Controlled Understudies tank
+    // him and the healers reach them from there. Melee stays on him (strategy guides: line of sight or range).
+    if (razuvious && razuvious->GetEntry() == 351036 && bot->getPowerType() == POWER_MANA &&
+        (botAI->IsRanged(bot) || botAI->IsHeal(bot)))
+    {
+        float const dist = bot->GetExactDist2d(razuvious);
+        if (dist < 33.0f)
+        {
+            float const angle = razuvious->GetAngle(bot);
+            float x = razuvious->GetPositionX() + 34.0f * std::cos(angle);
+            float y = razuvious->GetPositionY() + 34.0f * std::sin(angle);
+            float z = bot->GetPositionZ();
+            bot->UpdateAllowedPositionZ(x, y, z);
+            if (MoveTo(bot->GetMapId(), x, y, z, false, false, false, false, MovementPriority::MOVEMENT_COMBAT))
+                return true;
+            return MoveAway(razuvious, 34.0f - dist);
+        }
+    }
     Unit* understudy = FindFreeUnderstudy(botAI, context->GetValue<GuidVector>("attackers")->Get());
     Unit* target = nullptr;
     if (botAI->IsTank(bot))
