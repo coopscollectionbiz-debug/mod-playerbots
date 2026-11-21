@@ -39,6 +39,11 @@ bool CastCasterFormAction::Execute(Event /*event*/)
 
 bool CastCasterFormAction::isUseful()
 {
+    // A tank druid in combat stays a bear: every druid heal / cure / buff has caster form as a prerequisite, so one
+    // between swings left bear form and the next boss hit killed it at caster health (Nightbane and Morogrim tanks died
+    // at 98-100% to one 8-9k swing, 2026-11-21; the Naxx40 Horsemen veto is the same rule for its latched tanks).
+    if (bot->IsInCombat() && PlayerbotAI::IsTank(bot) && botAI->HasAnyAuraOf(bot, "dire bear form", "bear form", nullptr))
+        return false;
     return botAI->HasAnyAuraOf(GetTarget(), "dire bear form", "bear form", "cat form", "travel form", "aquatic form",
                                "flight form", "swift flight form", "moonkin form", nullptr) &&
            AI_VALUE2(uint8, "mana", "self target") > sPlayerbotAIConfig.mediumHealth;

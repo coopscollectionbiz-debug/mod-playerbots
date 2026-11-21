@@ -211,25 +211,6 @@ bool RazuviousTargetAction::Execute(Event /*event*/)
 
     Unit* razuvious = AI_VALUE2(Unit*, "find target", "instructor razuvious");
     Unit* understudy = FindFreeUnderstudy(botAI, context->GetValue<GuidVector>("attackers")->Get());
-    // Naxx40: his engage puts all four Understudies on the raid at once, and every tank took the same first free one, so
-    // the other three killed casters (Understudy melee 10-19 deaths a wipe, tr-20261121-091533-6..-092008-9). One free
-    // Understudy per tank, by tank slot (main tank 0, assist tanks 1..).
-    if (botAI->IsTank(bot) && razuvious && razuvious->GetEntry() == 351036)
-    {
-        std::list<Creature*> nearby;
-        bot->GetCreatureListWithEntryInGrid(nearby, NPC_UNDERSTUDY_40, 80.0f);
-        std::vector<Creature*> free;
-        for (Creature* c : nearby)
-            if (c->IsAlive() && !c->GetCharmerGUID())
-                free.push_back(c);
-        std::sort(free.begin(), free.end(), [](Creature* a, Creature* b) { return a->GetGUID() < b->GetGUID(); });
-        // The main tank holds Razuvious until a Mind-Controlled Understudy taunts him (with every tank on an Understudy
-        // his melee was the top killer, 28-29 a wipe, tr-20261121-121744-3/-122032-4); assist tanks take one each.
-        if (botAI->IsMainTank(bot) || free.empty())
-            understudy = razuvious;
-        else
-            understudy = free[size_t(std::max(0, PlayerbotAI::GetAssistTankIndex(bot))) % free.size()];
-    }
     Unit* target = nullptr;
     if (botAI->IsTank(bot))
         target = understudy;
