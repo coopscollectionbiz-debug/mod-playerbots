@@ -51,6 +51,9 @@ namespace RaidResistanceBuff
         {531, 15517, SPELL_NATURE, false},  // AQ40 Ouro
         {531, 15509, SPELL_NATURE, false},  // AQ40 Princess Huhuran
         {531, 15276, SPELL_SHADOW, false},  // AQ40 Twin Emperors (Vek'lor)
+        // Sunwell Eredar Twins: Grand Warlock Alythess's Pyrogenics/Blaze/Conflagration fire killed the raid
+        // (11-21 ledger). User-approved 11-22. Hosted by the header-only "sunwell" strategy (SunwellStrategy.h).
+        {580, 25166, SPELL_FIRE, false},
     };
 
     inline uint32 WantedSpell(Player* bot, PlayerbotAI* botAI)

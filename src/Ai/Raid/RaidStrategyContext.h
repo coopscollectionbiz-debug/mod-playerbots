@@ -24,6 +24,7 @@
 #include "RSStrategy.h"
 #include "SSCStrategy.h"
 #include "Strategy.h"
+#include "SunwellStrategy.h"
 #include "TKStrategy.h"
 #include "UldStrategy.h"
 #include "VoAStrategy.h"
@@ -56,6 +57,7 @@ public:
         creators["onyxia"] = &RaidStrategyContext::onyxia;
         creators["icc"] = &RaidStrategyContext::icc;
         creators["rs"] = &RaidStrategyContext::rs;
+        creators["sunwell"] = &RaidStrategyContext::sunwell;
     }
 
 private:
@@ -80,6 +82,7 @@ private:
     static Strategy* ulduar(PlayerbotAI* botAI) { return new RaidUlduarStrategy(botAI); }
     static Strategy* icc(PlayerbotAI* botAI) { return new RaidIccStrategy(botAI); }
     static Strategy* rs(PlayerbotAI* botAI) { return new RaidRsStrategy(botAI); }
+    static Strategy* sunwell(PlayerbotAI* botAI) { return new RaidSunwellStrategy(botAI); }
 };
 
 #endif
