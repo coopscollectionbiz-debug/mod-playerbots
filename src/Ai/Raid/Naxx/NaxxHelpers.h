@@ -64,6 +64,10 @@ Player* GetFaerlinaPriest(Player* bot);
 Unit* GetCharmedWorshipper(Player* bot);
 // Skull: Faerlina's Followers, a Worshipper beside a frenzied Faerlina in 10-player, then Faerlina.
 Unit* GetKillOrderMarkTarget(PlayerbotAI* botAI);
+// Yards from (x, y) to the edge of the nearest Grobbulus Cloud (16363 / IP 351089) within 100 yd of `near`; negative
+// inside one, 1000 with none. A cloud hits whoever touches its combat reach, which grows by 0.25 yd a second from 2
+// (boss_grobbulus.cpp boss_grobbulus_poison_cloudAI / spell_grobbulus_poison).
+float GrobbulusCloudGap(Unit* searcher, float x, float y);
 
 // Gothik: guides split the raid half and half; the main tank takes the living side, the first
 // off-tank the dead side, and healers and DPS alternate by GUID within their role.

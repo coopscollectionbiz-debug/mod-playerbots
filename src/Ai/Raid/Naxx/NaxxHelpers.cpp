@@ -14,6 +14,9 @@
 #include "SpellInfo.h"
 #include "SpellMgr.h"
 #include <algorithm>
+#include <cmath>
+#include <list>
+#include "Creature.h"
 #include <iterator>
 #include <vector>
 
@@ -120,10 +123,47 @@ static uint8 GetKillPriority(Unit* unit, Unit* faerlina, bool embraceByDeath)
     }
 }
 
+// Grobbulus: every Fallout Slime (one per player his Slime Spray hits, set in combat with the zone) on skull, lowest
+// health first, then the boss again. Untouched slimes were the top killer once the rotation worked (11-21: 20-54
+// slime melee deaths a wipe). Entries: IP Naxx40 351003 / 351067, WotLK 15931 / 16290.
+static Unit* GetGrobbulusKillOrderMarkTarget(PlayerbotAI* botAI, Group* group)
+{
+    Unit* grobbulus = GetNearestNpc(botAI, 351003, 120.0f);
+    if (!grobbulus)
+        grobbulus = GetNearestNpc(botAI, 15931, 120.0f);
+    if (!grobbulus || !grobbulus->IsInCombat())
+        return nullptr;
+
+    Player* bot = botAI->GetBot();
+    Unit* best = nullptr;
+    for (ObjectGuid const guid : botAI->GetAiObjectContext()->GetValue<GuidVector>("possible targets")->Get())
+    {
+        Unit* unit = botAI->GetUnit(guid);
+        if (!unit || !unit->IsAlive() || (unit->GetEntry() != 351067 && unit->GetEntry() != 16290) ||
+            !bot->IsValidAttackTarget(unit))
+            continue;
+        // Not one standing in a cloud: the melee chasing it walked into the poison (11-21: cloud deaths 45-47 a wipe
+        // with every slime on skull).
+        if (GrobbulusCloudGap(bot, unit->GetPositionX(), unit->GetPositionY()) < 2.0f)
+            continue;
+        if (!best || unit->GetHealthPct() < best->GetHealthPct())
+            best = unit;
+    }
+
+    Unit* skull = botAI->GetUnit(group->GetTargetIcon(RtiTargetValue::skullIndex));
+    bool const skullAlive = skull && skull->IsAlive();
+    if (best)
+        return skullAlive && (skull->GetEntry() == 351067 || skull->GetEntry() == 16290) ? nullptr : best;
+    return skullAlive && skull == grobbulus ? nullptr : grobbulus;
+}
+
 Unit* GetKillOrderMarkTarget(PlayerbotAI* botAI)
 {
     Player* bot = botAI->GetBot();
     Group* group = bot->GetGroup();
+    if (group)
+        if (Unit* grobbulusTarget = GetGrobbulusKillOrderMarkTarget(botAI, group))
+            return grobbulusTarget;
     Unit* faerlina = GetNearestNpc(botAI, NPC_GRAND_WIDOW_FAERLINA, NAXX_ADD_SEARCH_DISTANCE);
     if (!group || !faerlina)
         return nullptr;
@@ -254,4 +294,18 @@ Unit* GetChainsCcTarget(PlayerbotAI* botAI)
     }
     return nullptr;
 }
+}
+
+float NaxxHelpers::GrobbulusCloudGap(Unit* searcher, float x, float y)
+{
+    float gap = 1000.0f;
+    for (uint32 entry : {16363u, 351089u})
+    {
+        std::list<Creature*> clouds;
+        searcher->GetCreatureListWithEntryInGrid(clouds, entry, 100.0f);
+        for (Creature* cloud : clouds)
+            if (cloud->IsAlive())
+                gap = std::min(gap, std::hypot(cloud->GetPositionX() - x, cloud->GetPositionY() - y) - cloud->GetCombatReach());
+    }
+    return gap;
 }

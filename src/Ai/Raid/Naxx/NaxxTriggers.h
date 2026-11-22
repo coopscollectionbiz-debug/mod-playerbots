@@ -53,6 +53,26 @@ public:
     virtual bool IsActive();
 };
 
+namespace NaxxGrobbulusSpray
+{
+    constexpr float Radius = 48.0f;          // spell 90008 radius index 11 (45 yd) plus margin
+    constexpr float Arc = static_cast<float>(M_PI) / 2.0f;  // cone is 60 degrees; 90 for margin
+}
+
+class GrobbulusPoisonCloudTrigger : public Trigger
+{
+public:
+    GrobbulusPoisonCloudTrigger(PlayerbotAI* ai) : Trigger(ai, "grobbulus poison cloud") {}
+    bool IsActive() override;
+};
+
+class GrobbulusSprayConeTrigger : public Trigger
+{
+public:
+    GrobbulusSprayConeTrigger(PlayerbotAI* ai) : Trigger(ai, "grobbulus spray cone") {}
+    bool IsActive() override;
+};
+
 class GrobbulusCloudTrigger : public Trigger
 {
 public:

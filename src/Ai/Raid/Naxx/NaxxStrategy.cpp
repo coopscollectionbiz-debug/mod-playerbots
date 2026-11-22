@@ -13,6 +13,9 @@
 
 void RaidNaxxStrategy::InitTriggers(std::vector<TriggerNode*>& triggers)
 {
+    // Raid-only resistance buff near Sapphiron / the Horsemen / Ouro / Huhuran / the Twins (RaidResistanceBuff.h).
+    triggers.push_back(new TriggerNode("raid resistance buff", { NextAction("raid resistance buff", ACTION_RAID + 5) }));
+
     // Build canary (overlay CLAUDE.md local-build rule): proves the running worldserver carries the Naxx40 Four
     // Horsemen, Loatheb, Anub'Rekhan and Patchwerk strategies. InitTriggers runs per bot per engine (map threads), so it
     // logs once per process.
@@ -36,6 +39,14 @@ void RaidNaxxStrategy::InitTriggers(std::vector<TriggerNode*>& triggers)
 
     triggers.push_back(new TriggerNode("mutating injection removed",
         { NextAction("grobbulus move center", ACTION_RAID + 1) }
+    ));
+
+    triggers.push_back(new TriggerNode("grobbulus poison cloud",
+        { NextAction("grobbulus avoid cloud", ACTION_RAID + 4) }
+    ));
+
+    triggers.push_back(new TriggerNode("grobbulus spray cone",
+        { NextAction("grobbulus avoid spray", ACTION_RAID + 3) }
     ));
 
     triggers.push_back(new TriggerNode("grobbulus cloud",

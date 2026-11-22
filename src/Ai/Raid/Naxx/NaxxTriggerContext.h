@@ -7,6 +7,7 @@
 #ifndef PLAYERBOTS_NAXXTRIGGERCONTEXT_H
 #define PLAYERBOTS_NAXXTRIGGERCONTEXT_H
 
+#include "../RaidResistanceBuff.h"
 #include "NamedObjectContext.h"
 #include "NaxxTriggers.h"
 
@@ -15,10 +16,13 @@ class RaidNaxxTriggerContext : public NamedObjectContext<Trigger>
 public:
     RaidNaxxTriggerContext()
     {
+        creators["raid resistance buff"] = &RaidNaxxTriggerContext::raid_resistance_buff;
         creators["mutating injection melee"] = &RaidNaxxTriggerContext::mutating_injection_melee;
         creators["mutating injection ranged"] = &RaidNaxxTriggerContext::mutating_injection_ranged;
         creators["mutating injection removed"] = &RaidNaxxTriggerContext::mutating_injection_removed;
         creators["grobbulus cloud"] = &RaidNaxxTriggerContext::grobbulus_cloud;
+        creators["grobbulus spray cone"] = &RaidNaxxTriggerContext::grobbulus_spray_cone;
+        creators["grobbulus poison cloud"] = &RaidNaxxTriggerContext::grobbulus_poison_cloud;
         creators["heigan melee"] = &RaidNaxxTriggerContext::heigan_melee;
         creators["heigan ranged"] = &RaidNaxxTriggerContext::heigan_ranged;
 
@@ -83,10 +87,13 @@ public:
     }
 
 private:
+    static Trigger* raid_resistance_buff(PlayerbotAI* ai) { return new RaidResistanceBuffTrigger(ai); }
     static Trigger* mutating_injection_melee(PlayerbotAI* botAI) { return new MutatingInjectionMeleeTrigger(botAI); }
     static Trigger* mutating_injection_ranged(PlayerbotAI* botAI) { return new MutatingInjectionRangedTrigger(botAI); }
     static Trigger* mutating_injection_removed(PlayerbotAI* botAI) { return new MutatingInjectionRemovedTrigger(botAI); }
     static Trigger* grobbulus_cloud(PlayerbotAI* botAI) { return new GrobbulusCloudTrigger(botAI); }
+    static Trigger* grobbulus_spray_cone(PlayerbotAI* botAI) { return new GrobbulusSprayConeTrigger(botAI); }
+    static Trigger* grobbulus_poison_cloud(PlayerbotAI* botAI) { return new GrobbulusPoisonCloudTrigger(botAI); }
     static Trigger* heigan_melee(PlayerbotAI* botAI) { return new HeiganMeleeTrigger(botAI); }
     static Trigger* heigan_ranged(PlayerbotAI* botAI) { return new HeiganRangedTrigger(botAI); }
 

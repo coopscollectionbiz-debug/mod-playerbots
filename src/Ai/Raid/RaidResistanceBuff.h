@@ -45,7 +45,9 @@ namespace RaidResistanceBuff
 
     constexpr Rule RULES[] = {
         {533, 351018, SPELL_FROST, false},  // Naxx40 Sapphiron
-        {533, 351037, SPELL_FIRE, true},    // Naxx40 Four Horsemen (Highlord Mograine)
+        // Naxx40 Four Horsemen: IP's Mograine casts Unholy Shadow (shadow, boss_four_horsemen_40.cpp), not vanilla's
+        // Righteous Fire, so his side's tanks and melee get shadow, not the guides' fire.
+        {533, 351037, SPELL_SHADOW, true},
         {531, 15517, SPELL_NATURE, false},  // AQ40 Ouro
         {531, 15509, SPELL_NATURE, false},  // AQ40 Princess Huhuran
         {531, 15276, SPELL_SHADOW, false},  // AQ40 Twin Emperors (Vek'lor)

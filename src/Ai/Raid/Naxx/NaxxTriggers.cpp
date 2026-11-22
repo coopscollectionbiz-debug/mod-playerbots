@@ -55,6 +55,23 @@ bool MutatingInjectionRemovedTrigger::IsActive()
     return HasNoAuraTrigger::IsActive() && botAI->GetState() == BOT_STATE_COMBAT && botAI->IsRanged(bot);
 }
 
+bool GrobbulusPoisonCloudTrigger::IsActive()
+{
+    // Not his tank: the rotation walks him clear of the clouds.
+    Unit* boss = AI_VALUE2(Unit*, "find target", "grobbulus");
+    if (!boss || !boss->IsInCombat() || boss->GetVictim() == bot)
+        return false;
+    return NaxxHelpers::GrobbulusCloudGap(bot, bot->GetPositionX(), bot->GetPositionY()) < 2.0f;
+}
+
+bool GrobbulusSprayConeTrigger::IsActive()
+{
+    Unit* boss = AI_VALUE2(Unit*, "find target", "grobbulus");
+    if (!boss || !boss->IsInCombat() || boss->GetVictim() == bot)
+        return false;
+    return bot->GetExactDist2d(boss) <= NaxxGrobbulusSpray::Radius && boss->HasInArc(NaxxGrobbulusSpray::Arc, bot);
+}
+
 bool GrobbulusCloudTrigger::IsActive()
 {
     Unit* boss = AI_VALUE2(Unit*, "find target", "grobbulus");

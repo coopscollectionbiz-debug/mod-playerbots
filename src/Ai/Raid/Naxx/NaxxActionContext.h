@@ -7,6 +7,7 @@
 #ifndef PLAYERBOTS_NAXXACTIONCONTEXT_H
 #define PLAYERBOTS_NAXXACTIONCONTEXT_H
 
+#include "../RaidResistanceBuff.h"
 #include "Action.h"
 #include "NamedObjectContext.h"
 #include "NaxxActions.h"
@@ -16,10 +17,13 @@ class RaidNaxxActionContext : public NamedObjectContext<Action>
 public:
     RaidNaxxActionContext()
     {
+        creators["raid resistance buff"] = &RaidNaxxActionContext::raid_resistance_buff;
         creators["grobbulus go behind the boss"] = &RaidNaxxActionContext::go_behind_the_boss;
         creators["rotate grobbulus"] = &RaidNaxxActionContext::rotate_grobbulus;
         creators["grobbulus move center"] = &RaidNaxxActionContext::grobbulus_move_center;
         creators["grobbulus move away"] = &RaidNaxxActionContext::grobbulus_move_away;
+        creators["grobbulus avoid spray"] = &RaidNaxxActionContext::grobbulus_avoid_spray;
+        creators["grobbulus avoid cloud"] = &RaidNaxxActionContext::grobbulus_avoid_cloud;
 
         creators["heigan dance melee"] = &RaidNaxxActionContext::heigan_dance_melee;
         creators["heigan dance ranged"] = &RaidNaxxActionContext::heigan_dance_ranged;
@@ -85,10 +89,13 @@ public:
     }
 
 private:
+    static Action* raid_resistance_buff(PlayerbotAI* ai) { return new RaidResistanceBuffAction(ai); }
     static Action* go_behind_the_boss(PlayerbotAI* ai) { return new GrobbulusGoBehindAction(ai); }
     static Action* rotate_grobbulus(PlayerbotAI* ai) { return new GrobbulusRotateAction(ai); }
     static Action* grobbulus_move_center(PlayerbotAI* ai) { return new GrobbulusMoveCenterAction(ai); }
     static Action* grobbulus_move_away(PlayerbotAI* ai) { return new GrobbulusMoveAwayAction(ai); }
+    static Action* grobbulus_avoid_spray(PlayerbotAI* ai) { return new GrobbulusAvoidSprayAction(ai); }
+    static Action* grobbulus_avoid_cloud(PlayerbotAI* ai) { return new GrobbulusAvoidCloudAction(ai); }
     static Action* heigan_dance_melee(PlayerbotAI* ai) { return new HeiganDanceAction(ai, false); }
     static Action* heigan_dance_ranged(PlayerbotAI* ai) { return new HeiganDanceAction(ai, true); }
     static Action* thaddius_attack_nearest_pet(PlayerbotAI* ai) { return new ThaddiusAttackNearestPetAction(ai); }

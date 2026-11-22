@@ -23,6 +23,25 @@ bool SapphironGroundPositionAction::Execute(Event /*event*/)
 
         return false;
     }
+    // Melee off his front: Cleave hits up to 10 in his frontal cone and was the top killer once frost resistance was
+    // in (11-21: 17-55 Cleave deaths a run); Tail Sweep covers his rear, so they stand at his sides.
+    if (!botAI->IsRanged(bot) && !botAI->IsTank(bot))
+    {
+        Unit* sapphiron = AI_VALUE2(Unit*, "find target", "sapphiron");
+        if (sapphiron && sapphiron->IsAlive() && !sapphiron->IsFlying() && sapphiron->GetVictim() != bot &&
+            bot->GetExactDist2d(sapphiron) < 15.0f && sapphiron->HasInArc(static_cast<float>(M_PI) / 2.0f, bot))
+        {
+            float const rel = Position::NormalizeOrientation(sapphiron->GetAngle(bot) - sapphiron->GetOrientation());
+            float const side = rel < static_cast<float>(M_PI) ? 1.0f : -1.0f;
+            float const a = sapphiron->GetOrientation() + side * static_cast<float>(M_PI) / 2.0f;
+            float const d = sapphiron->GetCombatReach() + 1.5f;
+            float x = sapphiron->GetPositionX() + cos(a) * d;
+            float y = sapphiron->GetPositionY() + sin(a) * d;
+            float z = sapphiron->GetPositionZ();
+            bot->UpdateAllowedPositionZ(x, y, z);
+            return MoveTo(NAXX_MAP_ID, x, y, z, false, false, false, false, MovementPriority::MOVEMENT_COMBAT, true);
+        }
+    }
     if (helper.JustLanded())
     {
         uint32 index = botAI->GetGroupSlotIndex(bot);
