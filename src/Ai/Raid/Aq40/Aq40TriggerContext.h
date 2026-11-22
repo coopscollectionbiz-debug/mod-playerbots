@@ -7,6 +7,7 @@
 #ifndef PLAYERBOTS_AQ40TRIGGERCONTEXT_H
 #define PLAYERBOTS_AQ40TRIGGERCONTEXT_H
 
+#include "../RaidResistanceBuff.h"
 #include "Aq40Triggers.h"
 #include "ChatCommandTrigger.h"
 #include "NamedObjectContext.h"
@@ -16,6 +17,7 @@ class RaidAq40TriggerContext : public NamedObjectContext<Trigger>
 public:
     RaidAq40TriggerContext()
     {
+        creators["raid resistance buff"] = &RaidAq40TriggerContext::raid_resistance_buff;
         creators["aq40 twins not in combat"] = &RaidAq40TriggerContext::not_in_combat;
         creators["aq40 twins in explode radius"] = &RaidAq40TriggerContext::in_explode_radius;
         creators["aq40 twins in blizzard"] = &RaidAq40TriggerContext::in_blizzard;
@@ -53,6 +55,7 @@ public:
     }
 
 private:
+    static Trigger* raid_resistance_buff(PlayerbotAI* ai) { return new RaidResistanceBuffTrigger(ai); }
     static Trigger* not_in_combat(PlayerbotAI* b) { return new Aq40TwinsNotInCombatTrigger(b); }
     static Trigger* in_explode_radius(PlayerbotAI* b) { return new Aq40TwinsInExplodeRadiusTrigger(b); }
     static Trigger* in_blizzard(PlayerbotAI* b) { return new Aq40TwinsInBlizzardTrigger(b); }

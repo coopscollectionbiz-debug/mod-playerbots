@@ -7,6 +7,7 @@
 #ifndef PLAYERBOTS_AQ40ACTIONCONTEXT_H
 #define PLAYERBOTS_AQ40ACTIONCONTEXT_H
 
+#include "../RaidResistanceBuff.h"
 #include "Aq40Actions.h"
 #include "NamedObjectContext.h"
 
@@ -15,6 +16,7 @@ class RaidAq40ActionContext : public NamedObjectContext<Action>
 public:
     RaidAq40ActionContext()
     {
+        creators["raid resistance buff"] = &RaidAq40ActionContext::raid_resistance_buff;
         creators["aq40 twins erase trackers"] = &RaidAq40ActionContext::erase_trackers;
         creators["aq40 twins clear explode"] = &RaidAq40ActionContext::clear_explode;
         creators["aq40 twins clear blizzard"] = &RaidAq40ActionContext::clear_blizzard;
@@ -50,6 +52,7 @@ public:
     }
 
 private:
+    static Action* raid_resistance_buff(PlayerbotAI* ai) { return new RaidResistanceBuffAction(ai); }
     static Action* erase_trackers(PlayerbotAI* b) { return new Aq40TwinsEraseTrackersAction(b); }
     static Action* clear_explode(PlayerbotAI* b) { return new Aq40TwinsClearExplodeAction(b); }
     static Action* clear_blizzard(PlayerbotAI* b) { return new Aq40TwinsClearBlizzardAction(b); }

@@ -15,6 +15,9 @@
 // always-active action starves anything ranked under it. ACTION_RAID is 60, ACTION_EMERGENCY 90.
 void RaidAq40Strategy::InitTriggers(std::vector<TriggerNode*>& triggers)
 {
+    // Raid-only resistance buff near Sapphiron / the Horsemen / Ouro / Huhuran / the Twins (RaidResistanceBuff.h).
+    triggers.push_back(new TriggerNode("raid resistance buff", { NextAction("raid resistance buff", ACTION_RAID + 5) }));
+
     // AiPlayerbot.Aq40.TwinEmperors.Enable: off leaves the Twin Emperors to mod-raid-clear (only one should own
     // the fight); C'Thun and Huhuran below stay on.
     if (sPlayerbotAIConfig.aq40TwinEmperors)
