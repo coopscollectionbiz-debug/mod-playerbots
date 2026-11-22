@@ -80,9 +80,14 @@ bool KelthuzadChooseTargetAction::Execute(Event /*event*/)
             target_kelthuzad = unit;
     }
     std::vector<Unit*> targets;
+    // IP Naxx40 phase 1: every ranged dps on Soldiers first, not two. A Soldier reaching the raid Dark Blasts it, and
+    // guides have ranged and healers kill each one before it arrives while melee stay on the Abominations (research
+    // 11-21). Melee keep the stock order: chasing Soldiers toward the alcoves pulled whole alcoves.
+    Unit* const kelthuzad = AI_VALUE2(Unit*, "find target", "kel'thuzad");
+    bool const naxx40 = kelthuzad && kelthuzad->GetEntry() != 15990;  // WotLK 15990; IP Naxx40 has its own entry
     if (botAI->IsRanged(bot))
     {
-        if (botAI->GetRangedDpsIndex(bot) <= 1)
+        if (naxx40 || botAI->GetRangedDpsIndex(bot) <= 1)
             targets = {target_soldier, target_weaver, target_abomination, target_kelthuzad};
         else
             targets = {target_weaver, target_soldier, target_abomination, target_kelthuzad};
