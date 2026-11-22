@@ -1313,6 +1313,17 @@ AiPlayerbot.EndgameGear.RollIntervalHours = 24
 # Absolute item-level ceiling for simulated endgame upgrades.
 AiPlayerbot.EndgameGear.MaxItemLevel = 284
 
+# Raid gear progression: each raid boss kill gives every bot in a group with a real player a small upgrade in
+# its weakest slot(s), never above that raid's own loot level (ZG/MC 66, Onyxia 70, BWL 76, AQ40 81, Naxx40 88,
+# Kara 115 ... Sunwell 164, Naxx80 200 ... ICC 264). Bot-only groups get nothing. The replaced item is destroyed.
+#   ItemLevelStep: the most item levels one upgrade may add to a slot.
+#   SlotsPerKill: slots upgraded per bot per boss kill (0 disables).
+#   UpgradeChance: percent chance per bot per boss kill to get an upgrade at all (30 = ~3 per MC clear).
+AiPlayerbot.RaidGearProgression.Enable = 1
+AiPlayerbot.RaidGearProgression.ItemLevelStep = 5
+AiPlayerbot.RaidGearProgression.SlotsPerKill = 1
+AiPlayerbot.RaidGearProgression.UpgradeChance = 30
+
 # Prefer armor of the class's ideal type: apply 3x score multiplier to class-appropriate armor.
 # When enabled, Warriors strongly prefer plate, Shamans prefer mail, etc.
 # A truly superior item can still win (no hard filtering), but same-quality

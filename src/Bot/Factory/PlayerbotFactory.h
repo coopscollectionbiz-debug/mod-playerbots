@@ -84,7 +84,8 @@ public:
     // Try to replace one equipped slot with a legitimate, spec-appropriate
     // item inside the supplied item-level range.
     // Used by persistent level-80 simulated endgame progression.
-    bool UpgradeEquipmentSlot(uint8 slot, uint32 minItemLevel, uint32 maxItemLevel);
+    // anyLevel: raid gear progression (RaidGearProgression.cpp) upgrades bots of any level, not only 80.
+    bool UpgradeEquipmentSlot(uint8 slot, uint32 minItemLevel, uint32 maxItemLevel, bool anyLevel = false);
     void RefreshEquipmentForSpecChange();
 
     void InitPet();

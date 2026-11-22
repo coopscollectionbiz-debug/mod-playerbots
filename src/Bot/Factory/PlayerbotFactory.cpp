@@ -2969,9 +2969,10 @@ void PlayerbotFactory::RefreshEquipmentForSpecChange()
 bool PlayerbotFactory::UpgradeEquipmentSlot(
     uint8 slot,
     uint32 minItemLevel,
-    uint32 maxItemLevel)
+    uint32 maxItemLevel,
+    bool anyLevel)
 {
-    if (bot->GetLevel() != 80)
+    if (!anyLevel && bot->GetLevel() != 80)
         return false;
 
     if (minItemLevel == 0 ||
