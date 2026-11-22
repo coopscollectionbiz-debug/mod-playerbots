@@ -54,6 +54,17 @@ float GrobbulusMultiplier::GetValue(Action* action)
     if (dynamic_cast<CombatFormationMoveAction*>(action))
         return 0.0f;
 
+    // Naxx40: with Grobbulus on him, the main tank waits at his wall waypoint for the boss instead of running out to
+    // meet him. A Warrior's Charge + "reach melee" met him mid-room and the first sprays faced the raid (Fallout Slime
+    // 25, wipe at 76%, tr-20261122-113921-5); in the clean kills the boss walked to the tank at the wall.
+    if (boss->GetEntry() == 351003 && botAI->IsMainTank(bot) && boss->GetVictim() == bot &&
+        bot->GetDistance(boss) > 5.0f)
+    {
+        std::string const& name = action->getName();
+        if (name == "charge" || name == "intercept" || name == "reach melee" || name == "feral charge - bear")
+            return 0.0f;
+    }
+
     return 1.0f;
 }
 
@@ -227,6 +238,13 @@ float KelthuzadGenericMultiplier::GetValue(Action* action)
     }
     if (helper.IsPhaseOne())
     {
+        // IP Naxx40: Raid Clear's off-tank pickup and DungeonClear's camp assist put tanks and melee on Soldiers, whose
+        // Dark Blast procs on their own melee hit and hits everyone within 100 yd (KT P1 diag 11-22). Target choice in
+        // phase 1 belongs to "kel'thuzad choose target".
+        if (Unit* kt = AI_VALUE2(Unit*, "find target", "kel'thuzad"))
+            if (kt->GetEntry() != 15990 &&
+                (action->getName() == "rc offtank target" || action->getName() == "dungeon clear assist camp"))
+                return 0.0f;
         if (dynamic_cast<CastTotemAction*>(action) || dynamic_cast<CastShadowfiendAction*>(action) ||
             dynamic_cast<CastRaiseDeadAction*>(action) || dynamic_cast<CastFeignDeathAction*>(action) ||
             dynamic_cast<CastInvisibilityAction*>(action) || dynamic_cast<CastVanishAction*>(action) ||

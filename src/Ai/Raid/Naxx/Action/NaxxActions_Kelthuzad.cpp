@@ -105,6 +105,19 @@ bool KelthuzadChooseTargetAction::Execute(Event /*event*/)
             if (kt->GetEntry() != 15990)
                 KelthuzadPhaseOneDiag(bot, kt, helper.center);
 
+    // Naxx40 P1: a Soldier's Dark Blast aura (28458) procs on its own melee hit and blasts everyone within 100 yd
+    // (28457, radius index 12). Melee who engaged Soldiers made them swing: 20-30 bots died in 5 s at t=10
+    // (tr-20261122-110619-3, -112430-2). Melee never fight Soldiers in phase 1; only ranged kill them, before they arrive.
+    if (helper.IsPhaseOne() && !botAI->IsRanged(bot))
+        if (Unit* kt = AI_VALUE2(Unit*, "find target", "kel'thuzad"))
+            if (kt->GetEntry() != 15990)
+                if (Unit* cur = AI_VALUE(Unit*, "current target"))
+                    if (cur->GetEntry() == 351073)
+                    {
+                        bot->AttackStop();
+                        context->GetValue<Unit*>("current target")->Set(nullptr);
+                    }
+
     GuidVector attackers = context->GetValue<GuidVector>("attackers")->Get();
     Unit* target = nullptr;
     Unit *target_soldier = nullptr, *target_weaver = nullptr, *target_abomination = nullptr, *target_kelthuzad = nullptr,
@@ -186,7 +199,12 @@ bool KelthuzadChooseTargetAction::Execute(Event /*event*/)
         // Abominations at the centre come before far Soldiers and Weavers.
         bool const soldierClose =
             target_soldier && target_soldier->GetDistance2d(helper.center.first, helper.center.second) < 20.0f;
-        if (naxx40 && !soldierClose && abominationsAtCentre >= 2 && !botAI->IsHeal(bot))
+        // Weavers before Abominations: with Abominations first, Wail of Souls took 19 of 47 (tr-20261122-110745-4).
+        bool const weaverNear =
+            target_weaver && target_weaver->GetDistance2d(helper.center.first, helper.center.second) < 30.0f;
+        if (naxx40 && !soldierClose && weaverNear && !botAI->IsHeal(bot))
+            targets = {target_weaver, target_abomination, target_soldier, target_kelthuzad};
+        else if (naxx40 && !soldierClose && abominationsAtCentre >= 2 && !botAI->IsHeal(bot))
             targets = {target_abomination, target_soldier, target_weaver, target_kelthuzad};
         else if (naxx40 || botAI->GetRangedDpsIndex(bot) <= 1)
             targets = {target_soldier, target_weaver, target_abomination, target_kelthuzad};
@@ -222,6 +240,13 @@ bool KelthuzadPositionAction::Execute(Event /*event*/)
 
     if (helper.IsPhaseOne())
     {
+        // Naxx40 P1: everyone but the tanks holds the centre. At t=10 s the raid drifted 14-17 yd toward IP's gate pack
+        // with melee on its Soldiers, and Dark Blast killed 20 in 5 s (tr-20261122-110619-3).
+        Unit* const kt = AI_VALUE2(Unit*, "find target", "kel'thuzad");
+        if (kt && kt->GetEntry() != 15990 && !botAI->IsTank(bot) &&
+            bot->GetDistance2d(helper.center.first, helper.center.second) > 12.0f)
+            return MoveInside(NAXX_MAP_ID, helper.center.first, helper.center.second, bot->GetPositionZ(), 3.0f,
+                              MovementPriority::MOVEMENT_FORCED);
         if (AI_VALUE(Unit*, "current target") == nullptr)
             return MoveInside(NAXX_MAP_ID, helper.center.first, helper.center.second, bot->GetPositionZ(), 3.0f,
                               MovementPriority::MOVEMENT_COMBAT);
