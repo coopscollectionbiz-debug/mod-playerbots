@@ -2510,6 +2510,10 @@ bool LadyVashjPassTheTaintedCoreAction::LineUpFourthCorePasser(
 // position and are used to determine when the prior bot in the chain can pass the core
 bool LadyVashjPassTheTaintedCoreAction::IsFirstCorePasserInPosition(Player* firstCorePasser)
 {
+    // A passer can be gone (dead or released) when this runs: worldserver crashed in GetGuidValue on a null
+    // passer, 11-22 00:33 (Crashes/ae46e2875c47_worldserver.exe_[22-11_0-33-0]).
+    if (!firstCorePasser)
+        return false;
     if (std::optional<Position> const lineup = intendedLineup.get(firstCorePasser->GetGUID()))
     {
         float dist2d = firstCorePasser->GetExactDist2d(lineup->GetPositionX(), lineup->GetPositionY());
@@ -2521,6 +2525,10 @@ bool LadyVashjPassTheTaintedCoreAction::IsFirstCorePasserInPosition(Player* firs
 
 bool LadyVashjPassTheTaintedCoreAction::IsSecondCorePasserInPosition(Player* secondCorePasser)
 {
+    // A passer can be gone (dead or released) when this runs: worldserver crashed in GetGuidValue on a null
+    // passer, 11-22 00:33 (Crashes/ae46e2875c47_worldserver.exe_[22-11_0-33-0]).
+    if (!secondCorePasser)
+        return false;
     if (std::optional<Position> const lineup = intendedLineup.get(secondCorePasser->GetGUID()))
     {
         float dist2d = secondCorePasser->GetExactDist2d(lineup->GetPositionX(), lineup->GetPositionY());
@@ -2532,6 +2540,10 @@ bool LadyVashjPassTheTaintedCoreAction::IsSecondCorePasserInPosition(Player* sec
 
 bool LadyVashjPassTheTaintedCoreAction::IsThirdCorePasserInPosition(Player* thirdCorePasser)
 {
+    // A passer can be gone (dead or released) when this runs: worldserver crashed in GetGuidValue on a null
+    // passer, 11-22 00:33 (Crashes/ae46e2875c47_worldserver.exe_[22-11_0-33-0]).
+    if (!thirdCorePasser)
+        return false;
     if (std::optional<Position> const lineup = intendedLineup.get(thirdCorePasser->GetGUID()))
     {
         float dist2d = thirdCorePasser->GetExactDist2d(lineup->GetPositionX(), lineup->GetPositionY());
@@ -2543,6 +2555,10 @@ bool LadyVashjPassTheTaintedCoreAction::IsThirdCorePasserInPosition(Player* thir
 
 bool LadyVashjPassTheTaintedCoreAction::IsFourthCorePasserInPosition(Player* fourthCorePasser)
 {
+    // A passer can be gone (dead or released) when this runs: worldserver crashed in GetGuidValue on a null
+    // passer, 11-22 00:33 (Crashes/ae46e2875c47_worldserver.exe_[22-11_0-33-0]).
+    if (!fourthCorePasser)
+        return false;
     if (std::optional<Position> const lineup = intendedLineup.get(fourthCorePasser->GetGUID()))
     {
         float dist2d = fourthCorePasser->GetExactDist2d(lineup->GetPositionX(), lineup->GetPositionY());
