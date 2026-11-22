@@ -2470,45 +2470,7 @@ bool IllidanStormragePositionAboveGrateAction::Execute(Event /*event*/)
     const size_t botIndex = std::distance(bots.begin(), it);
     const uint8 index = botIndex % gratePositions.size();
 
-    // Flames of Azzinoth Blast a victim and the victim drops a Blaze (23259, 8 yd) at its feet; Flames Charge random
-    // players, so Blazes landed in this grate stack, and the FORCED move held bots in them (11-22: Blaze 19-26 deaths
-    // per wipe, several at the identical grate spot, tp-20261122-162425-1). Use a grate spot no Blaze covers; if
-    // none is clear, step out of the nearest Blaze.
-    std::list<Creature*> blazes;
-    bot->GetCreatureListWithEntryInGrid(blazes, 23259, 60.0f);
-    auto blazeGap = [&](float x, float y)
-    {
-        float gap = 100.0f;
-        for (Creature* b : blazes)
-            if (b->IsAlive())
-                gap = std::min(gap, b->GetExactDist2d(x, y));
-        return gap;
-    };
-    int chosen = -1;
-    for (size_t k = 0; k < gratePositions.size(); ++k)
-    {
-        size_t const i = (index + k) % gratePositions.size();
-        if (blazeGap(gratePositions[i].GetPositionX(), gratePositions[i].GetPositionY()) > 9.0f)
-        {
-            chosen = static_cast<int>(i);
-            break;
-        }
-    }
-    if (chosen < 0)
-    {
-        Creature* nearest = nullptr;
-        for (Creature* b : blazes)
-            if (b->IsAlive() && (!nearest || bot->GetExactDist2d(b) < bot->GetExactDist2d(nearest)))
-                nearest = b;
-        if (!nearest || bot->GetExactDist2d(nearest) > 9.0f)
-            return false;
-        float const a = nearest->GetAbsoluteAngle(bot);
-        return MoveTo(BLACK_TEMPLE_MAP_ID, nearest->GetPositionX() + std::cos(a) * 10.0f,
-                      nearest->GetPositionY() + std::sin(a) * 10.0f, bot->GetPositionZ(), false, false, false, false,
-                      MovementPriority::MOVEMENT_FORCED, true, false);
-    }
-
-    Position const& position = gratePositions[chosen];
+    Position const& position = gratePositions[index];
     if (bot->GetExactDist2d(position.GetPositionX(), position.GetPositionY()) > 0.2f)
     {
         return MoveTo(BLACK_TEMPLE_MAP_ID, position.GetPositionX(), position.GetPositionY(),
