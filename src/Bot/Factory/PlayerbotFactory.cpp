@@ -587,6 +587,7 @@ PlayerbotFactory::PlayerbotFactory(Player* bot, uint32 level, uint32 itemQuality
     : level(level), itemQuality(itemQuality), gearScoreLimit(gearScoreLimit), bot(bot)
 {
     useLevelingGearQualityProfile = (itemQuality == 0);
+    explicitGearCap = itemQuality != 0 && gearScoreLimit != 0;
     botAI = GET_PLAYERBOT_AI(bot);
     if (!this->itemQuality)
     {
@@ -2474,8 +2475,10 @@ PlayerbotFactory::BuildSlotCandidates(
                     // Milestone gear generation can have a direct item-level ceiling.
                     // This applies only to the non-incremental level 60/70/80 refresh,
                     // not normal leveling upgrades or equipment obtained through loot.
+                    // Not under a caller-given cap: every DungeonClear test run at level 60 was geared to item level
+                    // 66 whatever its `ilvl=` said (11-21: "ilvl 88" Naxx40 bots averaged 62-64, max 66).
                     if (options.useFactoryQuality &&
-            !incremental &&
+            !incremental && !explicitGearCap &&
             (level == 60 || level == 70 || level == 80))
                     {
                         auto milestoneItr =

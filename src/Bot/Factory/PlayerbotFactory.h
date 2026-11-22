@@ -279,6 +279,9 @@ private:
     uint32 itemQuality;
     uint32 gearScoreLimit;
     bool useLevelingGearQualityProfile;
+    // A caller-given ilvl cap (quality and gear score both passed, e.g. a DungeonClear test run's `ilvl=`) replaces the
+    // LevelingGearQuality.<60|70|80>.MaxItemLevel milestone ceiling instead of sitting under it.
+    bool explicitGearCap = false;
     static std::list<uint32> specialQuestIds;
     static std::unordered_map<uint32, std::vector<uint32>> trainerIdCache;
     static std::vector<uint32> enchantSpellIdCache;
