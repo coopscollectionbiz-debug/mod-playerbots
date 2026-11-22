@@ -155,5 +155,20 @@ bool ThaddiusMovePolarityAction::Execute(Event /*event*/)
         idx = 2;
     }
     idx = idx * 2 + botAI->IsRanged(bot);
+    // Charges hit opposite-charge allies within 13 yd (28062/28085), and the left/right melee spots above are only 16 yd
+    // apart: Naxx40 kills lost 11-23 bots to Positive/Negative Charge (11-22). Thaddius is rooted with a 10 yd combat
+    // reach, so keep the sides on the same axis but measured from him: melee 11 yd out (22 yd apart, still in melee
+    // reach), ranged 20 yd out. The no-charge (centre) spots are unchanged.
+    if (idx < 4)
+        if (Unit* thaddius = AI_VALUE2(Unit*, "find target", "thaddius"))
+        {
+            float const cx = thaddius->GetPositionX(), cy = thaddius->GetPositionY();
+            // Side axis from the original left melee spot, relative to Thaddius' home (3513.84, -2926.55).
+            float const lx = -0.653f, ly = 0.757f;
+            float const side = idx < 2 ? 1.0f : -1.0f;
+            float const r = botAI->IsRanged(bot) ? 20.0f : 11.0f;
+            return MoveTo(bot->GetMapId(), cx + side * lx * r, cy + side * ly * r, bot->GetPositionZ(), false, false,
+                          false, false, MovementPriority::MOVEMENT_COMBAT);
+        }
     return MoveTo(bot->GetMapId(), position[idx].first, position[idx].second, bot->GetPositionZ(), false, false, false, false, MovementPriority::MOVEMENT_COMBAT);
 }
