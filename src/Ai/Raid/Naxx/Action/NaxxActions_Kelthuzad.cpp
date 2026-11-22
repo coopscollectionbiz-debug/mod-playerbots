@@ -15,6 +15,8 @@ bool KelthuzadChooseTargetAction::Execute(Event /*event*/)
     if (!helper.UpdateBossAI())
         return false;
 
+    Unit* const kelthuzad = AI_VALUE2(Unit*, "find target", "kel'thuzad");
+    bool const naxx40 = kelthuzad && kelthuzad->GetEntry() != 15990;  // WotLK 15990; IP Naxx40 has its own entry
     GuidVector attackers = context->GetValue<GuidVector>("attackers")->Get();
     Unit* target = nullptr;
     Unit *target_soldier = nullptr, *target_weaver = nullptr, *target_abomination = nullptr, *target_kelthuzad = nullptr,
@@ -45,7 +47,11 @@ bool KelthuzadChooseTargetAction::Execute(Event /*event*/)
             }
         }
 
-        if (unit->GetDistance2d(helper.center.first, helper.center.second) > 30.0f)
+        // IP Naxx40 ranged (on the 20 yd ring): Soldiers count out to 45 yd from the centre, but only inside
+        // the bot's own spell range below (no walking out: that pulled Soul Weavers, 11-21).
+        bool const ringSoldier = kelthuzad && kelthuzad->GetEntry() != 15990 && botAI->IsRanged(bot) &&
+                                 botAI->EqualLowercaseName(unit->GetName(), "soldier of the frozen wastes");
+        if (unit->GetDistance2d(helper.center.first, helper.center.second) > (ringSoldier ? 45.0f : 30.0f))
             continue;
 
         if (bot->GetDistance2d(unit) > sPlayerbotAIConfig.spellDistance)
@@ -83,8 +89,6 @@ bool KelthuzadChooseTargetAction::Execute(Event /*event*/)
     // IP Naxx40 phase 1: every ranged dps on Soldiers first, not two. A Soldier reaching the raid Dark Blasts it, and
     // guides have ranged and healers kill each one before it arrives while melee stay on the Abominations (research
     // 11-21). Melee keep the stock order: chasing Soldiers toward the alcoves pulled whole alcoves.
-    Unit* const kelthuzad = AI_VALUE2(Unit*, "find target", "kel'thuzad");
-    bool const naxx40 = kelthuzad && kelthuzad->GetEntry() != 15990;  // WotLK 15990; IP Naxx40 has its own entry
     if (botAI->IsRanged(bot))
     {
         if (naxx40 || botAI->GetRangedDpsIndex(bot) <= 1)
@@ -121,6 +125,23 @@ bool KelthuzadPositionAction::Execute(Event /*event*/)
 
     if (helper.IsPhaseOne())
     {
+        // IP Naxx40: ranged and healers hold a ring RANGED_RING yd out (spread by ranged index) instead of the
+        // 3 yd centre stack, so a Soldier walking in from an alcove comes into their spell range well before it
+        // reaches the raid (P1 diag 11-21: 4-11 Soldiers in combat at 30-60 yd, none shot until under 30). Melee
+        // and tanks keep the centre.
+        Unit* const kt = AI_VALUE2(Unit*, "find target", "kel'thuzad");
+        if (kt && kt->GetEntry() != 15990 && (botAI->IsRanged(bot) || botAI->IsHeal(bot)) && !botAI->IsTank(bot))
+        {
+            constexpr float RANGED_RING = 20.0f;
+            uint32 const idx = botAI->GetRangedIndex(bot);
+            float const a = static_cast<float>(M_PI) * 2.0f * (static_cast<float>(idx % 16) / 16.0f);
+            float const rx = helper.center.first + std::cos(a) * RANGED_RING;
+            float const ry = helper.center.second + std::sin(a) * RANGED_RING;
+            if (bot->GetDistance2d(rx, ry) > 3.0f && !bot->HasUnitState(UNIT_STATE_CASTING))
+                return MoveTo(NAXX_MAP_ID, rx, ry, bot->GetPositionZ(), false, false, false, false,
+                              MovementPriority::MOVEMENT_COMBAT);
+            return false;
+        }
         if (AI_VALUE(Unit*, "current target") == nullptr)
             return MoveInside(NAXX_MAP_ID, helper.center.first, helper.center.second, bot->GetPositionZ(), 3.0f,
                               MovementPriority::MOVEMENT_COMBAT);
