@@ -24,6 +24,7 @@ public:
         creators["grobbulus move away"] = &RaidNaxxActionContext::grobbulus_move_away;
         creators["grobbulus avoid spray"] = &RaidNaxxActionContext::grobbulus_avoid_spray;
         creators["grobbulus avoid cloud"] = &RaidNaxxActionContext::grobbulus_avoid_cloud;
+        creators["grobbulus tank face wall"] = &RaidNaxxActionContext::grobbulus_tank_face_wall;
 
         creators["heigan dance melee"] = &RaidNaxxActionContext::heigan_dance_melee;
         creators["heigan dance ranged"] = &RaidNaxxActionContext::heigan_dance_ranged;
@@ -96,6 +97,7 @@ private:
     static Action* grobbulus_move_away(PlayerbotAI* ai) { return new GrobbulusMoveAwayAction(ai); }
     static Action* grobbulus_avoid_spray(PlayerbotAI* ai) { return new GrobbulusAvoidSprayAction(ai); }
     static Action* grobbulus_avoid_cloud(PlayerbotAI* ai) { return new GrobbulusAvoidCloudAction(ai); }
+    static Action* grobbulus_tank_face_wall(PlayerbotAI* ai) { return new GrobbulusTankFaceWallAction(ai); }
     static Action* heigan_dance_melee(PlayerbotAI* ai) { return new HeiganDanceAction(ai, false); }
     static Action* heigan_dance_ranged(PlayerbotAI* ai) { return new HeiganDanceAction(ai, true); }
     static Action* thaddius_attack_nearest_pet(PlayerbotAI* ai) { return new ThaddiusAttackNearestPetAction(ai); }

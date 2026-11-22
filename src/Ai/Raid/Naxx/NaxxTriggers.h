@@ -59,6 +59,13 @@ namespace NaxxGrobbulusSpray
     constexpr float Arc = static_cast<float>(M_PI) / 2.0f;  // cone is 60 degrees; 90 for margin
 }
 
+class GrobbulusTankFacingTrigger : public Trigger
+{
+public:
+    GrobbulusTankFacingTrigger(PlayerbotAI* ai) : Trigger(ai, "grobbulus tank facing") {}
+    bool IsActive() override;
+};
+
 class GrobbulusPoisonCloudTrigger : public Trigger
 {
 public:

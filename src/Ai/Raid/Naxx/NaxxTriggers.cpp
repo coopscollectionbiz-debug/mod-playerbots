@@ -55,6 +55,11 @@ bool MutatingInjectionRemovedTrigger::IsActive()
     return HasNoAuraTrigger::IsActive() && botAI->GetState() == BOT_STATE_COMBAT && botAI->IsRanged(bot);
 }
 
+bool GrobbulusTankFacingTrigger::IsActive()
+{
+    return GrobbulusTankFacingWrong(bot, botAI, AI_VALUE2(Unit*, "find target", "grobbulus"));
+}
+
 bool GrobbulusPoisonCloudTrigger::IsActive()
 {
     // Not his tank: the rotation walks him clear of the clouds.

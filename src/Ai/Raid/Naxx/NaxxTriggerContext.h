@@ -23,6 +23,7 @@ public:
         creators["grobbulus cloud"] = &RaidNaxxTriggerContext::grobbulus_cloud;
         creators["grobbulus spray cone"] = &RaidNaxxTriggerContext::grobbulus_spray_cone;
         creators["grobbulus poison cloud"] = &RaidNaxxTriggerContext::grobbulus_poison_cloud;
+        creators["grobbulus tank facing"] = &RaidNaxxTriggerContext::grobbulus_tank_facing;
         creators["heigan melee"] = &RaidNaxxTriggerContext::heigan_melee;
         creators["heigan ranged"] = &RaidNaxxTriggerContext::heigan_ranged;
 
@@ -94,6 +95,7 @@ private:
     static Trigger* grobbulus_cloud(PlayerbotAI* botAI) { return new GrobbulusCloudTrigger(botAI); }
     static Trigger* grobbulus_spray_cone(PlayerbotAI* botAI) { return new GrobbulusSprayConeTrigger(botAI); }
     static Trigger* grobbulus_poison_cloud(PlayerbotAI* botAI) { return new GrobbulusPoisonCloudTrigger(botAI); }
+    static Trigger* grobbulus_tank_facing(PlayerbotAI* botAI) { return new GrobbulusTankFacingTrigger(botAI); }
     static Trigger* heigan_melee(PlayerbotAI* botAI) { return new HeiganMeleeTrigger(botAI); }
     static Trigger* heigan_ranged(PlayerbotAI* botAI) { return new HeiganRangedTrigger(botAI); }
 

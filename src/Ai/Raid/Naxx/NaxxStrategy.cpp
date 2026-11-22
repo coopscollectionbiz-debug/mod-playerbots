@@ -41,6 +41,10 @@ void RaidNaxxStrategy::InitTriggers(std::vector<TriggerNode*>& triggers)
         { NextAction("grobbulus move center", ACTION_RAID + 1) }
     ));
 
+    triggers.push_back(new TriggerNode("grobbulus tank facing",
+        { NextAction("grobbulus tank face wall", ACTION_RAID) }
+    ));
+
     triggers.push_back(new TriggerNode("grobbulus poison cloud",
         { NextAction("grobbulus avoid cloud", ACTION_RAID + 4) }
     ));

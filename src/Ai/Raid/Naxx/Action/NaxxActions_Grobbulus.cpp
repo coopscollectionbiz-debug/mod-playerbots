@@ -91,9 +91,11 @@ static constexpr float GROBBULUS_CENTER_X = 3281.23f;
 static constexpr float GROBBULUS_CENTER_Y = -3310.38f;
 static constexpr float GROBBULUS_FLOOR_Z = 292.6f;
 
+static std::vector<std::pair<float, float>> sGrobbulusWall;
+
 static void PlaceGrobbulusWaypointsOnWall(Player* bot, std::vector<std::pair<float, float>>& waypoints)
 {
-    static std::vector<std::pair<float, float>> wall;
+    std::vector<std::pair<float, float>>& wall = sGrobbulusWall;
     if (wall.empty())
     {
         constexpr float WALL_INSET = 4.0f;
@@ -220,4 +222,55 @@ bool GrobbulusAvoidCloudAction::Execute(Event /*event*/)
     if (!found)
         return false;
     return MoveTo(bot->GetMapId(), bestX, bestY, bestZ, false, false, false, false, MovementPriority::MOVEMENT_COMBAT, true);
+}
+
+// The wall radius on a bearing from the room centre, from the nearest measured wall waypoint (+ the 4 yd inset).
+static float GrobbulusWallRadiusAt(float angle)
+{
+    float best = 39.0f, bestDiff = 10.0f;
+    for (auto const& w : sGrobbulusWall)
+    {
+        float const a = std::atan2(w.second - GROBBULUS_CENTER_Y, w.first - GROBBULUS_CENTER_X);
+        float const d = std::fabs(Position::NormalizeOrientation(a - angle + static_cast<float>(M_PI)) - static_cast<float>(M_PI));
+        if (d < bestDiff)
+        {
+            bestDiff = d;
+            best = std::hypot(w.first - GROBBULUS_CENTER_X, w.second - GROBBULUS_CENTER_Y) + 4.0f;
+        }
+    }
+    return best;
+}
+
+bool GrobbulusTankFaceWallAction::Execute(Event /*event*/)
+{
+    // Between clouds: stand between him and the wall, so he faces it and Slime Spray only reaches the tank. The rotation
+    // left him on the wall side of the tank, facing the raid (11-21 diag: at waypoint 2 the boss stood 4.6 yd farther
+    // out than the tank; Fallout Slime still killed 29).
+    Unit* boss = AI_VALUE2(Unit*, "find target", "grobbulus");
+    if (!boss || sGrobbulusWall.empty())
+        return false;
+    float const a = std::atan2(boss->GetPositionY() - GROBBULUS_CENTER_Y, boss->GetPositionX() - GROBBULUS_CENTER_X);
+    float const wallR = GrobbulusWallRadiusAt(a);
+    float const bossR = std::hypot(boss->GetPositionX() - GROBBULUS_CENTER_X, boss->GetPositionY() - GROBBULUS_CENTER_Y);
+    float const r = std::min(wallR - 1.5f, bossR + 3.0f);
+    float x = GROBBULUS_CENTER_X + std::cos(a) * r;
+    float y = GROBBULUS_CENTER_Y + std::sin(a) * r;
+    float z = GROBBULUS_FLOOR_Z;
+    bot->UpdateAllowedPositionZ(x, y, z);
+    if (bot->GetExactDist2d(x, y) < 1.5f)
+        return false;
+    return MoveTo(bot->GetMapId(), x, y, z, false, false, false, false, MovementPriority::MOVEMENT_COMBAT, true);
+}
+
+bool GrobbulusTankFacingWrong(Player* bot, PlayerbotAI* botAI, Unit* boss)
+{
+    if (!boss || !boss->IsInCombat() || boss->GetVictim() != bot || !botAI->IsMainTank(bot) || sGrobbulusWall.empty())
+        return false;
+    if (std::fabs(boss->GetPositionZ() - GROBBULUS_FLOOR_Z) > 3.0f || bot->GetExactDist2d(boss) > 10.0f ||
+        boss->isMoving() || bot->isMoving())
+        return false;
+    float const out = std::atan2(boss->GetPositionY() - GROBBULUS_CENTER_Y, boss->GetPositionX() - GROBBULUS_CENTER_X);
+    float const diff =
+        std::fabs(Position::NormalizeOrientation(boss->GetOrientation() - out + static_cast<float>(M_PI)) - static_cast<float>(M_PI));
+    return diff > static_cast<float>(M_PI) / 3.0f;  // more than 60 degrees off "out at the wall"
 }

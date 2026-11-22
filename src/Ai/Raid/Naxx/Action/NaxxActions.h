@@ -50,6 +50,14 @@ public:
 // IP Naxx40 Slime Spray (90008) is a 45 yd frontal cone and every player it hits spawns a Fallout Slime
 // (boss_grobbulus_40.cpp SpellHitTarget); slimes in melee were the top killer once the rotation worked (11-21).
 // Everyone but the boss's victim steps round behind him.
+class GrobbulusTankFaceWallAction : public MovementAction
+{
+public:
+    GrobbulusTankFaceWallAction(PlayerbotAI* ai) : MovementAction(ai, "grobbulus tank face wall") {}
+    bool Execute(Event event) override;
+};
+bool GrobbulusTankFacingWrong(Player* bot, PlayerbotAI* botAI, Unit* boss);
+
 class GrobbulusAvoidCloudAction : public MovementAction
 {
 public:
