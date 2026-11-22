@@ -5,6 +5,7 @@
  */
 
 #include <cmath>
+#include "Map.h"
 #include "NaxxActions.h"
 #include "NaxxHelpers.h"
 #include "NaxxTriggers.h"
@@ -81,8 +82,52 @@ uint32 GrobbulusRotateAction::GetCurrWaypoint()
     return (current + intervals - 1) % intervals;
 }
 
+// The waypoints moved out to the wall: real raids kite him along the outer wall with the tank's back to it, so he faces
+// the wall and Slime Spray (45 yd frontal cone) hits only the tank while the raid stands in the middle behind him
+// (research 11-21, reports/Vanilla raid boss bot strategies.md). The inherited circle (r 35 round the room centre) left
+// the raid in front of him. Measured once: along each of the 8 bearings the farthest floor point (z within 2 of
+// 292.6) in sight of the centre, up to 60 yd, then WALL_INSET in from it; a bearing with nothing past 35 keeps 35.
+static constexpr float GROBBULUS_CENTER_X = 3281.23f;
+static constexpr float GROBBULUS_CENTER_Y = -3310.38f;
+static constexpr float GROBBULUS_FLOOR_Z = 292.6f;
+
+static void PlaceGrobbulusWaypointsOnWall(Player* bot, std::vector<std::pair<float, float>>& waypoints)
+{
+    static std::vector<std::pair<float, float>> wall;
+    if (wall.empty())
+    {
+        constexpr float WALL_INSET = 4.0f;
+        Map* map = bot->GetMap();
+        for (size_t i = 0; i < waypoints.size(); ++i)
+        {
+            float const a = std::atan2(waypoints[i].second - GROBBULUS_CENTER_Y, waypoints[i].first - GROBBULUS_CENTER_X);
+            float best = 35.0f + WALL_INSET;
+            for (float r = 60.0f; r > 35.0f + WALL_INSET; r -= 1.0f)
+            {
+                float const x = GROBBULUS_CENTER_X + std::cos(a) * r;
+                float const y = GROBBULUS_CENTER_Y + std::sin(a) * r;
+                float const z = map->GetHeight(bot->GetPhaseMask(), x, y, GROBBULUS_FLOOR_Z + 5.0f);
+                if (z <= INVALID_HEIGHT || std::fabs(z - GROBBULUS_FLOOR_Z) > 2.0f)
+                    continue;
+                if (!map->isInLineOfSight(GROBBULUS_CENTER_X, GROBBULUS_CENTER_Y, GROBBULUS_FLOOR_Z + 2.0f, x, y, z + 2.0f,
+                                          bot->GetPhaseMask(), LINEOFSIGHT_ALL_CHECKS, VMAP::ModelIgnoreFlags::Nothing))
+                    continue;
+                best = r;
+                break;
+            }
+            float const r = best - WALL_INSET;
+            wall.emplace_back(GROBBULUS_CENTER_X + std::cos(a) * r, GROBBULUS_CENTER_Y + std::sin(a) * r);
+            LOG_INFO("module", "[Naxx40 Grobbulus] wall waypoint {} at {:.1f} {:.1f} (r {:.1f})", i, wall.back().first,
+                     wall.back().second, r);
+        }
+    }
+    if (wall.size() == waypoints.size())
+        waypoints = wall;
+}
+
 bool GrobbulusRotateAction::Execute(Event /*event*/)
 {
+    PlaceGrobbulusWaypointsOnWall(bot, waypoints);
     // The circle's waypoints are on the room floor (z 292.6). The base action moves at the bot's own Z, so a tank who
     // picked Grobbulus up on the entrance ledge (z 320, IP Naxx40) asked for a point 28 yd up in the air, the move
     // failed and he stayed on the ledge while the clouds stacked (11-21 diag: wipes held at 3211,-3320 z320; the kill
