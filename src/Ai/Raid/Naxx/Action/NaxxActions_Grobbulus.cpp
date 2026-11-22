@@ -181,6 +181,23 @@ bool GrobbulusAvoidCloudAction::Execute(Event /*event*/)
     // The nearest spot round the bot that is 4 yd clear of every cloud and, when possible, out of the spray cone, at
     // its own height. Rings of 8, 14 and 20 yd, 16 bearings each.
     Unit* boss = AI_VALUE2(Unit*, "find target", "grobbulus");
+    // Melee first try his two sides at melee reach: out of the Slime Spray cone and still on him, so leaving the
+    // cloud does not mean standing in front of him (the cloud-edge hold put melee there, 11-21 regression).
+    if (boss && !botAI->IsRanged(bot) && !botAI->IsTank(bot))
+    {
+        float const reach = boss->GetCombatReach() + 1.5f;
+        for (float side : {1.0f, -1.0f})
+        {
+            float const a = boss->GetOrientation() + side * static_cast<float>(M_PI) / 2.0f;
+            float x = boss->GetPositionX() + cos(a) * reach;
+            float y = boss->GetPositionY() + sin(a) * reach;
+            float z = boss->GetPositionZ();
+            bot->UpdateAllowedPositionZ(x, y, z);
+            if (std::fabs(z - boss->GetPositionZ()) > 3.0f || NaxxHelpers::GrobbulusCloudGap(bot, x, y) < 2.0f)
+                continue;
+            return MoveTo(bot->GetMapId(), x, y, z, false, false, false, false, MovementPriority::MOVEMENT_COMBAT, true);
+        }
+    }
     float bestX = 0.0f, bestY = 0.0f, bestZ = 0.0f, bestScore = -1000.0f;
     bool found = false;
     for (float ring : {8.0f, 14.0f, 20.0f})
