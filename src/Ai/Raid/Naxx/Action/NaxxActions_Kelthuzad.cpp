@@ -15,6 +15,8 @@ bool KelthuzadChooseTargetAction::Execute(Event /*event*/)
     if (!helper.UpdateBossAI())
         return false;
 
+    Unit* const kelthuzad = AI_VALUE2(Unit*, "find target", "kel'thuzad");
+    bool const naxx40 = kelthuzad && kelthuzad->GetEntry() != 15990;  // WotLK 15990; IP Naxx40 has its own entry
     GuidVector attackers = context->GetValue<GuidVector>("attackers")->Get();
     Unit* target = nullptr;
     Unit *target_soldier = nullptr, *target_weaver = nullptr, *target_abomination = nullptr, *target_kelthuzad = nullptr,
@@ -45,10 +47,17 @@ bool KelthuzadChooseTargetAction::Execute(Event /*event*/)
             }
         }
 
-        if (unit->GetDistance2d(helper.center.first, helper.center.second) > 30.0f)
+        // IP Naxx40: Soldiers are picked up out to SOLDIER_REACH from the centre, beyond spell range too (the ranged
+        // dps walks into range). With the stock 30 yd / spell-range limits a Soldier was ignored until it was about
+        // to Dark Blast the raid, and 10-11 walked in together (11-21 P1 diag: soldiers in combat 0 <30 yd, 4-11 at
+        // 30-60 yd, raid at the centre).
+        constexpr float SOLDIER_REACH = 45.0f;
+        bool const farSoldier = naxx40 && botAI->IsRanged(bot) &&
+                                botAI->EqualLowercaseName(unit->GetName(), "soldier of the frozen wastes");
+        if (unit->GetDistance2d(helper.center.first, helper.center.second) > (farSoldier ? SOLDIER_REACH : 30.0f))
             continue;
 
-        if (bot->GetDistance2d(unit) > sPlayerbotAIConfig.spellDistance)
+        if (!farSoldier && bot->GetDistance2d(unit) > sPlayerbotAIConfig.spellDistance)
             continue;
 
         if (botAI->EqualLowercaseName(unit->GetName(), "unstoppable abomination"))
@@ -83,8 +92,6 @@ bool KelthuzadChooseTargetAction::Execute(Event /*event*/)
     // IP Naxx40 phase 1: every ranged dps on Soldiers first, not two. A Soldier reaching the raid Dark Blasts it, and
     // guides have ranged and healers kill each one before it arrives while melee stay on the Abominations (research
     // 11-21). Melee keep the stock order: chasing Soldiers toward the alcoves pulled whole alcoves.
-    Unit* const kelthuzad = AI_VALUE2(Unit*, "find target", "kel'thuzad");
-    bool const naxx40 = kelthuzad && kelthuzad->GetEntry() != 15990;  // WotLK 15990; IP Naxx40 has its own entry
     if (botAI->IsRanged(bot))
     {
         if (naxx40 || botAI->GetRangedDpsIndex(bot) <= 1)
@@ -121,6 +128,35 @@ bool KelthuzadPositionAction::Execute(Event /*event*/)
 
     if (helper.IsPhaseOne())
     {
+        // Diagnostic (2026-11-21, temporary): P1 wipes to Dark Blast + Abominations on full gear. Every 10 s, from one
+        // bot: adds in combat by distance from helper.center, and this bot's own distance from it.
+        {
+            static uint32 lastMs = 0;
+            uint32 const nowMs = getMSTime();
+            if (botAI->IsMainTank(bot) && (!lastMs || getMSTimeDiff(lastMs, nowMs) > 10000))
+            {
+                lastMs = nowMs ? nowMs : 1;
+                uint32 counts[3][3] = {};
+                char const* names[3] = {"soldier of the frozen wastes", "unstoppable abomination", "soul weaver"};
+                for (ObjectGuid const guid : AI_VALUE(GuidVector, "possible targets"))
+                {
+                    Unit* u = botAI->GetUnit(guid);
+                    if (!u || !u->IsAlive() || !u->IsInCombat())
+                        continue;
+                    for (int k = 0; k < 3; ++k)
+                        if (botAI->EqualLowercaseName(u->GetName(), names[k]))
+                        {
+                            float const d = u->GetDistance2d(helper.center.first, helper.center.second);
+                            ++counts[k][d < 30.0f ? 0 : d < 60.0f ? 1 : 2];
+                        }
+                }
+                LOG_INFO("module", "[Naxx40 KT P1] center {:.1f} {:.1f}; tank {:.1f} yd from it; in combat <30/30-60/>60: "
+                         "soldiers {}/{}/{} aboms {}/{}/{} weavers {}/{}/{}",
+                         helper.center.first, helper.center.second, bot->GetDistance2d(helper.center.first, helper.center.second),
+                         counts[0][0], counts[0][1], counts[0][2], counts[1][0], counts[1][1], counts[1][2], counts[2][0],
+                         counts[2][1], counts[2][2]);
+            }
+        }
         if (AI_VALUE(Unit*, "current target") == nullptr)
             return MoveInside(NAXX_MAP_ID, helper.center.first, helper.center.second, bot->GetPositionZ(), 3.0f,
                               MovementPriority::MOVEMENT_COMBAT);
