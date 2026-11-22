@@ -7,6 +7,8 @@
 #ifndef PLAYERBOTS_NAXXBOSSHELPER_H
 #define PLAYERBOTS_NAXXBOSSHELPER_H
 
+#include <cmath>
+
 #include "AiObject.h"
 #include "EventMap.h"
 #include "Log.h"
@@ -632,6 +634,13 @@ public:
         if (!feugenUp || !stalaggUp)
             return feugenUp ? feugen : (stalaggUp ? stalagg : nullptr);
 
+        // A pet tank fights the pet that is on it: Magnetic Pull swaps the two tanks between the platforms
+        // every 20 s, so the fixed main/assist split would walk each tank back across the room.
+        if (feugen->GetVictim() == bot)
+            return feugen;
+        if (stalagg->GetVictim() == bot)
+            return stalagg;
+
         bool toStalagg;
         if (PlayerbotAI::IsMainTank(bot))
             toStalagg = false;
@@ -646,10 +655,18 @@ public:
     }
     std::pair<float, float> PetPhaseGetPosForTank()
     {
-        if (GetAssignedPet() == feugen)
-            return tankPosFeugen;
-
-        return tankPosStalagg;
+        Unit* pet = GetAssignedPet();
+        std::pair<float, float> const spot = pet == feugen ? tankPosFeugen : tankPosStalagg;
+        // DungeonClear's boss-focus test runs root both pets at home (the leash test can never fire), and the
+        // platform spot is 18-20 yd from a rooted pet: tank it from 3 yd, on the platform-spot side.
+        if (pet && pet->HasUnitState(UNIT_STATE_ROOT))
+        {
+            float const dx = spot.first - pet->GetPositionX(), dy = spot.second - pet->GetPositionY();
+            float const d = std::sqrt(dx * dx + dy * dy);
+            if (d > 3.0f)
+                return {pet->GetPositionX() + dx * 3.0f / d, pet->GetPositionY() + dy * 3.0f / d};
+        }
+        return spot;
     }
     std::pair<float, float> PetPhaseGetPosForRanged()
     {
