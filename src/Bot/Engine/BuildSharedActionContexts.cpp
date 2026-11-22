@@ -23,6 +23,7 @@
 #include "OnyActionContext.h"
 #include "RSActionContext.h"
 #include "SSCActionContext.h"
+#include "SunwellActions.h"
 #include "TKActionContext.h"
 #include "TbcDungeonActionContext.h"
 #include "UldActionContext.h"
@@ -57,6 +58,7 @@ void AiObjectContext::BuildSharedActionContexts(
     actionContexts.Add(new RaidOnyxiaActionContext());
     actionContexts.Add(new RaidIccActionContext());
     actionContexts.Add(new RaidRsActionContext());
+    actionContexts.Add(new RaidSunwellActionContext());
     actionContexts.Add(new TbcDungeonAuchenaiCryptsActionContext());
     actionContexts.Add(new TbcDungeonSethekkHallsActionContext());
     actionContexts.Add(new TbcDungeonMechanarActionContext());

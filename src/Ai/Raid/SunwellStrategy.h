@@ -21,6 +21,11 @@ public:
     {
         triggers.push_back(
             new TriggerNode("raid resistance buff", { NextAction("raid resistance buff", ACTION_RAID + 5) }));
+        // Eredar Twins: out of Alythess's Blaze patches, and ranged/healers spread against Conflagration (SunwellActions.h).
+        triggers.push_back(
+            new TriggerNode("eredar blaze", { NextAction("eredar move out of blaze", ACTION_RAID + 3) }));
+        triggers.push_back(
+            new TriggerNode("eredar conflagration spread", { NextAction("eredar conflagration spread", ACTION_RAID + 2) }));
     }
 };
 
