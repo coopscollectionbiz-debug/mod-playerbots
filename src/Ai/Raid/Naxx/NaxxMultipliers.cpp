@@ -54,6 +54,12 @@ float GrobbulusMultiplier::GetValue(Action* action)
     if (dynamic_cast<CombatFormationMoveAction*>(action))
         return 0.0f;
 
+    // Melee wait at a cloud's edge while he stands in his newest one (dropped at his feet every 15 s): chasing him
+    // through it made Poison Cloud the top killer once the slimes were handled (11-21: 40 cloud deaths, 5 slime).
+    if (dynamic_cast<ReachTargetAction*>(action) && !botAI->IsTank(bot) && !botAI->IsRanged(bot) &&
+        NaxxHelpers::GrobbulusCloudGap(bot, boss->GetPositionX(), boss->GetPositionY()) < 0.0f)
+        return 0.0f;
+
     return 1.0f;
 }
 
