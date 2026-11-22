@@ -2432,7 +2432,9 @@ PlayerbotFactory::BuildSlotCandidates(
             else
                 desiredQuality = sPlayerbotAIConfig.randomGearQualityLimit;
         }
-        else if (urand(0, 100) < 100 * sPlayerbotAIConfig.randomGearLoweringChance &&
+        // Not under a caller-given cap either: RandomGearLoweringChance (0.75) dropped most slots of an "epic" test
+        // run to blue (11-21: ilvl 88 epic bots had 3-5 epics, average item level ~70).
+        else if (!explicitGearCap && urand(0, 100) < 100 * sPlayerbotAIConfig.randomGearLoweringChance &&
                  desiredQuality > ITEM_QUALITY_NORMAL)
         {
             desiredQuality--;
