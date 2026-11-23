@@ -16,6 +16,7 @@
 #define PLAYERBOTS_RAIDRESISTANCEBUFF_H
 
 #include "Action.h"
+#include "Ai/Raid/RaidDiag.h"
 #include "Log.h"
 #include "Creature.h"
 #include "Player.h"
@@ -121,7 +122,7 @@ public:
                                                                                : SPELL_SCHOOL_SHADOW;
             int32 const before = bot->GetResistance(SpellSchools(school));
             aura = bot->AddAura(wanted, bot);
-            LOG_DEBUG("playerbots", "[RaidResistanceBuff] {} +{}: resistance {} -> {}{}", bot->GetName(), wanted, before,
+            RAID_DIAG("playerbots", "[RaidResistanceBuff] {} +{}: resistance {} -> {}{}", bot->GetName(), wanted, before,
                      bot->GetResistance(SpellSchools(school)), aura ? "" : " (AddAura FAILED)");
         }
         if (!aura)

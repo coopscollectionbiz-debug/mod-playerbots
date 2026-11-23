@@ -5,9 +5,14 @@
  */
 
 #include "NaxxActions.h"
+#include "Ai/Raid/RaidDiag.h"
 #include "NaxxSpellIds.h"
 #include "PlayerbotAIConfig.h"
 #include "Playerbots.h"
+#include "StringFormat.h"
+
+#include <mutex>
+#include <unordered_map>
 
 bool ThaddiusAttackNearestPetAction::isUseful()
 {
@@ -25,11 +30,42 @@ bool ThaddiusAttackNearestPetAction::isUseful()
     return true;
 }
 
+// Pet-phase trace (AiPlayerbot.RaidDiagnostics): every 2 s
+// per instance, each pet's distance from home (the 28 yd Tesla leash) and who it is on.
+static void ThaddiusPetTrace(Player* bot, Unit* feugen, Unit* stalagg)
+{
+    if (!RaidDiagEnabled())
+        return;
+    static std::mutex m;
+    static std::unordered_map<uint32, uint32> last;
+    uint32 const now = getMSTime();
+    {
+        std::lock_guard<std::mutex> lock(m);
+        uint32& l = last[bot->GetInstanceId()];
+        if (l && getMSTimeDiff(l, now) < 2000)
+            return;
+        l = now;
+    }
+    auto line = [](Unit* pet) -> std::string
+    {
+        if (!pet)
+            return "gone";
+        Creature* c = pet->ToCreature();
+        Unit* v = pet->GetVictim();
+        return Acore::StringFormat("{:.1f} yd from home {:.0f}% on {}{}", c ? c->GetHomePosition().GetExactDist(pet) : -1.0f,
+                                   pet->GetHealthPct(), v ? v->GetName() : "none",
+                                   v && v->IsPlayer() && PlayerbotAI::IsTank(v->ToPlayer()) ? " (tank)" : "");
+    };
+    RAID_DIAG("playerbots.thaddius", "[Naxx40 Thaddius] instance {} | Feugen {} | Stalagg {}", bot->GetInstanceId(),
+              line(feugen), line(stalagg));
+}
+
 bool ThaddiusAttackNearestPetAction::Execute(Event /*event*/)
 {
     Unit* target = helper.GetAssignedPet();
     if (!target)
         return false;
+    ThaddiusPetTrace(bot, helper.GetFeugen(), helper.GetStalagg());
 
     // The two pet tanks hold their platform spot whether or not they have aggro yet: a pet follows its
     // victim, and one drawn down to the low floor leaves its 28 yd leash and the coils shock the raid

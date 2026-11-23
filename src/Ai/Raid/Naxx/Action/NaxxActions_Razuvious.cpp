@@ -5,6 +5,7 @@
  */
 
 #include <algorithm>
+#include "Ai/Raid/RaidDiag.h"
 #include <cmath>
 #include <list>
 #include <unordered_map>
@@ -166,7 +167,7 @@ bool RazuviousUseObedienceCrystalAction::Execute(Event /*event*/)
                         break;
                     }
             }
-            // Diagnostic (2026-11-20, DEBUG level): Naxx40 Razuvious wiped with 3 priests and the Understudies on the
+            // Diagnostic (2026-11-20, AiPlayerbot.RaidDiagnostics): Naxx40 Razuvious wiped with 3 priests and the Understudies on the
             // raid; say what each priest does, at most every 10 s.
             static std::unordered_map<uint64, uint32> lastSay;
             uint32 const now = getMSTime();
@@ -195,7 +196,7 @@ bool RazuviousUseObedienceCrystalAction::Execute(Event /*event*/)
                             why = static_cast<int32>(probe->CheckCast(true));
                             delete probe;
                         }
-                    LOG_DEBUG("module", "[Naxx40 Razuvious] {} mind control on {} ({:.0f} yd): {} (check {}, moving {}, level {} vs {})",
+                    RAID_DIAG("module", "[Naxx40 Razuvious] {} mind control on {} ({:.0f} yd): {} (check {}, moving {}, level {} vs {})",
                              bot->GetName(), target->GetName(), bot->GetDistance(target), ok ? "cast" : "refused", why,
                              bot->isMoving() ? 1 : 0, bot->GetLevel(), target->GetLevel());
                 }
@@ -217,13 +218,13 @@ bool RazuviousUseObedienceCrystalAction::Execute(Event /*event*/)
                     if (botAI->CastSpell("power word: shield", member))
                     {
                         if (say)
-                            LOG_DEBUG("module", "[Naxx40 Razuvious] {} shielded {} (controlling an Understudy)",
+                            RAID_DIAG("module", "[Naxx40 Razuvious] {} shielded {} (controlling an Understudy)",
                                      bot->GetName(), member->GetName());
                         return true;
                     }
                 }
             if (say)
-                LOG_DEBUG("module", "[Naxx40 Razuvious] {} found no free understudy among {} attackers", bot->GetName(),
+                RAID_DIAG("module", "[Naxx40 Razuvious] {} found no free understudy among {} attackers", bot->GetName(),
                          context->GetValue<GuidVector>("attackers")->Get().size());
         }
     }
@@ -281,7 +282,7 @@ bool RazuviousKeepShoutRangeAction::Execute(Event /*event*/)
     Unit* razuvious = AI_VALUE2(Unit*, "find target", "instructor razuvious");
     if (!IsShoutRangeBot(botAI, bot, razuvious))
         return false;
-    // Diagnostic (2026-11-21, DEBUG level): healers 10-29 yd from him still died to the shout (tr-20261121-120757-2).
+    // Diagnostic (2026-11-21, AiPlayerbot.RaidDiagnostics): healers 10-29 yd from him still died to the shout (tr-20261121-120757-2).
     static std::unordered_map<uint64, uint32> lastSay;
     uint32 const nowMs = getMSTime();
     uint32& lastMs = lastSay[bot->GetGUID().GetRawValue()];
@@ -303,12 +304,12 @@ bool RazuviousKeepShoutRangeAction::Execute(Event /*event*/)
             continue;
         bool const moved = MoveTo(bot->GetMapId(), x, y, z, false, false, false, false, MovementPriority::MOVEMENT_COMBAT);
         if (say)
-            LOG_DEBUG("module", "[Naxx40 Razuvious] {} shout range: {:.1f} yd, moving to a spot {:.1f} yd off (offset {:.1f}): {}",
+            RAID_DIAG("module", "[Naxx40 Razuvious] {} shout range: {:.1f} yd, moving to a spot {:.1f} yd off (offset {:.1f}): {}",
                      bot->GetName(), bot->GetExactDist2d(razuvious), bot->GetExactDist2d(x, y), off, moved ? "moving" : "MoveTo refused");
         return moved;
     }
     if (say)
-        LOG_DEBUG("module", "[Naxx40 Razuvious] {} shout range: {:.1f} yd, no clear spot at 34 yd", bot->GetName(),
+        RAID_DIAG("module", "[Naxx40 Razuvious] {} shout range: {:.1f} yd, no clear spot at 34 yd", bot->GetName(),
                  bot->GetExactDist2d(razuvious));
     return false;
 }

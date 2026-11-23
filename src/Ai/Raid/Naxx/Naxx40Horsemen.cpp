@@ -8,6 +8,7 @@
 // docs/superpowers/specs/2026-10-27-playerbot-naxx40-four-horsemen-design.md §4, §6.
 
 #include "Naxx40Horsemen.h"
+#include "Ai/Raid/RaidDiag.h"
 
 #include <atomic>
 #include <memory>
@@ -341,7 +342,7 @@ namespace Naxx40Horsemen
                         line += Acore::StringFormat(" {}", 100 * p->GetPower(POWER_MANA) / maxMana);
                 }
             }
-            LOG_DEBUG("playerbots", "{}", line);
+            LOG_INFO("playerbots", "{}", line);
         }
 
         void FillView(Map* map, ObjectGuid const horseGuid[4], std::shared_ptr<Assignment const> assign,
@@ -470,7 +471,7 @@ namespace Naxx40Horsemen
 
         if (!r.latched)
             return false;
-        if (diagDue && sLog->ShouldLog("playerbots", LogLevel::LOG_LEVEL_DEBUG))
+        if (diagDue && RaidDiagEnabled())
             LogDiag(map, r, horse, alive);
 
         FillView(map, r.horseGuid, r.assign, view);

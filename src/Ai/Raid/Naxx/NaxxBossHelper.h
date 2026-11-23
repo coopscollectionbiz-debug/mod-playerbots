@@ -602,6 +602,8 @@ public:
     // alone would latch the pet phase on forever.
     static bool IsPetActive(Unit* pet) { return pet && pet->IsAlive() && !pet->HasUnitFlag(UNIT_FLAG_NOT_SELECTABLE); }
     bool IsPhasePet() { return IsPetActive(feugen) || IsPetActive(stalagg); }
+    Unit* GetFeugen() const { return feugen; }
+    Unit* GetStalagg() const { return stalagg; }
     bool IsPhaseTransition()
     {
         if (IsPhasePet())

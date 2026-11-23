@@ -1324,6 +1324,10 @@ AiPlayerbot.RaidGearProgression.ItemLevelStep = 5
 AiPlayerbot.RaidGearProgression.SlotsPerKill = 1
 AiPlayerbot.RaidGearProgression.UpgradeChance = 30
 
+# Raid encounter diagnostics: boss-test traces (Naxx40 Kel'Thuzad P1, Horsemen rotation, Razuvious Mind Control,
+# Grobbulus waypoints, Thaddius pets, Nightbane, raid resistance buff). For test realms; leave 0 in production.
+AiPlayerbot.RaidDiagnostics = 0
+
 # Prefer armor of the class's ideal type: apply 3x score multiplier to class-appropriate armor.
 # When enabled, Warriors strongly prefer plate, Shamans prefer mail, etc.
 # A truly superior item can still win (no hard filtering), but same-quality

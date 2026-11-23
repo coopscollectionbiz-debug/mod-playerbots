@@ -207,7 +207,18 @@ public:
     virtual bool IsActive()
     {
         Unit* target = AI_VALUE(Unit*, "current target");
-        return ThaddiusPhasePetTrigger::IsActive() && botAI->IsTank(bot) && target && target->GetVictim() != bot;
+        if (!ThaddiusPhasePetTrigger::IsActive() || !botAI->IsTank(bot) || !target)
+            return false;
+        // Taunt only a pet that is on a non-tank. Every tank taunting whenever the pet was not on it bounced each pet
+        // between the raid's tanks; the one that lost it walked to its own platform and dragged the pet past its
+        // 28 yd leash (Tesla Coil Shock 45-79 per pull, Naxx40 normal-pull runs 11-22).
+        Unit* victim = target->GetVictim();
+        if (victim == bot || (victim && victim->IsPlayer() && botAI->IsTank(victim->ToPlayer())))
+            return false;
+        // Only a tank on that pet's platform taunts it: a taunt from the other platform (~80 yd) pulled Stalagg across the
+        // room after a healer took him (pet trace 11-22 20:22: on Truth at 18 yd, then the Feugen tank at 68-97 yd).
+        Creature* pet = target->ToCreature();
+        return !pet || bot->GetExactDist2d(pet->GetHomePosition().GetPositionX(), pet->GetHomePosition().GetPositionY()) <= 35.0f;
     }
 };
 
