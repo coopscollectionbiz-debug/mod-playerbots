@@ -36,7 +36,12 @@ bool ThaddiusAttackNearestPetAction::Execute(Event /*event*/)
     // (focus runs landed on the low floor; 20 Shock deaths with both pets still at 99-100%).
     // In combat only: out of combat the tank spots are inside the pets' aggro range (Feugen pulled at
     // 21.7 yd), and the pull itself is DungeonClear's (both pets at once, each onto its own tank).
-    bool const petHolder = PlayerbotAI::IsMainTank(bot) || PlayerbotAI::IsAssistTankOfIndex(bot, 0);
+    // The bot a pet is on always holds it (DungeonClear's normal pull hands the pets to two non-leader tanks, and
+    // Magnetic Pull swaps them); the fixed pet tanks step in only while the pet is on someone who is not a tank.
+    Unit* const petVictim = target->GetVictim();
+    bool const petHolder = petVictim == bot ||
+                           ((PlayerbotAI::IsMainTank(bot) || PlayerbotAI::IsAssistTankOfIndex(bot, 0)) &&
+                            !(petVictim && petVictim->IsPlayer() && botAI->IsTank(petVictim->ToPlayer())));
     if (petHolder && bot->IsInCombat())
     {
         std::pair<float, float> const posForTank = helper.PetPhaseGetPosForTank();
