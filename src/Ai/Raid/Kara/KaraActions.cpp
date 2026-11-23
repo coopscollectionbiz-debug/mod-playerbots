@@ -1565,7 +1565,7 @@ bool NightbaneManageTimersAndTrackersAction::Execute(Event /*event*/)
     bool const isMechanicTracker = IsMechanicTrackerBot(bot, KARA_MAP_ID);
     bool didSomething = false;
 
-    // Diagnostic (2026-11-21, temporary): Nightbane wipes start with ranged and healers dying to his melee and Cleave
+    // Diagnostic (2026-11-21, DEBUG level): Nightbane wipes start with ranged and healers dying to his melee and Cleave
     // at 5-9 yd. Say when he turns to a non-tank: seconds since he landed, the main tank, and their threat.
     if (isMechanicTracker && nightbane->GetPositionZ() <= NIGHTBANE_FLIGHT_Z)
     {
@@ -1582,7 +1582,7 @@ bool NightbaneManageTimersAndTrackersAction::Execute(Event /*event*/)
                 Player* mainTank = GetGroupMainTank(bot);
                 auto it = nightbaneDpsWaitTimer.find(instanceId);
                 long const sinceLanding = it == nightbaneDpsWaitTimer.end() ? -1 : long(now - it->second);
-                LOG_INFO("playerbots", "[Kara Nightbane] turned to {} ({} yd, threat {:.0f}); main tank {} ({}, {:.0f} yd, threat {:.0f}); {} s since landing, boss {:.0f}%",
+                LOG_DEBUG("playerbots", "[Kara Nightbane] turned to {} ({} yd, threat {:.0f}); main tank {} ({}, {:.0f} yd, threat {:.0f}); {} s since landing, boss {:.0f}%",
                          victimPlayer->GetName(), nightbane->GetDistance(victimPlayer),
                          nightbane->GetThreatMgr().GetThreat(victimPlayer),
                          mainTank ? mainTank->GetName() : "none",

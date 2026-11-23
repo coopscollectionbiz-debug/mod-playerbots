@@ -13,11 +13,13 @@
 #include <mutex>
 #include <unordered_map>
 
-// TEMPORARY diag (11-22): Naxx40 Kel'Thuzad phase 1, one line per instance every 5 s. Soldiers (351073) are summoned
+// Debug diag (11-22, playerbots DEBUG level): Naxx40 Kel'Thuzad phase 1, one line per instance every 5 s. Soldiers (351073) are summoned
 // every 3.1 s onto a random raid member from the room edge; this measures how far they get before they die, where the
-// raid stands relative to the room centre, and what ranged and melee are targeting. Remove before any push.
+// raid stands relative to the room centre, and what ranged and melee are targeting.
 static void KelthuzadPhaseOneDiag(Player* bot, Unit* kelthuzad, std::pair<float, float> const& center)
 {
+    if (!sLog->ShouldLog("playerbots", LogLevel::LOG_LEVEL_DEBUG))
+        return;
     static std::mutex m;
     static std::unordered_map<uint32, uint32> last;
     static std::unordered_map<uint32, uint32> start;
@@ -89,7 +91,7 @@ static void KelthuzadPhaseOneDiag(Player* bot, Unit* kelthuzad, std::pair<float,
         else if (!ai->IsRanged(p) && !ai->IsTank(p))
             ++(e == 351073 ? mS : e == 351074 ? mA : mNone);
     }
-    LOG_INFO("playerbots", "[Naxx40KT P1] t={}s alive={} raid@centre {:.1f}yd spread {:.1f} | soldiers {} [<10:{} 10-25:{} 25-45:{} >45:{}] | abom {} [{} {} {} {}] on-melee {} | weavers {} [{} {} {} {}] | ranged S{} W{} A{} none{} | melee S{} A{} none{}",
+    LOG_DEBUG("playerbots", "[Naxx40KT P1] t={}s alive={} raid@centre {:.1f}yd spread {:.1f} | soldiers {} [<10:{} 10-25:{} 25-45:{} >45:{}] | abom {} [{} {} {} {}] on-melee {} | weavers {} [{} {} {} {}] | ranged S{} W{} A{} none{} | melee S{} A{} none{}",
              getMSTimeDiff(start[inst], now) / 1000, alive, std::sqrt((cx - center.first) * (cx - center.first) + (cy - center.second) * (cy - center.second)),
              spread, sN, sB[0], sB[1], sB[2], sB[3], aN, aB[0], aB[1], aB[2], aB[3], aM, wN, wB[0], wB[1], wB[2], wB[3], rS, rW, rA,
              rNone, mS, mA, mNone);

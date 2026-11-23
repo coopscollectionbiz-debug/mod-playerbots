@@ -57,7 +57,7 @@ bool GrobbulusMoveAwayAction::Execute(Event /*event*/)
 
 uint32 GrobbulusRotateAction::GetCurrWaypoint()
 {
-    // Diagnostic (2026-11-21, temporary): the rotation circle (3281,-3310 r35) is the WotLK room centre; IP's Naxx40
+    // Diagnostic (2026-11-21, DEBUG level): the rotation circle (3281,-3310 r35) is the WotLK room centre; IP's Naxx40
     // Grobbulus spawns at 3205,-3341 z320. Log where he and his tank are, every 10 s.
     {
         static uint32 lastMs = 0;
@@ -67,7 +67,7 @@ uint32 GrobbulusRotateAction::GetCurrWaypoint()
             lastMs = nowMs ? nowMs : 1;
             Unit* boss = AI_VALUE(Unit*, "boss target");
             uint32 const wp = FindNearestWaypoint();
-            LOG_INFO("module", "[Naxx40 Grobbulus] tank {} at {:.1f} {:.1f} {:.1f}; boss {} at {:.1f} {:.1f} {:.1f}; nearest waypoint {} "
+            LOG_DEBUG("module", "[Naxx40 Grobbulus] tank {} at {:.1f} {:.1f} {:.1f}; boss {} at {:.1f} {:.1f} {:.1f}; nearest waypoint {} "
                      "({:.1f} {:.1f}), {:.1f} yd from the circle centre",
                      bot->GetName(), bot->GetPositionX(), bot->GetPositionY(), bot->GetPositionZ(),
                      boss ? boss->GetEntry() : 0u, boss ? boss->GetPositionX() : 0.0f, boss ? boss->GetPositionY() : 0.0f,
@@ -119,7 +119,7 @@ static void PlaceGrobbulusWaypointsOnWall(Player* bot, std::vector<std::pair<flo
             }
             float const r = best - WALL_INSET;
             wall.emplace_back(GROBBULUS_CENTER_X + std::cos(a) * r, GROBBULUS_CENTER_Y + std::sin(a) * r);
-            LOG_INFO("module", "[Naxx40 Grobbulus] wall waypoint {} at {:.1f} {:.1f} (r {:.1f})", i, wall.back().first,
+            LOG_DEBUG("module", "[Naxx40 Grobbulus] wall waypoint {} at {:.1f} {:.1f} (r {:.1f})", i, wall.back().first,
                      wall.back().second, r);
         }
     }

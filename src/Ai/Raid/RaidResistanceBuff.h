@@ -121,7 +121,7 @@ public:
                                                                                : SPELL_SCHOOL_SHADOW;
             int32 const before = bot->GetResistance(SpellSchools(school));
             aura = bot->AddAura(wanted, bot);
-            LOG_INFO("playerbots", "[RaidResistanceBuff] {} +{}: resistance {} -> {}{}", bot->GetName(), wanted, before,
+            LOG_DEBUG("playerbots", "[RaidResistanceBuff] {} +{}: resistance {} -> {}{}", bot->GetName(), wanted, before,
                      bot->GetResistance(SpellSchools(school)), aura ? "" : " (AddAura FAILED)");
         }
         if (!aura)

@@ -316,7 +316,7 @@ namespace Naxx40Horsemen
                 Player* act = FindPlayer(map, r.assign->active[h]);
                 Player* rest = FindPlayer(map, r.assign->resting[h]);
                 Unit* victim = alive[h] ? horse[h]->GetVictim() : nullptr;
-                // TEMPORARY: distances to the horseman (resting tanks kept gaining his Mark, 4-6 stacks at rest).
+                // Distances to the horseman (resting tanks kept gaining his Mark, 4-6 stacks at rest).
                 line += Acore::StringFormat(" | {} {}% act {}({}@{:.0f}) rest {}({}@{:.0f}) vic {}", TAG[h],
                                             alive[h] ? uint32(horse[h]->GetHealthPct()) : 0,
                                             NameOf(map, r.assign->active[h]), act ? MarkStacks(act, hh) : 0,
@@ -341,7 +341,7 @@ namespace Naxx40Horsemen
                         line += Acore::StringFormat(" {}", 100 * p->GetPower(POWER_MANA) / maxMana);
                 }
             }
-            LOG_INFO("playerbots", "{}", line);  // TEMPORARY: was LOG_DEBUG
+            LOG_DEBUG("playerbots", "{}", line);
         }
 
         void FillView(Map* map, ObjectGuid const horseGuid[4], std::shared_ptr<Assignment const> assign,
@@ -470,8 +470,7 @@ namespace Naxx40Horsemen
 
         if (!r.latched)
             return false;
-        // TEMPORARY (2026-11-21): INFO-level rotation diag for the 0/3 Horsemen plans; revert to the DEBUG gate.
-        if (diagDue)
+        if (diagDue && sLog->ShouldLog("playerbots", LogLevel::LOG_LEVEL_DEBUG))
             LogDiag(map, r, horse, alive);
 
         FillView(map, r.horseGuid, r.assign, view);
