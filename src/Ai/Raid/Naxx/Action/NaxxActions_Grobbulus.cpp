@@ -234,15 +234,26 @@ bool GrobbulusAvoidCloudAction::Execute(Event /*event*/)
         if (found)
             break;
     }
+    float const hereGap = NaxxHelpers::GrobbulusCloudGap(bot, bot->GetPositionX(), bot->GetPositionY());
     if (!found)
     {
         if (!fallback)
+        {
+            RAID_DIAG("playerbots", "[RAID_DIAG] Grobbulus cloud: {} at {:.1f} {:.1f} gap {:.1f}: NO SPOT", bot->GetName(),
+                      bot->GetPositionX(), bot->GetPositionY(), hereGap);
             return false;
+        }
         bestX = fbX;
         bestY = fbY;
         bestZ = fbZ;
     }
-    return MoveTo(bot->GetMapId(), bestX, bestY, bestZ, false, false, false, false, MovementPriority::MOVEMENT_COMBAT, true);
+    // FORCED: at COMBAT priority a fresh ranged-positioning move (same priority) made MoveTo refuse the escape as
+    // "waiting for the last move", and the bot stood in the poison (11-24 trace: 4,429 of 5,221 escapes refused).
+    bool const moved = MoveTo(bot->GetMapId(), bestX, bestY, bestZ, false, false, false, false, MovementPriority::MOVEMENT_FORCED, true);
+    RAID_DIAG("playerbots", "[RAID_DIAG] Grobbulus cloud: {} at {:.1f} {:.1f} gap {:.1f} -> {:.1f} {:.1f} ({}) moved {}",
+              bot->GetName(), bot->GetPositionX(), bot->GetPositionY(), hereGap, bestX, bestY, found ? "clear" : "fallback",
+              moved ? 1 : 0);
+    return moved;
 }
 
 // The wall radius on a bearing from the room centre, from the nearest measured wall waypoint (+ the 4 yd inset).
