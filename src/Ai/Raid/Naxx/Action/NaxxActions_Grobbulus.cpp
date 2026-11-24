@@ -181,10 +181,16 @@ bool GrobbulusAvoidCloudAction::Execute(Event /*event*/)
 {
     // The nearest spot round the bot that is 4 yd clear of every cloud and, when possible, out of the spray cone, at
     // its own height. Rings of 8, 14 and 20 yd, 16 bearings each.
+    // IP's clouds grow 0.25 yd/s for their 75 s (about 20 yd radius at the end, one every 15 s), so a bot deep in an
+    // old cloud found no spot 4 yd clear within 20 yd, gave up and stood in it (prod 11-24, human tank Grimblade: Poison
+    // 21-47 deaths per wipe, ranged dying in place and again after rezzes). Rings out to 40 yd, and when nothing is
+    // fully clear, the spot with the most clearance instead of standing still.
     Unit* boss = AI_VALUE2(Unit*, "find target", "grobbulus");
     float bestX = 0.0f, bestY = 0.0f, bestZ = 0.0f, bestScore = -1000.0f;
     bool found = false;
-    for (float ring : {8.0f, 14.0f, 20.0f})
+    float fbX = 0.0f, fbY = 0.0f, fbZ = 0.0f, fbGap = NaxxHelpers::GrobbulusCloudGap(bot, bot->GetPositionX(), bot->GetPositionY());
+    bool fallback = false;
+    for (float ring : {8.0f, 14.0f, 20.0f, 28.0f, 36.0f, 44.0f})
     {
         for (int i = 0; i < 16; ++i)
         {
@@ -196,6 +202,14 @@ bool GrobbulusAvoidCloudAction::Execute(Event /*event*/)
             if (std::fabs(z - bot->GetPositionZ()) > 4.0f || !bot->IsWithinLOS(x, y, z + 2.0f))
                 continue;
             float const gap = NaxxHelpers::GrobbulusCloudGap(bot, x, y);
+            if (gap > fbGap + 1.0f)
+            {
+                fallback = true;
+                fbGap = gap;
+                fbX = x;
+                fbY = y;
+                fbZ = z;
+            }
             if (gap < 4.0f)
                 continue;
             float score = std::min(gap, 15.0f) - ring * 0.5f;
@@ -221,7 +235,13 @@ bool GrobbulusAvoidCloudAction::Execute(Event /*event*/)
             break;
     }
     if (!found)
-        return false;
+    {
+        if (!fallback)
+            return false;
+        bestX = fbX;
+        bestY = fbY;
+        bestZ = fbZ;
+    }
     return MoveTo(bot->GetMapId(), bestX, bestY, bestZ, false, false, false, false, MovementPriority::MOVEMENT_COMBAT, true);
 }
 
