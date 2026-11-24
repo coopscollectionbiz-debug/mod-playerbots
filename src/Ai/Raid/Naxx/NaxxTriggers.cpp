@@ -64,7 +64,12 @@ bool GrobbulusPoisonCloudTrigger::IsActive()
 {
     // Not his tank: the rotation walks him clear of the clouds.
     Unit* boss = AI_VALUE2(Unit*, "find target", "grobbulus");
-    if (!boss || !boss->IsInCombat() || boss->GetVictim() == bot)
+    if (boss && boss->IsAlive() && boss->IsInCombat() && boss->GetVictim() == bot)
+        return false;
+    // The clouds outlive him (75 s each): with the trigger tied to a living, fighting Grobbulus the raid rested and
+    // looted inside them after the kill (11-24 test: kill with 1 death, then 9 more to Poison). Any cloud the bot is
+    // in counts, boss or not; the 100 yd cloud scan keeps this to his room.
+    if (boss && boss->IsAlive() && !boss->IsInCombat())
         return false;
     return NaxxHelpers::GrobbulusCloudGap(bot, bot->GetPositionX(), bot->GetPositionY()) < 2.0f;
 }
