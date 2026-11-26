@@ -12,11 +12,28 @@
 #include "NaxxTriggers.h"
 #include "Playerbots.h"
 
+// Mutating Injection drop point on the wall behind Grobbulus's kite (defined below the wall waypoints).
+static bool GrobbulusInjectionDrop(Player* bot, Unit* boss, float& x, float& y, float& z);
+// 0 = no drop point (old behaviour), 1 = at the drop point (hold), 2 = move to (x, y, z).
+static int GrobbulusInjectionStep(Player* bot, Unit* boss, float& x, float& y, float& z);
+
 bool GrobbulusGoBehindAction::Execute(Event /*event*/)
 {
-    Unit* boss = AI_VALUE(Unit*, "boss target");
+    // "boss target" is empty in this fight (11-21: the spray avoid failed every push on it); use the named lookup.
+    Unit* boss = AI_VALUE2(Unit*, "find target", "grobbulus");
+    if (!boss)
+        boss = AI_VALUE(Unit*, "boss target");
     if (!boss)
         return false;
+
+    {
+        float dx, dy, dz;
+        int const step = GrobbulusInjectionStep(bot, boss, dx, dy, dz);
+        if (step == 1)
+            return false;  // at the drop point: let the cleanse/attack actions run
+        if (step == 2)
+            return MoveTo(bot->GetMapId(), dx, dy, dz, false, false, false, false, MovementPriority::MOVEMENT_COMBAT);
+    }
 
     // Position* pos = boss->GetPosition();
     float orientation = boss->GetOrientation() + M_PI + delta_angle;
@@ -30,9 +47,21 @@ bool GrobbulusGoBehindAction::Execute(Event /*event*/)
 
 bool GrobbulusMoveAwayAction::Execute(Event /*event*/)
 {
-    Unit* boss = AI_VALUE(Unit*, "boss target");
+    // "boss target" is empty in this fight (11-21: the spray avoid failed every push on it); use the named lookup.
+    Unit* boss = AI_VALUE2(Unit*, "find target", "grobbulus");
+    if (!boss)
+        boss = AI_VALUE(Unit*, "boss target");
     if (!boss)
         return false;
+
+    {
+        float dx, dy, dz;
+        int const step = GrobbulusInjectionStep(bot, boss, dx, dy, dz);
+        if (step == 1)
+            return false;  // at the drop point: let the cleanse/attack actions run
+        if (step == 2)
+            return MoveTo(bot->GetMapId(), dx, dy, dz, false, false, false, false, MovementPriority::MOVEMENT_COMBAT);
+    }
 
     const float currentDistance = bot->GetExactDist2d(boss);
     if (currentDistance >= distance)
@@ -126,6 +155,50 @@ static void PlaceGrobbulusWaypointsOnWall(Player* bot, std::vector<std::pair<flo
     }
     if (wall.size() == waypoints.size())
         waypoints = wall;
+}
+
+// 11-26: the injection victim's explosion leaves a new Poison Cloud where it stands. "Go behind the boss" (ranged) put
+// that 24 yd behind him, i.e. towards the room centre where the ranged and healers stand (he faces the wall), and the
+// melee step-away went the same way: 11-26 wipes had 34-41 cloud deaths, most of them 25-44 yd from Grobbulus at the
+// centre (3270-3296, -3302..-3320). Real raids send the victim to the edge of the cloud trail, away from the raid
+// (research: reports/Vanilla raid boss bot strategies.md, Grobbulus rule 6): the wall waypoint the kite has already
+// passed (the rotation walks to increasing waypoint indices), ~30 yd along the wall from him and ~35 yd from the centre.
+static bool GrobbulusInjectionDrop(Player* bot, Unit* boss, float& x, float& y, float& z)
+{
+    std::vector<std::pair<float, float>> const& wall = sGrobbulusWall;
+    if (wall.size() < 3)
+        return false;
+    size_t nearest = 0;
+    float best = 1e9f;
+    for (size_t i = 0; i < wall.size(); ++i)
+    {
+        float const d = boss->GetExactDist2d(wall[i].first, wall[i].second);
+        if (d < best)
+        {
+            best = d;
+            nearest = i;
+        }
+    }
+    size_t const trail = (nearest + wall.size() - 1) % wall.size();
+    x = wall[trail].first;
+    y = wall[trail].second;
+    z = GROBBULUS_FLOOR_Z;
+    bot->UpdateAllowedPositionZ(x, y, z);
+    return std::fabs(z - GROBBULUS_FLOOR_Z) <= 3.0f;
+}
+
+static int GrobbulusInjectionStep(Player* bot, Unit* boss, float& x, float& y, float& z)
+{
+    // Never the boss's own tank: he keeps the boss.
+    if (boss->GetVictim() == bot)
+        return 0;
+    if (!GrobbulusInjectionDrop(bot, boss, x, y, z))
+        return 0;
+    if (bot->GetExactDist2d(x, y) <= 3.0f)
+        return 1;
+    RAID_DIAG("playerbots", "[RAID_DIAG] Grobbulus injection: {} -> drop {:.1f} {:.1f} ({:.1f} yd)", bot->GetName(), x, y,
+              bot->GetExactDist2d(x, y));
+    return 2;
 }
 
 bool GrobbulusRotateAction::Execute(Event /*event*/)
