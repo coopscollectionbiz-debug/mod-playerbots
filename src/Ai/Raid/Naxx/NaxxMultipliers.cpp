@@ -166,6 +166,18 @@ float ThaddiusGenericMultiplier::GetValue(Action* action)
     Unit* target = AI_VALUE(Unit*, "current target");
     Unit* feugen = AI_VALUE2(Unit*, "find target", "feugen");
     Unit* stalagg = AI_VALUE2(Unit*, "find target", "stalagg");
+    // 11-26: opener discipline. A rogue and a hunter opened on the pets before their tanks (tr-20261126-173155-3:
+    // Feugen on Rabiosoo at t0, then chasing healers 75 yd off his platform -> Tesla Coil Shock x29). A non-tank does
+    // no damage to a pet until a tank holds it; healing is unaffected.
+    if (helper.IsPhasePet() && target && (target == feugen || target == stalagg) && !botAI->IsTank(bot))
+    {
+        Unit* victim = target->GetVictim();
+        Player* vp = victim ? victim->ToPlayer() : nullptr;
+        bool const tankHolds = vp && GET_PLAYERBOT_AI(vp) ? GET_PLAYERBOT_AI(vp)->IsTank(vp) : false;
+        if (!tankHolds && !dynamic_cast<CastHealingSpellAction*>(action) &&
+            (dynamic_cast<AttackAction*>(action) || dynamic_cast<CastSpellAction*>(action)))
+            return 0.0f;
+    }
     if (helper.IsPhasePet() && target && feugen && stalagg && target->GetHealthPct() <= 40 &&
         (feugen->GetHealthPct() >= target->GetHealthPct() + 3 || stalagg->GetHealthPct() >= target->GetHealthPct() + 3))
     {
